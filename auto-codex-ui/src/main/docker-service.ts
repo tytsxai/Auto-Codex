@@ -13,8 +13,8 @@ const execAsync = promisify(exec);
 
 // FalkorDB container configuration
 const FALKORDB_CONTAINER_NAME = 'auto-codex-falkordb';
-const FALKORDB_IMAGE_TAG = process.env.FALKORDB_IMAGE_TAG || 'latest';
-const FALKORDB_IMAGE = process.env.FALKORDB_IMAGE || `falkordb/falkordb:${FALKORDB_IMAGE_TAG}`;
+const FALKORDB_IMAGE_TAG = process.env.FALKORDB_IMAGE_TAG;
+const FALKORDB_IMAGE = process.env.FALKORDB_IMAGE || (FALKORDB_IMAGE_TAG ? `falkordb/falkordb:${FALKORDB_IMAGE_TAG}` : '');
 const FALKORDB_VOLUME_NAME = process.env.FALKORDB_VOLUME || 'auto-codex_falkordb_data';
 const FALKORDB_DEFAULT_PORT = 6380;
 const FALKORDB_BIND_ADDRESS = '127.0.0.1';
@@ -201,6 +201,12 @@ export async function startFalkorDB(
   port: number = FALKORDB_DEFAULT_PORT
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    if (!FALKORDB_IMAGE) {
+      return {
+        success: false,
+        error: 'FALKORDB_IMAGE_TAG is required. Set FALKORDB_IMAGE_TAG or FALKORDB_IMAGE.'
+      };
+    }
     // First, check Docker status
     const dockerStatus = await checkDockerStatus();
     if (!dockerStatus.running) {

@@ -130,6 +130,10 @@ python3 -m venv .venv && source .venv/bin/activate && pip install -r requirement
 The Auto-Codex Memory Layer provides cross-session context retention using a graph database:
 
 ```bash
+# Pin image tags (required in production)
+export FALKORDB_IMAGE_TAG=<version>
+export GRAPHITI_MCP_IMAGE_TAG=<version>
+
 # Make sure Docker Desktop is running, then:
 docker-compose up -d falkordb
 ```
