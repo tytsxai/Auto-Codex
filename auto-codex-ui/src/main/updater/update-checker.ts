@@ -66,12 +66,24 @@ export async function checkForUpdates(): Promise<AutoBuildUpdateCheck> {
   } catch (error) {
     // Clear cache on error
     clearCachedRelease();
-    debugLog('[UpdateCheck] Error:', error instanceof Error ? error.message : error);
+    const message = error instanceof Error ? error.message : String(error);
+    debugLog('[UpdateCheck] Error:', message);
+
+    // GitHub returns 404 for `/releases/latest` when no releases exist.
+    // Treat that as a normal "no update available" state instead of surfacing a scary error in the UI.
+    // Note: a real repo/config error can also 404; in that case this will be quiet, but logs still capture it.
+    if (message.startsWith('HTTP 404:')) {
+      return {
+        updateAvailable: false,
+        currentVersion,
+        latestVersion: currentVersion
+      };
+    }
 
     return {
       updateAvailable: false,
       currentVersion,
-      error: error instanceof Error ? error.message : 'Failed to check for updates'
+      error: message || 'Failed to check for updates'
     };
   }
 }
