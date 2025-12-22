@@ -163,6 +163,8 @@ Use this checklist when creating a new release:
 - [ ] Verify version validation passed
 - [ ] Verify builds completed successfully
 - [ ] Test the updater shows correct version
+- [ ] (macOS) Notarization + signing configured (if distributing externally)
+- [ ] (Windows) Code signing configured (if distributing externally)
 
 ## What Gets Released
 

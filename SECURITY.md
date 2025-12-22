@@ -4,7 +4,7 @@
 
 Please do not open public issues for suspected security vulnerabilities.
 
-- Email: security@autocodex.local (replace with your real address)
+- Email: security@autocodex.local (replace with your real address before production)
 - Include: affected version, reproduction steps, impact, and any logs (redact secrets)
 
 ## Supported Versions
@@ -23,4 +23,3 @@ This project is a desktop app + local services. Only the latest released version
 ## Operational Guidance
 
 See `guides/OPERATIONS.md` for backup/restore, log collection, and incident response basics.
-
