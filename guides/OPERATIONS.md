@@ -46,6 +46,13 @@ Stop:
 
 By default, `docker-compose.yml` binds service ports to `127.0.0.1` only. Do not expose FalkorDB to untrusted networks.
 
+### Reproducible Images (Recommended)
+
+For production-like stability, pin image tags instead of using `:latest`:
+
+- `FALKORDB_IMAGE_TAG=...`
+- `GRAPHITI_MCP_IMAGE_TAG=...`
+
 ## Data Locations
 
 ### Task Logs (Per Project)
@@ -66,11 +73,11 @@ Docker named volume:
 
 Create a timestamped tarball of the Docker volume:
 
-`mkdir -p backups && docker run --rm -v auto-codex_falkordb_data:/data -v "$(pwd)/backups:/backup" alpine sh -c 'tar -czf /backup/falkordb_data_$(date +%Y%m%d_%H%M%S).tar.gz -C /data .'`
+`./scripts/backup-falkordb.sh`
 
 Restore (destructive; stops services first):
 
-`docker-compose down && docker run --rm -v auto-codex_falkordb_data:/data -v "$(pwd)/backups:/backup" alpine sh -c 'rm -rf /data/* && tar -xzf /backup/<your_backup>.tar.gz -C /data' && docker-compose up -d`
+`./scripts/restore-falkordb.sh backups/<your_backup>.tar.gz`
 
 ### Task Logs Backup
 

@@ -24,7 +24,7 @@ name: auto-codex
 
 services:
   falkordb:
-    image: falkordb/falkordb:latest
+    image: "falkordb/falkordb:${FALKORDB_IMAGE_TAG:-latest}"
     container_name: auto-codex-falkordb
     ports:
       - "127.0.0.1:${GRAPHITI_FALKORDB_PORT:-6380}:6379"
@@ -40,7 +40,7 @@ services:
     restart: unless-stopped
 
   graphiti-mcp:
-    image: falkordb/graphiti-knowledge-graph-mcp:latest
+    image: "falkordb/graphiti-knowledge-graph-mcp:${GRAPHITI_MCP_IMAGE_TAG:-latest}"
     container_name: auto-codex-graphiti-mcp
     platform: linux/amd64  # Required: image only available for amd64
     ports:
