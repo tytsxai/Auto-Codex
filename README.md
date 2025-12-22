@@ -1,17 +1,21 @@
-# Auto Claude
+# Auto-Codex
 
 Your AI coding companion. Build features, fix bugs, and ship faster — with autonomous agents that plan, code, and validate for you.
 
-![Auto Claude Kanban Board](.github/assets/Auto-Claude-Kanban.png)
+This project is a Codex-based fork derived from https://github.com/AndyMik90/Auto-Claude.
+
+![Auto-Codex Kanban Board](.github/assets/Auto-Claude-Kanban.png)
 
 [![Discord](https://img.shields.io/badge/Discord-Join%20Community-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/KCXaPBr4Dj)
 
 ## What It Does ✨
 
-**Auto Claude is a desktop app that supercharges your AI coding workflow.** Whether you're a vibe coder just getting started or an experienced developer, Auto Claude meets you where you are.
+**Auto-Codex is a desktop app that supercharges your AI coding workflow.** Whether you're a vibe coder just getting started or an experienced developer, Auto-Codex meets you where you are.
+
+Powered by the OpenAI Codex CLI for reliable, sandboxed agent execution.
 
 - **Autonomous Tasks** — Describe what you want to build, and agents handle planning, coding, and validation while you focus on other work
-- **Agent Terminals** — Run Claude Code in up to 12 terminals with a clean layout, smart naming based on context, and one-click task context injection
+- **Agent Terminals** — Run Codex CLI in up to 12 terminals with a clean layout, smart naming based on context, and one-click task context injection
 - **Safe by Default** — All work happens in git worktrees, keeping your main branch undisturbed until you're ready to merge
 - **Self-Validating** — Built-in QA agents check their own work before you review
 
@@ -30,20 +34,40 @@ Your AI coding companion. Build features, fix bugs, and ship faster — with aut
 
 ## 🚀 Quick Start (Desktop UI)
 
-The Desktop UI is the recommended way to use Auto Claude. It provides visual task management, real-time progress tracking, and a Kanban board interface.
+The Desktop UI is the recommended way to use Auto-Codex. It provides visual task management, real-time progress tracking, and a Kanban board interface.
 
 ### Prerequisites
 
 1. **Node.js 18+** - [Download Node.js](https://nodejs.org/)
 2. **Python 3.10+** - [Download Python](https://www.python.org/downloads/)
 3. **Docker Desktop** - Required for the Memory Layer
-4. **Claude Code CLI** - `npm install -g @anthropic-ai/claude-code`
-5. **Claude Subscription** - Requires [Claude Pro or Max](https://claude.ai/upgrade) for Claude Code access
+4. **Codex CLI** - `npm install -g @openai/codex`
+5. **OpenAI Account** - Required for Codex CLI access (API key for non-interactive use)
 6. **Git Repository** - Your project must be initialized as a git repository
+
+### Codex CLI Auth (Required)
+
+```bash
+# Verify install
+codex --version
+
+# Interactive login (recommended)
+codex login
+```
+
+**Headless/CI:** set an API key instead of interactive login.
+
+```bash
+# Shell env (one-off)
+export OPENAI_API_KEY=sk-...
+
+# Or add to auto-claude/.env for repeat usage
+OPENAI_API_KEY=sk-...
+```
 
 ### Git Initialization
 
-**Auto Claude requires a git repository** to create isolated worktrees for safe parallel development. If your project isn't a git repo yet:
+**Auto-Codex requires a git repository** to create isolated worktrees for safe parallel development. If your project isn't a git repo yet:
 
 ```bash
 cd your-project
@@ -52,13 +76,13 @@ git add .
 git commit -m "Initial commit"
 ```
 
-> **Why git?** Auto Claude uses git branches and worktrees to isolate each task in its own workspace, keeping your main branch clean until you're ready to merge. This allows you to work on multiple features simultaneously without conflicts.
+> **Why git?** Auto-Codex uses git branches and worktrees to isolate each task in its own workspace, keeping your main branch clean until you're ready to merge. This allows you to work on multiple features simultaneously without conflicts.
 
 ---
 
 ### Installing Docker Desktop
 
-Docker runs the FalkorDB database that powers Auto Claude's cross-session memory.
+Docker runs the FalkorDB database that powers Auto-Codex's cross-session memory.
 
 | Operating System | Download Link |
 |------------------|---------------|
@@ -93,7 +117,7 @@ python3 -m venv .venv && source .venv/bin/activate && pip install -r requirement
 
 ### Step 2: Start the Memory Layer
 
-The Auto Claude Memory Layer provides cross-session context retention using a graph database:
+The Auto-Codex Memory Layer provides cross-session context retention using a graph database:
 
 ```bash
 # Make sure Docker Desktop is running, then:
@@ -117,7 +141,7 @@ pnpm run build && pnpm run start
 <details>
 <summary><b>Windows users:</b> If installation fails with node-gyp errors, click here</summary>
 
-Auto Claude automatically downloads prebuilt binaries for Windows. If prebuilts aren't available for your Electron version yet, you'll need Visual Studio Build Tools:
+Auto-Codex automatically downloads prebuilt binaries for Windows. If prebuilts aren't available for your Electron version yet, you'll need Visual Studio Build Tools:
 
 1. Download [Visual Studio Build Tools 2022](https://visualstudio.microsoft.com/visual-cpp-build-tools/)
 2. Select "Desktop development with C++" workload
@@ -130,7 +154,7 @@ Auto Claude automatically downloads prebuilt binaries for Windows. If prebuilts 
 
 1. Add your project in the UI
 2. Create a new task describing what you want to build
-3. Watch as Auto Claude creates a spec, plans, and implements your feature
+3. Watch as Auto-Codex creates a spec, plans, and implements your feature
 4. Review changes and merge when satisfied
 
 ---
@@ -145,9 +169,9 @@ Plan tasks and let AI handle the planning, coding, and validation — all in a v
 
 Spawn up to 12 AI-powered terminals for hands-on coding. Inject task context with a click, reference files from your project, and work rapidly across multiple sessions.
 
-**Power users:** Connect multiple Claude Code subscriptions to run even more agents in parallel — perfect for teams or heavy workloads.
+**Power users:** Connect multiple OpenAI accounts to run even more agents in parallel — perfect for teams or heavy workloads.
 
-![Auto Claude Agent Terminals](.github/assets/Auto-Claude-Agents-terminals.png)
+![Auto-Codex Agent Terminals](.github/assets/Auto-Claude-Agents-terminals.png)
 
 ### Insights
 
@@ -157,7 +181,7 @@ Have a conversation about your project in a ChatGPT-style interface. Ask questio
 
 Based on your target audience, AI anticipates and plans the most impactful features you should focus on. Prioritize what matters most to your users.
 
-![Auto Claude Roadmap](.github/assets/Auto-Claude-roadmap.png)
+![Auto-Codex Roadmap](.github/assets/Auto-Claude-roadmap.png)
 
 ### Ideation
 
@@ -171,15 +195,15 @@ Let AI help you create a project that shines. Rapidly understand your codebase a
 
 ### Changelog
 
-Write professional changelogs effortlessly. Generate release notes from completed Auto Claude tasks or integrate with GitHub to create masterclass changelogs automatically.
+Write professional changelogs effortlessly. Generate release notes from completed Auto-Codex tasks or integrate with GitHub to create masterclass changelogs automatically.
 
 ### Context
 
-See exactly what Auto Claude understands about your project — the tech stack, file structure, patterns, and insights it uses to write better code.
+See exactly what Auto-Codex understands about your project — the tech stack, file structure, patterns, and insights it uses to write better code.
 
 ### AI Merge Resolution
 
-When your main branch evolves while a build is in progress, Auto Claude automatically resolves merge conflicts using AI — no manual `<<<<<<< HEAD` fixing required.
+When your main branch evolves while a build is in progress, Auto-Codex automatically resolves merge conflicts using AI — no manual `<<<<<<< HEAD` fixing required.
 
 **How it works:**
 1. **Git Auto-Merge First** — Simple non-conflicting changes merge instantly without AI
@@ -195,9 +219,17 @@ When your main branch evolves while a build is in progress, Auto Claude automati
 
 For terminal-based workflows, headless servers, or CI/CD integration, see **[guides/CLI-USAGE.md](guides/CLI-USAGE.md)**.
 
+### Import Validation
+
+Run a quick Python import validation across the repo:
+
+```bash
+./scripts/validate-imports.sh
+```
+
 ## ⚙️ How It Works
 
-Auto Claude focuses on three core principles: **context engineering** (understanding your codebase before writing code), **good coding standards** (following best practices and patterns), and **validation logic** (ensuring code works before you see it).
+Auto-Codex focuses on three core principles: **context engineering** (understanding your codebase before writing code), **good coding standards** (following best practices and patterns), and **validation logic** (ensuring code works before you see it).
 
 ### The Agent Pipeline
 
@@ -264,7 +296,7 @@ The Memory Layer is a **hybrid RAG system** combining graph nodes with semantic 
 your-project/
 ├── .worktrees/               # Created during build (git-ignored)
 │   └── auto-claude/          # Isolated workspace for AI coding
-├── .auto-claude/             # Per-project data (specs, plans, QA reports)
+├── .auto-codex/              # Per-project data (specs, plans, QA reports)
 │   ├── specs/                # Task specifications
 │   ├── roadmap/              # Project roadmap
 │   └── ideation/             # Ideas and planning
@@ -283,36 +315,37 @@ your-project/
 **You don't create these folders manually** - they serve different purposes:
 
 - **`auto-claude/`** - The framework repository itself (clone this once from GitHub)
-- **`.auto-claude/`** - Created automatically in YOUR project when you run Auto Claude (stores specs, plans, QA reports)
+- **`.auto-codex/`** - Created automatically in YOUR project when you run Auto-Codex (stores specs, plans, QA reports)
 - **`.worktrees/`** - Temporary isolated workspaces created during builds (git-ignored, deleted after merge)
 
-**When using Auto Claude on your project:**
+**When using Auto-Codex on your project:**
 ```bash
 cd your-project/              # Your own project directory
 python /path/to/auto-claude/run.py --spec 001
-# Auto Claude creates .auto-claude/ automatically in your-project/
+# Auto-Codex creates .auto-codex/ automatically in your-project/
 ```
 
-**When developing Auto Claude itself:**
+**When developing Auto-Codex itself:**
 ```bash
 git clone https://github.com/yourusername/auto-claude
 cd auto-claude/               # You're working in the framework repo
 ```
 
-The `.auto-claude/` directory is gitignored and project-specific - you'll have one per project you use Auto Claude on.
+The `.auto-codex/` directory is gitignored and project-specific - you'll have one per project you use Auto-Codex on.
 
 ## Environment Variables (CLI Only)
 
 > **Desktop UI users:** These are configured through the app settings — no manual setup needed.
 
+Existing users migrating from Claude SDK should read `MIGRATION.md`.
+
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `CLAUDE_CODE_OAUTH_TOKEN` | Yes | OAuth token from `claude setup-token` |
-| `AUTO_BUILD_MODEL` | No | Model override (default: claude-opus-4-5-20251101) |
+| `OPENAI_API_KEY` | Yes | OpenAI API key for Codex CLI and OpenAI-backed memory providers |
+| `AUTO_BUILD_MODEL` | No | Model override (default: gpt-5.2-codex) |
 | `GRAPHITI_ENABLED` | Recommended | Set to `true` to enable Memory Layer |
 | `GRAPHITI_LLM_PROVIDER` | For Memory | LLM provider: openai, anthropic, azure_openai, ollama, google |
 | `GRAPHITI_EMBEDDER_PROVIDER` | For Memory | Embedder: openai, voyage, azure_openai, ollama, google |
-| `OPENAI_API_KEY` | For OpenAI | Required for OpenAI provider |
 | `ANTHROPIC_API_KEY` | For Anthropic | Required for Anthropic LLM |
 | `VOYAGE_API_KEY` | For Voyage | Required for Voyage embeddings |
 | `GOOGLE_API_KEY` | For Google | Required for Google AI (Gemini) provider |
@@ -321,7 +354,7 @@ See `auto-claude/.env.example` for complete configuration options.
 
 ## 💬 Community
 
-Join our Discord to get help, share what you're building, and connect with other Auto Claude users:
+Join our Discord to get help, share what you're building, and connect with other Auto-Codex users:
 
 [![Discord](https://img.shields.io/badge/Discord-Join%20Community-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/KCXaPBr4Dj)
 
@@ -341,11 +374,11 @@ This framework was inspired by Anthropic's [Autonomous Coding Agent](https://git
 
 This software is licensed under AGPL-3.0, which means:
 
-- **Attribution Required**: You must give appropriate credit, provide a link to the license, and indicate if changes were made. When using Auto Claude, please credit the project.
+- **Attribution Required**: You must give appropriate credit, provide a link to the license, and indicate if changes were made. When using Auto-Codex, please credit the project.
 - **Open Source Required**: If you modify this software and distribute it or run it as a service, you must release your source code under AGPL-3.0.
 - **Network Use (Copyleft)**: If you run this software as a network service (e.g., SaaS), users interacting with it over a network must be able to receive the source code.
 - **No Closed-Source Usage**: You cannot use this software in proprietary/closed-source projects without open-sourcing your entire project under AGPL-3.0.
 
-**In simple terms**: You can use Auto Claude freely, but if you build on it, your code must also be open source under AGPL-3.0 and attribute this project. Closed-source commercial use requires a separate license.
+**In simple terms**: You can use Auto-Codex freely, but if you build on it, your code must also be open source under AGPL-3.0 and attribute this project. Closed-source commercial use requires a separate license.
 
 For commercial licensing inquiries (closed-source usage), please contact the maintainers.

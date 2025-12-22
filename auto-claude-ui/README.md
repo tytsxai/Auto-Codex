@@ -1,13 +1,13 @@
-# Auto Claude UI
+# Auto-Codex UI
 
-使用 Auto Claude 自主编码框架管理 AI 驱动开发任务的桌面应用程序。
+使用 Auto-Codex 自主编码框架管理 AI 驱动开发任务的桌面应用程序。
 
 ## 快速开始
 
 ```bash
 # 1. 克隆仓库（如果尚未克隆）
-git clone https://github.com/AndyMik90/Auto-Claude.git
-cd Auto-Claude/auto-claude-ui
+git clone https://github.com/tytsxai/Auto-Codex.git
+cd Auto-Codex/auto-claude-ui
 
 # 2. 安装依赖
 npm install
@@ -18,9 +18,9 @@ npm run package:mac    # macOS
 npm run package:linux  # Linux
 
 # 4. 运行应用
-# Windows: .\dist\win-unpacked\Auto Claude.exe
-# macOS:   open dist/mac-arm64/Auto\ Claude.app
-# Linux:   ./dist/linux-unpacked/auto-claude
+# Windows: .\\dist\\win-unpacked\\Auto-Codex.exe
+# macOS:   open dist/mac-arm64/Auto\\ Codex.app
+# Linux:   ./dist/linux-unpacked/auto-codex
 ```
 
 ## 前置要求
@@ -54,16 +54,16 @@ npm run package:linux
 
 ```bash
 # Windows - 运行可执行文件
-.\dist\win-unpacked\Auto Claude.exe
+.\dist\win-unpacked\Auto-Codex.exe
 
 # Windows - 或使用安装程序
-.\dist\Auto Claude Setup X.X.X.exe
+.\dist\Auto-Codex Setup X.X.X.exe
 
 # macOS
-open dist/mac-arm64/Auto\ Claude.app
+open dist/mac-arm64/Auto\ Codex.app
 
 # Linux
-./dist/linux-unpacked/auto-claude
+./dist/linux-unpacked/auto-codex
 ```
 
 ### 开发模式
@@ -82,8 +82,8 @@ npm run dev
 
 | 平台 | 文件 |
 |------|------|
-| macOS | `Auto Claude.app`、`.dmg`、`.zip` |
-| Windows | `Auto Claude Setup X.X.X.exe`（安装程序）、`.zip`、`win-unpacked/` |
+| macOS | `Auto-Codex.app`、`.dmg`、`.zip` |
+| Windows | `Auto-Codex Setup X.X.X.exe`（安装程序）、`.zip`、`win-unpacked/` |
 | Linux | `.AppImage`、`.deb`、`linux-unpacked/` |
 
 ## 测试
@@ -123,7 +123,7 @@ npm run typecheck
 
 ## 环境变量
 
-- `CLAUDE_CODE_OAUTH_TOKEN`：Claude Code SDK 的 OAuth 令牌（来自 auto-claude/.env）
+- `OPENAI_API_KEY`：OpenAI Codex CLI 的 API Key（来自 auto-claude/.env）
 - `FALKORDB_URL`：FalkorDB 连接 URL（可选）
 
 ## 许可证

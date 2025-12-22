@@ -1,34 +1,47 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Codex CLI (OpenAI Codex) when working with code in this repository.
 
 ## Project Overview
 
-Auto Claude is a multi-agent autonomous coding framework that builds software through coordinated AI agent sessions. It uses the Claude Code SDK to run agents in isolated workspaces with security controls.
+Auto-Codex is a multi-agent autonomous coding framework that builds software through coordinated AI agent sessions. It uses the OpenAI Codex CLI to run agents in isolated workspaces with security controls.
+
+Note on naming:
+- Repo/app name: Auto-Codex
+- Python backend directory: `auto-claude/` (legacy folder name)
+- Desktop UI directory: `auto-claude-ui/`
+- Per-project working data: `.auto-codex/` (created inside your target project)
+- Work branches/worktrees: `auto-codex/*`
 
 ## Commands
 
 ### Setup
 ```bash
 # Install dependencies (from auto-claude/)
+cd auto-claude
 uv venv && uv pip install -r requirements.txt
 # Or: python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
 
-# Set up OAuth token
-claude setup-token
-# Add to auto-claude/.env: CLAUDE_CODE_OAUTH_TOKEN=your-token
+# Install Codex CLI (if not already installed)
+npm install -g @openai/codex-cli
+
+# Authenticate Codex CLI (recommended) or set API key directly
+codex auth login
+# Or set OPENAI_API_KEY in your shell or .env file
+export OPENAI_API_KEY=your-key
+# Or add to auto-claude/.env: OPENAI_API_KEY=your-key
 ```
 
 ### Creating and Running Specs
 ```bash
 # Create a spec interactively
-python auto-claude/spec_runner.py --interactive
+python auto-claude/runners/spec_runner.py --interactive
 
 # Create spec from task description
-python auto-claude/spec_runner.py --task "Add user authentication"
+python auto-claude/runners/spec_runner.py --task "Add user authentication"
 
 # Force complexity level (simple/standard/complex)
-python auto-claude/spec_runner.py --task "Fix button" --complexity simple
+python auto-claude/runners/spec_runner.py --task "Fix button" --complexity simple
 
 # Run autonomous build
 python auto-claude/run.py --spec 001
@@ -64,21 +77,21 @@ python auto-claude/run.py --spec 001 --qa-status
 cd auto-claude && uv pip install -r ../tests/requirements-test.txt
 
 # Run all tests (use virtual environment pytest)
-auto-claude/.venv/bin/pytest tests/ -v
+auto-claude/.venv/bin/python -m pytest -v
 
 # Run single test file
-auto-claude/.venv/bin/pytest tests/test_security.py -v
+auto-claude/.venv/bin/python -m pytest tests/test_security.py -v
 
 # Run specific test
-auto-claude/.venv/bin/pytest tests/test_security.py::test_bash_command_validation -v
+auto-claude/.venv/bin/python -m pytest tests/test_security.py::test_bash_command_validation -v
 
 # Skip slow tests
-auto-claude/.venv/bin/pytest tests/ -m "not slow"
+auto-claude/.venv/bin/python -m pytest -m "not slow"
 ```
 
 ### Spec Validation
 ```bash
-python auto-claude/validate_spec.py --spec-dir auto-claude/specs/001-feature --checkpoint all
+python auto-claude/spec/validate_spec.py --spec-dir /path/to/your-project/.auto-codex/specs/001-feature --checkpoint all
 ```
 
 ### Releases
@@ -113,7 +126,7 @@ See [RELEASE.md](RELEASE.md) for detailed release process documentation.
 
 ### Key Components
 
-- **client.py** - Claude SDK client with security hooks and tool permissions
+- **client.py** - Codex CLI client with security hooks and tool permissions
 - **security.py** + **project_analyzer.py** - Dynamic command allowlisting based on detected project stack
 - **worktree.py** - Git worktree isolation for safe feature development
 - **memory.py** - File-based session memory (primary, always-available storage)
@@ -139,7 +152,7 @@ See [RELEASE.md](RELEASE.md) for detailed release process documentation.
 
 ### Spec Directory Structure
 
-Each spec in `auto-claude/specs/XXX-name/` contains:
+Each spec in `.auto-codex/specs/XXX-name/` (inside your target project) contains:
 - `spec.md` - Feature specification
 - `requirements.json` - Structured user requirements
 - `context.json` - Discovered codebase context
@@ -149,15 +162,15 @@ Each spec in `auto-claude/specs/XXX-name/` contains:
 
 ### Branching & Worktree Strategy
 
-Auto Claude uses git worktrees for isolated builds. All branches stay LOCAL until user explicitly pushes:
+Auto Codex uses git worktrees for isolated builds. All branches stay LOCAL until user explicitly pushes:
 
 ```
 main (user's branch)
-└── auto-claude/{spec-name}  ← spec branch (isolated worktree)
+└── auto-codex/{spec-name}  ← spec branch (isolated worktree)
 ```
 
 **Key principles:**
-- ONE branch per spec (`auto-claude/{spec-name}`)
+- ONE branch per spec (`auto-codex/{spec-name}`)
 - Parallel work uses subagents (agent decides when to spawn)
 - NO automatic pushes to GitHub - user controls when to push
 - User reviews in spec worktree (`.worktrees/{spec-name}/`)
@@ -177,7 +190,7 @@ Three-layer defense:
 2. **Filesystem Permissions** - Operations restricted to project directory
 3. **Command Allowlist** - Dynamic allowlist from project analysis (security.py + project_analyzer.py)
 
-Security profile cached in `.auto-claude-security.json`.
+Security profile cached in `.auto-codex-security.json`.
 
 ### Memory System
 
@@ -199,9 +212,9 @@ Enable with: `GRAPHITI_ENABLED=true` + provider credentials. See `.env.example`.
 
 ## Project Structure
 
-Auto Claude can be used in two ways:
+Auto Codex can be used in two ways:
 
-**As a standalone CLI tool** (original project):
+**As a standalone CLI tool**:
 ```bash
 python auto-claude/run.py --spec 001
 ```
@@ -213,4 +226,4 @@ python auto-claude/run.py --spec 001
 **Directory layout:**
 - `auto-claude/` - Python backend/CLI (the framework code)
 - `auto-claude-ui/` - Optional Electron frontend
-- `.auto-claude/specs/` - Per-project data (specs, plans, QA reports) - gitignored
+- `.auto-codex/specs/` - Per-project data (specs, plans, QA reports) - gitignored

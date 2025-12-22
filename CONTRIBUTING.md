@@ -1,6 +1,6 @@
-# Contributing to Auto Claude
+# Contributing to Auto-Codex
 
-Thank you for your interest in contributing to Auto Claude! This document provides guidelines and instructions for contributing to the project.
+Thank you for your interest in contributing to Auto-Codex! This document provides guidelines and instructions for contributing to the project.
 
 ## Table of Contents
 
@@ -58,7 +58,9 @@ pip install -r ../tests/requirements-test.txt
 
 # Set up environment
 cp .env.example .env
-# Edit .env and add your CLAUDE_CODE_OAUTH_TOKEN (get it via: claude setup-token)
+# Install Codex CLI
+npm install -g @openai/codex-cli
+# Edit .env and add your OPENAI_API_KEY
 ```
 
 ### Electron Frontend
@@ -376,7 +378,7 @@ When reporting a bug, include:
    - OS and version
    - Python version
    - Node.js version (for UI issues)
-   - Auto Claude version
+   - Auto-Codex version
 3. **Steps to reproduce** the issue
 4. **Expected behavior** vs **actual behavior**
 5. **Error messages** or logs (if applicable)
@@ -393,7 +395,7 @@ When requesting a feature:
 
 ## Architecture Overview
 
-Auto Claude consists of two main parts:
+Auto-Codex consists of two main parts:
 
 ### Python Backend (`auto-claude/`)
 
@@ -424,4 +426,4 @@ If you have questions about contributing, feel free to:
 1. Open a GitHub issue with the `question` label
 2. Review existing issues and discussions
 
-Thank you for contributing to Auto Claude!
+Thank you for contributing to Auto-Codex!
