@@ -1,5 +1,5 @@
 import path from 'path';
-import { existsSync, mkdirSync, appendFileSync, readdirSync, readFileSync, writeFileSync, statSync } from 'fs';
+import { existsSync, mkdirSync, appendFileSync, readdirSync, readFileSync, writeFileSync, statSync, unlinkSync } from 'fs';
 
 export interface LogSession {
   sessionId: string;
@@ -26,6 +26,8 @@ export class LogService {
   private activeSessions: Map<string, { sessionId: string; logPath: string; startedAt: Date }> = new Map();
   private logBuffers: Map<string, string[]> = new Map();
   private flushIntervals: Map<string, NodeJS.Timeout> = new Map();
+  private warnedMissingSession: Set<string> = new Set();
+  private truncatedTasks: Set<string> = new Set();
 
   // Flush logs to disk every 2 seconds to balance performance vs data safety
   private readonly FLUSH_INTERVAL_MS = 2000;
@@ -70,14 +72,21 @@ export class LogService {
       startedAt: now
     });
 
-    // Initialize buffer for this task
-    this.logBuffers.set(taskId, []);
+    // Ensure buffer exists for this task (may already contain pre-session logs)
+    if (!this.logBuffers.has(taskId)) {
+      this.logBuffers.set(taskId, []);
+    }
+    this.warnedMissingSession.delete(taskId);
+    this.truncatedTasks.delete(taskId);
 
     // Set up periodic flush
     const flushInterval = setInterval(() => {
       this.flushBuffer(taskId);
     }, this.FLUSH_INTERVAL_MS);
     this.flushIntervals.set(taskId, flushInterval);
+
+    // Flush any buffered logs that arrived before the session started
+    this.flushBuffer(taskId);
 
     // Clean up old sessions
     this.cleanupOldSessions(logsDir);
@@ -91,11 +100,11 @@ export class LogService {
    */
   appendLog(taskId: string, content: string): void {
     const session = this.activeSessions.get(taskId);
-    if (!session) {
-      // Session not started - this can happen for logs before session starts
-      // Store in memory and they'll be written when session starts
-      console.warn(`[LogService] No active session for task ${taskId}, log will be lost`);
-      return;
+    if (!session && !this.warnedMissingSession.has(taskId)) {
+      console.warn(
+        `[LogService] No active session for task ${taskId}, buffering logs until session starts`
+      );
+      this.warnedMissingSession.add(taskId);
     }
 
     // Add timestamp prefix for each line
@@ -127,6 +136,25 @@ export class LogService {
 
     try {
       const content = buffer.join('\n') + '\n';
+
+      if (this.truncatedTasks.has(taskId)) {
+        this.logBuffers.set(taskId, []);
+        return;
+      }
+
+      const currentSize = statSync(session.logPath).size;
+      const contentBytes = Buffer.byteLength(content, 'utf8');
+      if (currentSize >= this.MAX_LOG_SIZE_BYTES || currentSize + contentBytes > this.MAX_LOG_SIZE_BYTES) {
+        const truncationNotice = `[${new Date().toISOString()}] [LogService] LOG TRUNCATED: log exceeded ${this.MAX_LOG_SIZE_BYTES} bytes (further output dropped)\n`;
+        if (currentSize + Buffer.byteLength(truncationNotice, 'utf8') <= this.MAX_LOG_SIZE_BYTES + 256) {
+          appendFileSync(session.logPath, truncationNotice);
+        }
+        this.truncatedTasks.add(taskId);
+        this.logBuffers.set(taskId, []);
+        console.warn(`[LogService] Truncated logs for task ${taskId} (file size limit reached)`);
+        return;
+      }
+
       appendFileSync(session.logPath, content);
       this.logBuffers.set(taskId, []); // Clear buffer
     } catch (error) {
@@ -180,6 +208,8 @@ export class LogService {
     }
     this.activeSessions.delete(taskId);
     this.logBuffers.delete(taskId);
+    this.warnedMissingSession.delete(taskId);
+    this.truncatedTasks.delete(taskId);
 
     console.warn(`[LogService] Ended session for task ${taskId}, exit code: ${exitCode}`);
   }
@@ -293,7 +323,7 @@ export class LogService {
       for (const file of toDelete) {
         const filePath = path.join(logsDir, file);
         try {
-          require('fs').unlinkSync(filePath);
+          unlinkSync(filePath);
           console.warn(`[LogService] Deleted old log session: ${file}`);
         } catch (_e) {
           // Ignore deletion errors
