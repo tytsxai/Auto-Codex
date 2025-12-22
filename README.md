@@ -4,7 +4,7 @@ Your AI coding companion. Build features, fix bugs, and ship faster — with aut
 
 This project is a Codex-based fork derived from https://github.com/AndyMik90/Auto-Claude.
 
-![Auto-Codex Kanban Board](.github/assets/Auto-Claude-Kanban.png)
+![Auto-Codex Kanban Board](.github/assets/Auto-Codex-Kanban.png)
 
 [![Discord](https://img.shields.io/badge/Discord-Join%20Community-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/KCXaPBr4Dj)
 
@@ -171,7 +171,7 @@ Spawn up to 12 AI-powered terminals for hands-on coding. Inject task context wit
 
 **Power users:** Connect multiple OpenAI accounts to run even more agents in parallel — perfect for teams or heavy workloads.
 
-![Auto-Codex Agent Terminals](.github/assets/Auto-Claude-Agents-terminals.png)
+![Auto-Codex Agent Terminals](.github/assets/Auto-Codex-Agents-terminals.png)
 
 ### Insights
 
@@ -181,7 +181,7 @@ Have a conversation about your project in a ChatGPT-style interface. Ask questio
 
 Based on your target audience, AI anticipates and plans the most impactful features you should focus on. Prioritize what matters most to your users.
 
-![Auto-Codex Roadmap](.github/assets/Auto-Claude-roadmap.png)
+![Auto-Codex Roadmap](.github/assets/Auto-Codex-roadmap.png)
 
 ### Ideation
 
