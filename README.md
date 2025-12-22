@@ -101,6 +101,10 @@ Docker runs the FalkorDB database that powers Auto-Codex's cross-session memory.
 
 ---
 
+## Production Readiness / Operations
+
+For backup/restore, rollback, and operational procedures, see `guides/OPERATIONS.md`.
+
 ### Step 1: Set Up the Python Backend
 
 The Desktop UI runs Python scripts behind the scenes. Set up the Python environment:
