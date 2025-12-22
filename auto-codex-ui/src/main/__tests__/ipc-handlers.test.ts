@@ -291,7 +291,7 @@ describe('IPC Handlers', () => {
         'project:updateSettings',
         {},
         'nonexistent-id',
-        { model: 'sonnet' }
+        { model: 'codex' }
       );
 
       expect(result).toEqual({
@@ -313,7 +313,7 @@ describe('IPC Handlers', () => {
         'project:updateSettings',
         {},
         projectId,
-        { model: 'sonnet', linearSync: true }
+        { model: 'codex', linearSync: true }
       );
 
       expect(result).toEqual({ success: true });
@@ -441,7 +441,7 @@ describe('IPC Handlers', () => {
       const result = await ipcMain.invokeHandler(
         'settings:save',
         {},
-        { theme: 'dark', defaultModel: 'opus' }
+        { theme: 'dark', defaultModel: 'codex' }
       );
 
       expect(result).toEqual({ success: true });
@@ -450,7 +450,7 @@ describe('IPC Handlers', () => {
       const getResult = await ipcMain.invokeHandler('settings:get', {});
       const data = (getResult as { data: { theme: string; defaultModel: string } }).data;
       expect(data.theme).toBe('dark');
-      expect(data.defaultModel).toBe('opus');
+      expect(data.defaultModel).toBe('codex');
     });
 
     it('should configure agent manager when paths change', async () => {

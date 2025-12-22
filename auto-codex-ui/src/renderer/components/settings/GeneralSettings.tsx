@@ -57,7 +57,7 @@ export function GeneralSettings({ settings, onSettingsChange, section }: General
                     AI 终端命名
                   </Label>
                   <p className="text-sm text-muted-foreground">
-                    根据命令自动命名终端（使用 Haiku）
+                    根据命令自动命名终端（使用 Codex）
                   </p>
                 </div>
                 <Switch
@@ -167,10 +167,10 @@ export function GeneralSettings({ settings, onSettingsChange, section }: General
         </div>
         <div className="space-y-3">
           <Label htmlFor="autoBuildPath" className="text-sm font-medium text-foreground">Auto Codex 路径</Label>
-          <p className="text-sm text-muted-foreground">项目中 auto-codex 目录的相对路径</p>
+          <p className="text-sm text-muted-foreground">Auto Codex 框架源码目录（包含 requirements.txt；留空自动检测/使用内置）</p>
           <Input
             id="autoBuildPath"
-            placeholder="auto-codex（默认）"
+            placeholder="留空（自动检测）"
             className="w-full max-w-lg"
             value={settings.autoBuildPath || ''}
             onChange={(e) => onSettingsChange({ ...settings, autoBuildPath: e.target.value })}

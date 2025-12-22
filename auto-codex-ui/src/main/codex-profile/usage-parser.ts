@@ -83,7 +83,7 @@ export function classifyRateLimitType(resetTimeStr: string): 'session' | 'weekly
  * Expected format sections:
  * "Current session ████▌ 9% used Resets 11:59pm"
  * "Current week (all models) 79% used Resets Nov 1, 10:59am"
- * "Current week (Opus) 0% used"
+ * "Current week (Codex) 0% used"
  */
 export function parseUsageOutput(usageOutput: string): CodexUsageData {
   const sections = usageOutput.split(/Current\s+/i).filter(Boolean);
@@ -109,7 +109,7 @@ export function parseUsageOutput(usageOutput: string): CodexUsageData {
       } else if (/week.*all\s*model/i.test(section)) {
         usage.weeklyUsagePercent = percent;
         usage.weeklyResetTime = resetTime;
-      } else if (/week.*opus/i.test(section)) {
+      } else if (/week.*(opus|codex|xhigh)/i.test(section)) {
         usage.opusUsagePercent = percent;
       }
     }

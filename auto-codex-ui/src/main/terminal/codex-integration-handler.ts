@@ -20,7 +20,7 @@ import type {
 } from './types';
 
 const CODEX_TERMINAL_COMMAND =
-  'codex --dangerously-bypass-approvals-and-sandbox -m gpt-5.2-codex -c model_reasoning_effort=xhigh -c enable_compaction=true';
+  'codex --dangerously-bypass-approvals-and-sandbox -m gpt-5.2-codex-xhigh -c enable_compaction=true';
 
 /**
  * Handle rate limit detection and profile switching

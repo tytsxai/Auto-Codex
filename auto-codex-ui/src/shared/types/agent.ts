@@ -18,7 +18,7 @@ export interface CodexUsageData {
   weeklyUsagePercent: number;
   /** When the weekly limit resets (ISO string or description) */
   weeklyResetTime: string;
-  /** Weekly Opus usage percentage (0-100), if applicable */
+  /** Weekly model-specific usage percentage (0-100), if applicable */
   opusUsagePercent?: number;
   /** When this usage data was last updated */
   lastUpdated: Date;

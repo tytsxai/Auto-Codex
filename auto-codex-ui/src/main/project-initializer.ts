@@ -293,11 +293,19 @@ export function initializeProject(projectPath: string): InitializationResult {
   const dotAutoBuildPath = path.join(projectPath, '.auto-codex');
 
   if (existsSync(dotAutoBuildPath)) {
-    debug('Already initialized - .auto-codex exists');
-    return {
-      success: false,
-      error: 'Project already has auto-codex initialized (.auto-codex exists)'
-    };
+    debug('Already initialized - ensuring directories and gitignore', { dotAutoBuildPath });
+    try {
+      const ensured = ensureDataDirectories(projectPath);
+      if (!ensured.success) {
+        return ensured;
+      }
+      ensureGitignoreEntries(projectPath, GITIGNORE_ENTRIES);
+      return { success: true };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error during initialization';
+      debug('Initialization failed while ensuring existing .auto-codex', { error: errorMessage });
+      return { success: false, error: errorMessage };
+    }
   }
 
   try {

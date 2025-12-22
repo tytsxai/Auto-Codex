@@ -46,6 +46,40 @@ export class ProjectStore {
           createdAt: new Date(p.createdAt),
           updatedAt: new Date(p.updatedAt)
         }));
+
+        // Migration: ensure settings exist and collapse old model shorthands (opus/sonnet/haiku) to 'codex'
+        let needsSave = false;
+        for (const project of data.projects as Project[]) {
+          if (!project.settings) {
+            project.settings = {
+              ...DEFAULT_PROJECT_SETTINGS,
+              notifications: { ...DEFAULT_PROJECT_SETTINGS.notifications }
+            };
+            needsSave = true;
+          } else {
+            project.settings = {
+              ...DEFAULT_PROJECT_SETTINGS,
+              ...project.settings,
+              notifications: {
+                ...DEFAULT_PROJECT_SETTINGS.notifications,
+                ...project.settings.notifications
+              }
+            };
+          }
+
+          const model = project.settings.model;
+          if (model === 'opus' || model === 'sonnet' || model === 'haiku') {
+            project.settings.model = 'codex';
+            needsSave = true;
+          }
+        }
+        if (needsSave) {
+          try {
+            writeFileSync(this.storePath, JSON.stringify(data, null, 2));
+          } catch {
+            // Ignore migration persistence errors
+          }
+        }
         return data;
       } catch {
         return { projects: [], settings: {} };
@@ -138,8 +172,15 @@ export class ProjectStore {
     let hasChanges = false;
 
     for (const project of this.data.projects) {
-      // Skip projects that aren't initialized (autoBuildPath is empty)
+      // If autoBuildPath is empty but .auto-codex exists (e.g. created externally),
+      // automatically mark the project as initialized so the UI reflects reality.
       if (!project.autoBuildPath) {
+        if (existsSync(project.path) && isInitialized(project.path)) {
+          console.warn(`[ProjectStore] Detected existing .auto-codex for project "${project.name}", restoring autoBuildPath`);
+          project.autoBuildPath = '.auto-codex';
+          project.updatedAt = new Date();
+          hasChanges = true;
+        }
         continue;
       }
 

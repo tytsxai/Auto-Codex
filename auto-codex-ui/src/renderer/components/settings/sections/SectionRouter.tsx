@@ -109,6 +109,8 @@ export function SectionRouter({
             initialized={!!project.autoBuildPath}
             title="Codex 认证"
             description="配置 Codex CLI 认证"
+            onInitialize={handleInitialize}
+            isInitializing={isUpdating}
           >
             <EnvironmentSettings
               envConfig={envConfig}
@@ -137,6 +139,8 @@ export function SectionRouter({
             initialized={!!project.autoBuildPath}
             title="Linear 集成"
             description="与 Linear 同步进行问题跟踪"
+            onInitialize={handleInitialize}
+            isInitializing={isUpdating}
           >
             <LinearIntegration
               envConfig={envConfig}
@@ -161,6 +165,8 @@ export function SectionRouter({
             initialized={!!project.autoBuildPath}
             title="GitHub 集成"
             description="与 GitHub Issues 同步"
+            onInitialize={handleInitialize}
+            isInitializing={isUpdating}
           >
             <GitHubIntegration
               envConfig={envConfig}
@@ -185,6 +191,8 @@ export function SectionRouter({
             initialized={!!project.autoBuildPath}
             title="记忆后端"
             description="配置智能体记忆存储"
+            onInitialize={handleInitialize}
+            isInitializing={isUpdating}
           >
             <SecuritySettings
               envConfig={envConfig}

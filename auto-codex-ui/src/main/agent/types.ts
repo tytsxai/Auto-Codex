@@ -33,7 +33,7 @@ export interface AgentManagerEvents {
 }
 
 export interface RoadmapConfig {
-  model?: string;          // Model shorthand (opus, sonnet, haiku)
+  model?: string;          // Model shorthand (codex)
   thinkingLevel?: string;  // Thinking level (none, low, medium, high, ultrathink)
 }
 
@@ -48,10 +48,10 @@ export interface SpecCreationMetadata {
   // Auto profile - phase-based model and thinking configuration
   isAutoProfile?: boolean;
   phaseModels?: {
-    spec: 'haiku' | 'sonnet' | 'opus';
-    planning: 'haiku' | 'sonnet' | 'opus';
-    coding: 'haiku' | 'sonnet' | 'opus';
-    qa: 'haiku' | 'sonnet' | 'opus';
+    spec: 'codex';
+    planning: 'codex';
+    coding: 'codex';
+    qa: 'codex';
   };
   phaseThinking?: {
     spec: 'none' | 'low' | 'medium' | 'high' | 'ultrathink';
@@ -60,7 +60,7 @@ export interface SpecCreationMetadata {
     qa: 'none' | 'low' | 'medium' | 'high' | 'ultrathink';
   };
   // Non-auto profile - single model and thinking level
-  model?: 'haiku' | 'sonnet' | 'opus';
+  model?: 'codex';
   thinkingLevel?: 'none' | 'low' | 'medium' | 'high' | 'ultrathink';
 }
 

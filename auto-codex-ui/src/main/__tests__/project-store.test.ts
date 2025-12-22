@@ -208,7 +208,7 @@ describe('ProjectStore', () => {
       const { ProjectStore } = await import('../project-store');
       const store = new ProjectStore();
 
-      const result = store.updateProjectSettings('nonexistent-id', { model: 'sonnet' });
+      const result = store.updateProjectSettings('nonexistent-id', { model: 'codex' });
 
       expect(result).toBeUndefined();
     });
@@ -219,12 +219,12 @@ describe('ProjectStore', () => {
 
       const project = store.addProject(TEST_PROJECT_PATH);
       const updated = store.updateProjectSettings(project.id, {
-        model: 'sonnet',
+        model: 'codex',
         linearSync: true
       });
 
       expect(updated).toBeDefined();
-      expect(updated?.settings.model).toBe('sonnet');
+      expect(updated?.settings.model).toBe('codex');
       expect(updated?.settings.linearSync).toBe(true);
     });
 
@@ -238,7 +238,7 @@ describe('ProjectStore', () => {
       // Small delay to ensure timestamp difference
       await new Promise((resolve) => setTimeout(resolve, 10));
 
-      const updated = store.updateProjectSettings(project.id, { model: 'haiku' });
+      const updated = store.updateProjectSettings(project.id, { model: 'codex' });
 
       expect(updated?.updatedAt.getTime()).toBeGreaterThan(originalUpdatedAt.getTime());
     });
@@ -248,12 +248,12 @@ describe('ProjectStore', () => {
       const store = new ProjectStore();
 
       const project = store.addProject(TEST_PROJECT_PATH);
-      store.updateProjectSettings(project.id, { model: 'sonnet' });
+      store.updateProjectSettings(project.id, { model: 'codex' });
 
       // Read directly from file
       const storePath = path.join(USER_DATA_PATH, 'store', 'projects.json');
       const content = JSON.parse(readFileSync(storePath, 'utf-8'));
-      expect(content.projects[0].settings.model).toBe('sonnet');
+      expect(content.projects[0].settings.model).toBe('codex');
     });
   });
 
@@ -570,6 +570,32 @@ describe('ProjectStore', () => {
       expect(projects).toHaveLength(1);
       expect(projects[0].id).toBe('test-id-123');
       expect(projects[0].createdAt).toBeInstanceOf(Date);
+      expect(projects[0].settings.model).toBe('codex');
+    });
+
+    it('should hydrate missing project settings on load', async () => {
+      const storePath = path.join(USER_DATA_PATH, 'store', 'projects.json');
+      writeFileSync(storePath, JSON.stringify({
+        projects: [
+          {
+            id: 'test-id-456',
+            name: 'Legacy Project',
+            path: '/legacy/path',
+            autoBuildPath: '',
+            createdAt: '2024-01-01T00:00:00Z',
+            updatedAt: '2024-01-01T00:00:00Z'
+          }
+        ],
+        settings: {}
+      }));
+
+      const { ProjectStore } = await import('../project-store');
+      const store = new ProjectStore();
+      const projects = store.getProjects();
+
+      expect(projects).toHaveLength(1);
+      expect(projects[0].settings).toBeDefined();
+      expect(projects[0].settings.model).toBe('codex');
     });
 
     it('should handle corrupted store file gracefully', async () => {

@@ -10,7 +10,7 @@
 export const DEFAULT_APP_SETTINGS = {
   theme: 'system' as const,
   colorTheme: 'default' as const,
-  defaultModel: 'opus',
+  defaultModel: 'codex',
   agentFramework: 'auto-codex',
   pythonPath: undefined as string | undefined,
   autoBuildPath: undefined as string | undefined,
@@ -39,7 +39,7 @@ export const DEFAULT_APP_SETTINGS = {
 // ============================================
 
 export const DEFAULT_PROJECT_SETTINGS = {
-  model: 'opus',
+  model: 'codex',
   memoryBackend: 'file' as const,
   linearSync: false,
   notifications: {

@@ -127,11 +127,11 @@ export function registerEnvHandlers(
     const content = `# Auto Codex Framework Environment Variables
 # Managed by Auto Codex UI
 
-# Codex Code OAuth Token (REQUIRED)
+# Codex Code OAuth Token (OPTIONAL)
 CODEX_CODE_OAUTH_TOKEN=${existingVars['CODEX_CODE_OAUTH_TOKEN'] || ''}
 
 # Model override (OPTIONAL)
-${existingVars['AUTO_BUILD_MODEL'] ? `AUTO_BUILD_MODEL=${existingVars['AUTO_BUILD_MODEL']}` : '# AUTO_BUILD_MODEL=codex-opus-4-5-20251101'}
+${existingVars['AUTO_BUILD_MODEL'] ? `AUTO_BUILD_MODEL=${existingVars['AUTO_BUILD_MODEL']}` : '# AUTO_BUILD_MODEL=gpt-5.2-codex-xhigh'}
 
 # =============================================================================
 # LINEAR INTEGRATION (OPTIONAL)
@@ -177,7 +177,7 @@ ${existingVars['OPENAI_EMBEDDING_MODEL'] ? `OPENAI_EMBEDDING_MODEL=${existingVar
 
 # Anthropic Settings (LLM only - use with Voyage or OpenAI for embeddings)
 ${existingVars['ANTHROPIC_API_KEY'] ? `ANTHROPIC_API_KEY=${existingVars['ANTHROPIC_API_KEY']}` : '# ANTHROPIC_API_KEY='}
-${existingVars['GRAPHITI_ANTHROPIC_MODEL'] ? `GRAPHITI_ANTHROPIC_MODEL=${existingVars['GRAPHITI_ANTHROPIC_MODEL']}` : '# GRAPHITI_ANTHROPIC_MODEL=codex-sonnet-4-5-latest'}
+${existingVars['GRAPHITI_ANTHROPIC_MODEL'] ? `GRAPHITI_ANTHROPIC_MODEL=${existingVars['GRAPHITI_ANTHROPIC_MODEL']}` : '# GRAPHITI_ANTHROPIC_MODEL=claude-sonnet-4-5-latest'}
 
 # Azure OpenAI Settings
 ${existingVars['AZURE_OPENAI_API_KEY'] ? `AZURE_OPENAI_API_KEY=${existingVars['AZURE_OPENAI_API_KEY']}` : '# AZURE_OPENAI_API_KEY='}

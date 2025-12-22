@@ -92,7 +92,7 @@ export function AgentProfileSelector({
   const handleProfileSelect = (selectedId: string) => {
     if (selectedId === 'custom') {
       // Keep current model/thinking level, just mark as custom
-      onProfileChange('custom', model as ModelType || 'sonnet', thinkingLevel as ThinkingLevel || 'medium');
+      onProfileChange('custom', model as ModelType || 'codex', thinkingLevel as ThinkingLevel || 'medium');
     } else if (selectedId === 'auto') {
       // Auto profile - set defaults
       const autoProfile = DEFAULT_AGENT_PROFILES.find(p => p.id === 'auto');

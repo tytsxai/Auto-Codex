@@ -12,7 +12,7 @@ interface VersionSuggestion {
 }
 
 /**
- * AI-powered version bump suggester using Codex SDK with haiku model
+ * AI-powered version bump suggester using Codex CLI
  * Analyzes commits to intelligently suggest semantic version bumps
  */
 export class VersionSuggester {
@@ -138,12 +138,12 @@ Respond with ONLY a JSON object in this exact format (no markdown, no extra text
 import subprocess
 import sys
 
-# Use haiku model for fast, cost-effective analysis
+# Model for analysis
 prompt = "${escapedPrompt}"
 
 try:
     result = subprocess.run(
-        ["${this.codexPath}", "chat", "--model", "haiku", "--prompt", prompt],
+        ["${this.codexPath}", "chat", "--model", "gpt-5.2-codex-xhigh", "--prompt", prompt],
         capture_output=True,
         text=True,
         check=True

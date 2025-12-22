@@ -14,6 +14,16 @@ import { getEffectiveVersion } from '../auto-codex-updater';
 
 const settingsPath = path.join(app.getPath('userData'), 'settings.json');
 
+const isValidAutoBuildSourcePath = (p: string): boolean => {
+  if (!p) return false;
+  if (!existsSync(p)) return false;
+  // Prefer analyzer.py (used directly), fall back to requirements.txt marker.
+  return (
+    existsSync(path.join(p, 'analyzer.py')) ||
+    existsSync(path.join(p, 'requirements.txt'))
+  );
+};
+
 /**
  * Auto-detect the auto-codex source path relative to the app location.
  * Works across platforms (macOS, Windows, Linux) in both dev and production modes.
@@ -37,6 +47,10 @@ const detectAutoBuildSourcePath = (): string | null => {
     // We check common locations relative to the app bundle
     const appPath = app.getAppPath();
     possiblePaths.push(
+      // electron-builder `extraResources` land inside `process.resourcesPath`
+      path.join(process.resourcesPath, 'auto-codex'),
+      // Legacy name (pre-rename)
+      path.join(process.resourcesPath, 'auto-claude'),
       path.resolve(appPath, '..', 'auto-codex'),               // Sibling to app
       path.resolve(appPath, '..', '..', 'auto-codex'),         // Up 2 from app
       path.resolve(appPath, '..', '..', '..', 'auto-codex'),   // Up 3 from app
@@ -61,9 +75,7 @@ const detectAutoBuildSourcePath = (): string | null => {
   }
 
   for (const p of possiblePaths) {
-    // Use requirements.txt as marker - it always exists in auto-codex source
-    const markerPath = path.join(p, 'requirements.txt');
-    const exists = existsSync(p) && existsSync(markerPath);
+    const exists = isValidAutoBuildSourcePath(p);
 
     if (debug) {
       console.warn(`[detectAutoBuildSourcePath] Checking ${p}: ${exists ? '✓ FOUND' : '✗ not found'}`);
@@ -106,6 +118,41 @@ export function registerSettingsHandlers(
         }
       }
 
+      // Migration: collapse old model shorthands (opus/sonnet/haiku) to 'codex'
+      const migrateModel = (value: unknown): 'codex' | undefined => {
+        if (value === 'codex') return 'codex';
+        if (value === 'opus' || value === 'sonnet' || value === 'haiku') return 'codex';
+        return undefined;
+      };
+
+      const migratedDefaultModel = migrateModel(settings.defaultModel);
+      if (migratedDefaultModel && settings.defaultModel !== migratedDefaultModel) {
+        settings.defaultModel = migratedDefaultModel;
+        needsSave = true;
+      }
+
+      if (settings.customPhaseModels) {
+        const phases = ['spec', 'planning', 'coding', 'qa'] as const;
+        for (const phase of phases) {
+          const migrated = migrateModel(settings.customPhaseModels[phase]);
+          if (migrated && settings.customPhaseModels[phase] !== migrated) {
+            settings.customPhaseModels[phase] = migrated;
+            needsSave = true;
+          }
+        }
+      }
+
+      if (settings.featureModels) {
+        const features = ['insights', 'ideation', 'roadmap'] as const;
+        for (const feature of features) {
+          const migrated = migrateModel(settings.featureModels[feature]);
+          if (migrated && settings.featureModels[feature] !== migrated) {
+            settings.featureModels[feature] = migrated;
+            needsSave = true;
+          }
+        }
+      }
+
       // Migration: Set agent profile to 'auto' for users who haven't made a selection (one-time)
       // This ensures new users get the optimized 'auto' profile as the default
       // while preserving existing user preferences
@@ -119,10 +166,15 @@ export function registerSettingsHandlers(
       }
 
       // If no manual autoBuildPath is set, try to auto-detect
+      if (settings.autoBuildPath && !isValidAutoBuildSourcePath(settings.autoBuildPath)) {
+        settings.autoBuildPath = undefined;
+        needsSave = true;
+      }
       if (!settings.autoBuildPath) {
         const detectedPath = detectAutoBuildSourcePath();
         if (detectedPath) {
           settings.autoBuildPath = detectedPath;
+          needsSave = true;
         }
       }
 
@@ -154,8 +206,8 @@ export function registerSettingsHandlers(
         writeFileSync(settingsPath, JSON.stringify(newSettings, null, 2));
 
         // Apply Python path if changed
-        if (settings.pythonPath || settings.autoBuildPath) {
-          agentManager.configure(settings.pythonPath, settings.autoBuildPath);
+        if ('pythonPath' in settings || 'autoBuildPath' in settings) {
+          agentManager.configure(newSettings.pythonPath, newSettings.autoBuildPath);
         }
 
         return { success: true };

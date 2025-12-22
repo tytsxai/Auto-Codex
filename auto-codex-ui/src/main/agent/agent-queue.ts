@@ -8,7 +8,7 @@ import { AgentProcessManager } from './agent-process';
 import { RoadmapConfig } from './types';
 import type { IdeationConfig } from '../../shared/types';
 import { MODEL_ID_MAP } from '../../shared/constants';
-import { detectRateLimit, createSDKRateLimitInfo, getProfileEnv } from '../rate-limit-detector';
+import { detectRateLimit, detectAuthFailure, createSDKRateLimitInfo, getProfileEnv } from '../rate-limit-detector';
 import { debugLog, debugError } from '../../shared/utils/debug-logger';
 import { parsePythonCommand } from '../python-detector';
 
@@ -91,7 +91,7 @@ export class AgentQueueManager {
 
     // Add model and thinking level from config
     if (config?.model) {
-      const modelId = MODEL_ID_MAP[config.model] || MODEL_ID_MAP['opus'];
+      const modelId = MODEL_ID_MAP[config.model] || MODEL_ID_MAP['codex'];
       args.push('--model', modelId);
     }
     if (config?.thinkingLevel) {
@@ -167,7 +167,7 @@ export class AgentQueueManager {
 
     // Add model and thinking level from config
     if (config.model) {
-      const modelId = MODEL_ID_MAP[config.model] || MODEL_ID_MAP['opus'];
+      const modelId = MODEL_ID_MAP[config.model] || MODEL_ID_MAP['codex'];
       args.push('--model', modelId);
     }
     if (config.thinkingLevel) {
@@ -375,6 +375,12 @@ export class AgentQueueManager {
             projectId
           });
           this.emitter.emit('sdk-rate-limit', rateLimitInfo);
+        } else {
+          const authFailureDetection = detectAuthFailure(allOutput);
+          if (authFailureDetection.isAuthFailure && authFailureDetection.message) {
+            this.emitter.emit('ideation-error', projectId, authFailureDetection.message);
+            return;
+          }
         }
       }
 
@@ -583,6 +589,12 @@ export class AgentQueueManager {
             projectId
           });
           this.emitter.emit('sdk-rate-limit', rateLimitInfo);
+        } else {
+          const authFailureDetection = detectAuthFailure(allRoadmapOutput);
+          if (authFailureDetection.isAuthFailure && authFailureDetection.message) {
+            this.emitter.emit('roadmap-error', projectId, authFailureDetection.message);
+            return;
+          }
         }
       }
 

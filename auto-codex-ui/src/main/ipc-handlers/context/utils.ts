@@ -1,6 +1,7 @@
 import { app } from 'electron';
 import path from 'path';
 import { existsSync, readFileSync } from 'fs';
+import { getEffectiveSourcePath } from '../../updater/path-resolver';
 
 export interface EnvironmentVars {
   [key: string]: string;
@@ -13,6 +14,15 @@ export interface GlobalSettings {
 
 const settingsPath = path.join(app.getPath('userData'), 'settings.json');
 
+function isValidAutoBuildSourcePath(candidatePath: string | undefined): candidatePath is string {
+  if (!candidatePath || !existsSync(candidatePath)) return false;
+  // Prefer analyzer.py (used directly), fall back to requirements.txt marker.
+  return (
+    existsSync(path.join(candidatePath, 'analyzer.py')) ||
+    existsSync(path.join(candidatePath, 'requirements.txt'))
+  );
+}
+
 /**
  * Get the auto-build source path from settings
  */
@@ -21,13 +31,31 @@ export function getAutoBuildSourcePath(): string | null {
     try {
       const content = readFileSync(settingsPath, 'utf-8');
       const settings = JSON.parse(content);
-      if (settings.autoBuildPath && existsSync(settings.autoBuildPath)) {
+      if (isValidAutoBuildSourcePath(settings.autoBuildPath)) {
         return settings.autoBuildPath;
       }
     } catch {
       // Fall through to null
     }
   }
+
+  // Fallback: use bundled/updated source path resolution (works in dev + packaged apps)
+  const effectiveSource = getEffectiveSourcePath();
+  if (isValidAutoBuildSourcePath(effectiveSource)) {
+    return effectiveSource;
+  }
+
+  // Last resort: try repo-relative locations (useful when launched with unexpected cwd)
+  const repoRelativeCandidates = [
+    path.resolve(process.cwd(), 'auto-codex'),
+    path.resolve(process.cwd(), '..', 'auto-codex')
+  ];
+  for (const candidate of repoRelativeCandidates) {
+    if (isValidAutoBuildSourcePath(candidate)) {
+      return candidate;
+    }
+  }
+
   return null;
 }
 

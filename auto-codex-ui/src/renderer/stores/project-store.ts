@@ -209,8 +209,11 @@ export async function initializeProject(
     const result = await window.electronAPI.initializeProject(projectId);
     if (window.DEBUG) console.warn('[ProjectStore] IPC result:', result);
 
-    if (result.success && result.data) {
-      if (window.DEBUG) console.warn('[ProjectStore] IPC succeeded, result.data:', result.data);
+    // Note: some IPC handlers return operation status inside `result.data.success`
+    // (and may set IPC `result.success` to false for expected operation failures).
+    // Always prefer the structured data when present so the UI can show the real error.
+    if (result.data) {
+      if (window.DEBUG) console.warn('[ProjectStore] IPC returned data:', result.data);
       // 在本地状态中更新项目的 autoBuildPath
       if (result.data.success) {
         if (window.DEBUG) console.warn('[ProjectStore] Updating project autoBuildPath to .auto-codex');

@@ -84,12 +84,12 @@ describe('IPC Bridge Integration', () => {
           id: string,
           settings: object
         ) => Promise<unknown>;
-        await updateProjectSettings('project-id', { model: 'sonnet' });
+        await updateProjectSettings('project-id', { model: 'codex' });
 
         expect(mockIpcRenderer.invoke).toHaveBeenCalledWith(
           'project:updateSettings',
           'project-id',
-          { model: 'sonnet' }
+          { model: 'codex' }
         );
       });
     });

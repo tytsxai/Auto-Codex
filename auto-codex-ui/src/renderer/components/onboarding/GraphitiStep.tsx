@@ -896,7 +896,7 @@ export function GraphitiStep({ onNext, onBack, onSkip }: GraphitiStepProps) {
                           setConfig(prev => ({ ...prev, falkorDbUri: e.target.value }));
                           setValidationStatus(prev => ({ ...prev, falkordb: null }));
                         }}
-                        placeholder="bolt://localhost:6379"
+                        placeholder="bolt://localhost:6380"
                         className="font-mono text-sm"
                         disabled={isSaving || isValidating}
                       />

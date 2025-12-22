@@ -245,7 +245,7 @@ async def generate_name():
         # Create a minimal client for simple text generation (no tools needed)
         client = CodexSDKClient(
             options=CodexAgentOptions(
-                model="codex-haiku-4-5",
+                model="gpt-5.2-codex-xhigh",
                 system_prompt="You generate very short, concise terminal names (2-3 words MAX). Output ONLY the name, nothing else. No quotes, no explanation, no preamble. Keep it as short as possible while being descriptive.",
                 max_turns=1,
             )

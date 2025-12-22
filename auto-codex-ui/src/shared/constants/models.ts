@@ -10,16 +10,12 @@ import type { AgentProfile, PhaseModelConfig, FeatureModelConfig, FeatureThinkin
 // ============================================
 
 export const AVAILABLE_MODELS = [
-  { value: 'opus', label: 'Codex Opus 4.5' },
-  { value: 'sonnet', label: 'Codex Sonnet 4.5' },
-  { value: 'haiku', label: 'Codex Haiku 4.5' }
+  { value: 'codex', label: 'gpt-5.2-codex-xhigh' }
 ] as const;
 
 // 将模型简称映射到实际 Codex 模型 ID
 export const MODEL_ID_MAP: Record<string, string> = {
-  opus: 'codex-opus-4-5-20251101',
-  sonnet: 'codex-sonnet-4-5-20250929',
-  haiku: 'codex-haiku-4-5-20251001'
+  codex: 'gpt-5.2-codex-xhigh'
 } as const;
 
 // 将思考级别映射到预算 token（null 表示不启用扩展思考）
@@ -49,12 +45,12 @@ export const THINKING_LEVELS = [
 // ============================================
 
 // Auto 配置的默认阶段模型设置
-// 所有阶段使用 Opus 以获得最高质量
+// 所有阶段使用 Codex 以获得最高质量
 export const DEFAULT_PHASE_MODELS: PhaseModelConfig = {
-  spec: 'opus',       // 规范创建的最佳质量
-  planning: 'opus',   // 复杂架构决策受益于 Opus
-  coding: 'opus',     // 最高质量实现
-  qa: 'opus'          // 彻底的 QA 审核
+  spec: 'codex',
+  planning: 'codex',
+  coding: 'codex',
+  qa: 'codex'
 };
 
 // Auto 配置的默认阶段思考设置
@@ -71,9 +67,9 @@ export const DEFAULT_PHASE_THINKING: import('../types/settings').PhaseThinkingCo
 
 // 默认功能模型配置（用于洞察、创意、路线图）
 export const DEFAULT_FEATURE_MODELS: FeatureModelConfig = {
-  insights: 'sonnet',   // 快速、响应灵敏的对话
-  ideation: 'opus',     // 创意生成受益于 Opus
-  roadmap: 'opus'       // 战略规划受益于 Opus
+  insights: 'codex',
+  ideation: 'codex',
+  roadmap: 'codex'
 };
 
 // 默认功能思考配置
@@ -95,8 +91,8 @@ export const DEFAULT_AGENT_PROFILES: AgentProfile[] = [
   {
     id: 'auto',
     name: 'Auto (Optimized)',
-    description: 'Uses Opus across all phases with optimized thinking levels',
-    model: 'opus',  // 回退/默认模型
+    description: 'Uses Codex across all phases with optimized thinking levels',
+    model: 'codex',  // 回退/默认模型
     thinkingLevel: 'high',
     icon: 'Sparkles',
     isAutoProfile: true,
@@ -107,7 +103,7 @@ export const DEFAULT_AGENT_PROFILES: AgentProfile[] = [
     id: 'complex',
     name: 'Complex Tasks',
     description: 'For intricate, multi-step implementations requiring deep analysis',
-    model: 'opus',
+    model: 'codex',
     thinkingLevel: 'ultrathink',
     icon: 'Brain'
   },
@@ -115,7 +111,7 @@ export const DEFAULT_AGENT_PROFILES: AgentProfile[] = [
     id: 'balanced',
     name: 'Balanced',
     description: 'Good balance of speed and quality for most tasks',
-    model: 'sonnet',
+    model: 'codex',
     thinkingLevel: 'medium',
     icon: 'Scale'
   },
@@ -123,7 +119,7 @@ export const DEFAULT_AGENT_PROFILES: AgentProfile[] = [
     id: 'quick',
     name: 'Quick Edits',
     description: 'Fast iterations for simple changes and quick fixes',
-    model: 'haiku',
+    model: 'codex',
     thinkingLevel: 'low',
     icon: 'Zap'
   }

@@ -29,7 +29,7 @@ interface CustomModelModalProps {
 
 export function CustomModelModal({ currentConfig, onSave, onClose, open = true }: CustomModelModalProps) {
   const [model, setModel] = useState<ModelType>(
-    currentConfig?.model || 'sonnet'
+    currentConfig?.model || 'codex'
   );
   const [thinkingLevel, setThinkingLevel] = useState<ThinkingLevel>(
     currentConfig?.thinkingLevel || 'medium'
@@ -38,7 +38,7 @@ export function CustomModelModal({ currentConfig, onSave, onClose, open = true }
   // 模态框打开或配置变化时同步内部状态
   useEffect(() => {
     if (open) {
-      setModel(currentConfig?.model || 'sonnet');
+      setModel(currentConfig?.model || 'codex');
       setThinkingLevel(currentConfig?.thinkingLevel || 'medium');
     }
   }, [open, currentConfig]);

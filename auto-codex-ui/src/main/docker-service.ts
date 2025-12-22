@@ -13,8 +13,11 @@ const execAsync = promisify(exec);
 
 // FalkorDB container configuration
 const FALKORDB_CONTAINER_NAME = 'auto-codex-falkordb';
-const FALKORDB_IMAGE = 'falkordb/falkordb:latest';
+const FALKORDB_IMAGE_TAG = process.env.FALKORDB_IMAGE_TAG || 'latest';
+const FALKORDB_IMAGE = process.env.FALKORDB_IMAGE || `falkordb/falkordb:${FALKORDB_IMAGE_TAG}`;
+const FALKORDB_VOLUME_NAME = process.env.FALKORDB_VOLUME || 'auto-codex_falkordb_data';
 const FALKORDB_DEFAULT_PORT = 6380;
+const FALKORDB_BIND_ADDRESS = '127.0.0.1';
 
 export interface DockerStatus {
   installed: boolean;
@@ -95,7 +98,7 @@ export async function checkDockerStatus(): Promise<DockerStatus> {
  */
 async function getContainerPortMapping(): Promise<number | null> {
   try {
-    // Get the port mapping from Docker - format: "0.0.0.0:6380->6379/tcp"
+    // Get the port mapping from Docker - format: "127.0.0.1:6380->6379/tcp"
     const { stdout } = await execAsync(
       `docker port ${FALKORDB_CONTAINER_NAME} 6379`,
       { timeout: 5000 }
@@ -221,7 +224,7 @@ export async function startFalkorDB(
     } else {
       // Create and start new container
       await execAsync(
-        `docker run -d --name ${FALKORDB_CONTAINER_NAME} -p ${port}:6379 ${FALKORDB_IMAGE}`,
+        `docker run -d --name ${FALKORDB_CONTAINER_NAME} --restart unless-stopped -p ${FALKORDB_BIND_ADDRESS}:${port}:6379 -v ${FALKORDB_VOLUME_NAME}:/data -e FALKORDB_ARGS=--appendonly yes ${FALKORDB_IMAGE}`,
         { timeout: 60000 }
       );
     }

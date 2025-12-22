@@ -26,7 +26,7 @@ export interface IdeationConfig {
   includeKanbanContext: boolean;
   maxIdeasPerType: number;
   append?: boolean; // If true, append to existing ideas instead of replacing
-  model?: string;          // Model shorthand (opus, sonnet, haiku)
+  model?: string;          // Model shorthand (codex)
   thinkingLevel?: string;  // Thinking level (none, low, medium, high, ultrathink)
 }
 
@@ -162,7 +162,7 @@ import type { ModelType } from './task';
 // Model configuration for insights sessions
 export interface InsightsModelConfig {
   profileId: string;           // 'complex' | 'balanced' | 'quick' | 'custom'
-  model: ModelType;            // 'haiku' | 'sonnet' | 'opus'
+  model: ModelType;            // 'codex'
   thinkingLevel: ThinkingLevel;
 }
 

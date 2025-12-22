@@ -102,6 +102,16 @@ function detectMainBranch(projectPath: string): string | null {
 
 const settingsPath = path.join(app.getPath('userData'), 'settings.json');
 
+const isValidAutoBuildSourcePath = (p: string): boolean => {
+  if (!p) return false;
+  if (!existsSync(p)) return false;
+  // Prefer analyzer.py (used directly), fall back to requirements.txt marker.
+  return (
+    existsSync(path.join(p, 'analyzer.py')) ||
+    existsSync(path.join(p, 'requirements.txt'))
+  );
+};
+
 /**
  * Auto-detect the auto-codex source path relative to the app location.
  * Works across platforms (macOS, Windows, Linux) in both dev and production modes.
@@ -125,6 +135,10 @@ const detectAutoBuildSourcePath = (): string | null => {
     // We check common locations relative to the app bundle
     const appPath = app.getAppPath();
     possiblePaths.push(
+      // electron-builder `extraResources` land inside `process.resourcesPath`
+      path.join(process.resourcesPath, 'auto-codex'),
+      // Legacy name (pre-rename)
+      path.join(process.resourcesPath, 'auto-claude'),
       path.resolve(appPath, '..', 'auto-codex'),               // Sibling to app
       path.resolve(appPath, '..', '..', 'auto-codex'),         // Up 2 from app
       path.resolve(appPath, '..', '..', '..', 'auto-codex'),   // Up 3 from app
@@ -149,9 +163,7 @@ const detectAutoBuildSourcePath = (): string | null => {
   }
 
   for (const p of possiblePaths) {
-    // Use requirements.txt as marker - it always exists in auto-codex source
-    const markerPath = path.join(p, 'requirements.txt');
-    const exists = existsSync(p) && existsSync(markerPath);
+    const exists = isValidAutoBuildSourcePath(p);
 
     if (debug) {
       console.warn(`[project-handlers:detectAutoBuildSourcePath] Checking ${p}: ${exists ? '✓ FOUND' : '✗ not found'}`);
@@ -177,7 +189,7 @@ const getAutoBuildSourcePath = (): string | null => {
     try {
       const content = readFileSync(settingsPath, 'utf-8');
       const settings = JSON.parse(content);
-      if (settings.autoBuildPath && existsSync(settings.autoBuildPath)) {
+      if (typeof settings.autoBuildPath === 'string' && isValidAutoBuildSourcePath(settings.autoBuildPath)) {
         return settings.autoBuildPath;
       }
     } catch {
