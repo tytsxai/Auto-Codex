@@ -19,6 +19,9 @@ import type {
   OAuthTokenEvent
 } from './types';
 
+const CODEX_TERMINAL_COMMAND =
+  'codex --dangerously-bypass-approvals-and-sandbox -m gpt-5.2-codex -c model_reasoning_effort=xhigh -c enable_compaction=true';
+
 /**
  * Handle rate limit detection and profile switching
  */
@@ -260,7 +263,7 @@ export function invokeCodex(
       // - Leading space ensures the command is ignored even if HISTCONTROL was already set
       // - Uses subshell (...) to isolate environment changes
       // This prevents temp file paths from appearing in shell history
-      const command = `clear && ${cwdCommand} HISTFILE= HISTCONTROL=ignorespace bash -c 'source "${tempFile}" && rm -f "${tempFile}" && exec codex'\r`;
+      const command = `clear && ${cwdCommand} HISTFILE= HISTCONTROL=ignorespace bash -c 'source "${tempFile}" && rm -f "${tempFile}" && exec ${CODEX_TERMINAL_COMMAND}'\r`;
       debugLog('[CodexIntegration:invokeCodex] Executing command (temp file method, history-safe)');
       terminal.pty.write(command);
       debugLog('[CodexIntegration:invokeCodex] ========== INVOKE CODEX COMPLETE (temp file) ==========');
@@ -271,7 +274,7 @@ export function invokeCodex(
       // SECURITY: Use escapeShellArg for configDir to prevent command injection
       // Set CODEX_CONFIG_DIR as env var before bash -c to avoid embedding user input in the command string
       const escapedConfigDir = escapeShellArg(activeProfile.configDir);
-      const command = `clear && ${cwdCommand}HISTFILE= HISTCONTROL=ignorespace CODEX_CONFIG_DIR=${escapedConfigDir} bash -c 'exec codex'\r`;
+      const command = `clear && ${cwdCommand}HISTFILE= HISTCONTROL=ignorespace CODEX_CONFIG_DIR=${escapedConfigDir} bash -c 'exec ${CODEX_TERMINAL_COMMAND}'\r`;
       debugLog('[CodexIntegration:invokeCodex] Executing command (configDir method, history-safe)');
       terminal.pty.write(command);
       debugLog('[CodexIntegration:invokeCodex] ========== INVOKE CODEX COMPLETE (configDir) ==========');
@@ -285,7 +288,7 @@ export function invokeCodex(
     debugLog('[CodexIntegration:invokeCodex] Using terminal environment for non-default profile:', activeProfile.name);
   }
 
-  const command = `${cwdCommand}codex\r`;
+  const command = `${cwdCommand}${CODEX_TERMINAL_COMMAND}\r`;
   debugLog('[CodexIntegration:invokeCodex] Executing command (default method):', command);
   terminal.pty.write(command);
 
@@ -325,10 +328,10 @@ export function resumeCodex(
   let command: string;
   if (sessionId) {
     // SECURITY: Escape sessionId to prevent command injection
-    command = `codex --resume ${escapeShellArg(sessionId)}`;
+    command = `${CODEX_TERMINAL_COMMAND} --resume ${escapeShellArg(sessionId)}`;
     terminal.codexSessionId = sessionId;
   } else {
-    command = 'codex --continue';
+    command = `${CODEX_TERMINAL_COMMAND} --continue`;
   }
 
   terminal.pty.write(`${command}\r`);
