@@ -1,9 +1,9 @@
-import { ipcMain, dialog, app, shell } from 'electron';
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
+import { ipcMain, dialog, app, shell, safeStorage } from 'electron';
+import { existsSync, mkdirSync } from 'fs';
 import { execSync } from 'child_process';
 import path from 'path';
 import { is } from '@electron-toolkit/utils';
-import { IPC_CHANNELS, DEFAULT_APP_SETTINGS } from '../../shared/constants';
+import { IPC_CHANNELS } from '../../shared/constants';
 import type {
   AppSettings,
   IPCResult
@@ -11,6 +11,8 @@ import type {
 import { AgentManager } from '../agent';
 import type { BrowserWindow } from 'electron';
 import { getEffectiveVersion } from '../auto-codex-updater';
+import { atomicWriteFileSync } from '../utils/atomic-write';
+import { loadSettingsWithDecryptedSecrets, prepareSettingsForSave, SENSITIVE_SETTINGS_FIELDS } from '../utils/secure-settings';
 
 const settingsPath = path.join(app.getPath('userData'), 'settings.json');
 
@@ -106,17 +108,10 @@ export function registerSettingsHandlers(
   ipcMain.handle(
     IPC_CHANNELS.SETTINGS_GET,
     async (): Promise<IPCResult<AppSettings>> => {
-      let settings: AppSettings = { ...DEFAULT_APP_SETTINGS };
+      const loadResult = loadSettingsWithDecryptedSecrets(settingsPath);
+      let settings = loadResult.settings;
       let needsSave = false;
-
-      if (existsSync(settingsPath)) {
-        try {
-          const content = readFileSync(settingsPath, 'utf-8');
-          settings = { ...settings, ...JSON.parse(content) };
-        } catch {
-          // Use defaults
-        }
-      }
+      const encryptionAvailable = safeStorage.isEncryptionAvailable();
 
       // Migration: collapse old model shorthands (opus/sonnet/haiku) to 'codex'
       const migrateModel = (value: unknown): 'codex' | undefined => {
@@ -178,13 +173,38 @@ export function registerSettingsHandlers(
         }
       }
 
+      if (loadResult.hadPlaintextSecrets && encryptionAvailable) {
+        needsSave = true;
+      }
+
       // Persist migration changes
       if (needsSave) {
         try {
-          writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+          const saveResult = prepareSettingsForSave(settings);
+          atomicWriteFileSync(settingsPath, JSON.stringify(saveResult.settings, null, 2));
         } catch (error) {
           console.error('[SETTINGS_GET] Failed to persist migration:', error);
           // Continue anyway - settings will be migrated in-memory for this session
+        }
+      }
+
+      if (loadResult.requiresReauth || (loadResult.hadPlaintextSecrets && !encryptionAvailable)) {
+        const mainWindow = getMainWindow();
+        if (mainWindow) {
+          const detailLines: string[] = [];
+          if (loadResult.requiresReauth) {
+            detailLines.push('Some saved credentials could not be decrypted and must be re-entered.');
+          }
+          if (loadResult.hadPlaintextSecrets && !encryptionAvailable) {
+            detailLines.push('Secure storage is unavailable; existing API keys remain stored in plaintext on disk.');
+          }
+          void dialog.showMessageBox(mainWindow, {
+            type: 'warning',
+            title: 'Security Notice',
+            message: 'API keys require attention.',
+            detail: detailLines.join(' ') || 'Review API keys in Settings.',
+            buttons: ['OK']
+          });
         }
       }
 
@@ -196,14 +216,36 @@ export function registerSettingsHandlers(
     IPC_CHANNELS.SETTINGS_SAVE,
     async (_, settings: Partial<AppSettings>): Promise<IPCResult> => {
       try {
-        let currentSettings = DEFAULT_APP_SETTINGS;
-        if (existsSync(settingsPath)) {
-          const content = readFileSync(settingsPath, 'utf-8');
-          currentSettings = { ...currentSettings, ...JSON.parse(content) };
+        const loadResult = loadSettingsWithDecryptedSecrets(settingsPath);
+        const currentSettings = loadResult.settings;
+        const rawSettings = loadResult.rawSettings;
+        const newSettings = { ...currentSettings, ...settings };
+
+        for (const field of SENSITIVE_SETTINGS_FIELDS) {
+          const hasUpdate = Object.prototype.hasOwnProperty.call(settings, field);
+          if (!hasUpdate && rawSettings[field]) {
+            newSettings[field] = rawSettings[field];
+          }
+        }
+        const saveResult = prepareSettingsForSave(newSettings as AppSettings);
+
+        if (saveResult.wrotePlaintext) {
+          const mainWindow = getMainWindow();
+          const result = await dialog.showMessageBox(mainWindow ?? undefined, {
+            type: 'warning',
+            title: 'Unsafe Secret Storage',
+            message: 'Secure storage is unavailable on this system.',
+            detail: 'API keys will be stored in plaintext on disk. Re-enter these credentials later to migrate once secure storage is available.',
+            buttons: ['Save Anyway', 'Cancel'],
+            defaultId: 1,
+            cancelId: 1
+          });
+          if (result.response === 1) {
+            return { success: false, error: 'Save canceled to avoid plaintext secret storage' };
+          }
         }
 
-        const newSettings = { ...currentSettings, ...settings };
-        writeFileSync(settingsPath, JSON.stringify(newSettings, null, 2));
+        atomicWriteFileSync(settingsPath, JSON.stringify(saveResult.settings, null, 2));
 
         // Apply Python path if changed
         if ('pythonPath' in settings || 'autoBuildPath' in settings) {

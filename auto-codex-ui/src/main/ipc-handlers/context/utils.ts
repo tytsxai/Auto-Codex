@@ -1,7 +1,8 @@
 import { app } from 'electron';
 import path from 'path';
-import { existsSync, readFileSync } from 'fs';
+import { existsSync } from 'fs';
 import { getEffectiveSourcePath } from '../../updater/path-resolver';
+import { loadSettingsWithDecryptedSecrets } from '../../utils/secure-settings';
 
 export interface EnvironmentVars {
   [key: string]: string;
@@ -117,12 +118,7 @@ export function loadGlobalSettings(): GlobalSettings {
     return {};
   }
 
-  try {
-    const settingsContent = readFileSync(settingsPath, 'utf-8');
-    return JSON.parse(settingsContent);
-  } catch {
-    return {};
-  }
+  return loadSettingsWithDecryptedSecrets(settingsPath).settings;
 }
 
 /**

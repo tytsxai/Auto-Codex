@@ -1,6 +1,7 @@
 import { app } from 'electron';
 import { join } from 'path';
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
+import { existsSync, readFileSync, mkdirSync } from 'fs';
+import { atomicWriteFileSync } from './utils/atomic-write';
 
 /**
  * Persisted terminal session data
@@ -130,7 +131,7 @@ export class TerminalSessionStore {
    */
   private save(): void {
     try {
-      writeFileSync(this.storePath, JSON.stringify(this.data, null, 2));
+      atomicWriteFileSync(this.storePath, JSON.stringify(this.data, null, 2));
     } catch (error) {
       console.error('[TerminalSessionStore] Error saving sessions:', error);
     }

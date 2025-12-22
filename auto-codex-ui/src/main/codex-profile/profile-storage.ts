@@ -3,8 +3,9 @@
  * Handles persistence of profile data to disk
  */
 
-import { existsSync, readFileSync, writeFileSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import type { CodexProfile, CodexAutoSwitchSettings } from '../../shared/types';
+import { atomicWriteFileSync } from '../utils/atomic-write';
 
 export const STORE_VERSION = 3;  // Bumped for encrypted token storage
 
@@ -77,7 +78,7 @@ export function loadProfileStore(storePath: string): ProfileStoreData | null {
  */
 export function saveProfileStore(storePath: string, data: ProfileStoreData): void {
   try {
-    writeFileSync(storePath, JSON.stringify(data, null, 2), 'utf-8');
+    atomicWriteFileSync(storePath, JSON.stringify(data, null, 2), { encoding: 'utf-8' });
   } catch (error) {
     console.error('[ProfileStorage] Error saving profiles:', error);
   }

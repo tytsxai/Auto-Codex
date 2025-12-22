@@ -1,10 +1,11 @@
 import { app } from 'electron';
-import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, Dirent } from 'fs';
+import { readFileSync, existsSync, mkdirSync, readdirSync, Dirent } from 'fs';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import type { Project, ProjectSettings, Task, TaskStatus, TaskMetadata, ImplementationPlan, ReviewReason, PlanSubtask } from '../shared/types';
 import { DEFAULT_PROJECT_SETTINGS, AUTO_BUILD_PATHS, getSpecsDir } from '../shared/constants';
 import { getAutoBuildPath, isInitialized } from './project-initializer';
+import { atomicWriteFileSync } from './utils/atomic-write';
 
 interface StoreData {
   projects: Project[];
@@ -75,7 +76,7 @@ export class ProjectStore {
         }
         if (needsSave) {
           try {
-            writeFileSync(this.storePath, JSON.stringify(data, null, 2));
+            atomicWriteFileSync(this.storePath, JSON.stringify(data, null, 2));
           } catch {
             // Ignore migration persistence errors
           }
@@ -92,7 +93,7 @@ export class ProjectStore {
    * Save store to disk
    */
   private save(): void {
-    writeFileSync(this.storePath, JSON.stringify(this.data, null, 2));
+    atomicWriteFileSync(this.storePath, JSON.stringify(this.data, null, 2));
   }
 
   /**

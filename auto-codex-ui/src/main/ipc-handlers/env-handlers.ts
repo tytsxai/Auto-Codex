@@ -1,6 +1,6 @@
 import { ipcMain } from 'electron';
 import type { BrowserWindow } from 'electron';
-import { IPC_CHANNELS, DEFAULT_APP_SETTINGS } from '../../shared/constants';
+import { IPC_CHANNELS } from '../../shared/constants';
 import type { IPCResult, ProjectEnvConfig, CodexAuthResult, AppSettings } from '../../shared/types';
 import path from 'path';
 import { app } from 'electron';
@@ -8,6 +8,7 @@ import { existsSync, readFileSync, writeFileSync } from 'fs';
 import { spawn } from 'child_process';
 import { projectStore } from '../project-store';
 import { parseEnvFile } from './utils';
+import { loadSettingsWithDecryptedSecrets } from '../utils/secure-settings';
 
 
 /**
@@ -225,15 +226,7 @@ ${existingVars['GRAPHITI_DATABASE'] ? `GRAPHITI_DATABASE=${existingVars['GRAPHIT
       const envPath = path.join(project.path, project.autoBuildPath, '.env');
 
       // Load global settings for fallbacks
-      let globalSettings: AppSettings = { ...DEFAULT_APP_SETTINGS };
-      if (existsSync(settingsPath)) {
-        try {
-          const content = readFileSync(settingsPath, 'utf-8');
-          globalSettings = { ...globalSettings, ...JSON.parse(content) };
-        } catch {
-          // Use defaults
-        }
-      }
+      const globalSettings: AppSettings = loadSettingsWithDecryptedSecrets(settingsPath).settings;
 
       // Default config
       const config: ProjectEnvConfig = {
