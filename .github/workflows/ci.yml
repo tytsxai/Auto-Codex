@@ -7,6 +7,19 @@ on:
     branches: [main]
 
 jobs:
+  secrets-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run gitleaks scan
+        uses: gitleaks/gitleaks-action@v2
+        with:
+          args: --redact --verbose --no-banner
+
   # Python tests
   test-python:
     runs-on: ubuntu-latest

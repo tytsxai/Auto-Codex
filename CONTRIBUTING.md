@@ -130,6 +130,20 @@ git commit --no-verify -m "message"
 2. **ESLint errors**: Fix the reported issues in your code.
 3. **Type errors**: Resolve TypeScript type issues before committing.
 
+## Secrets Scanning
+
+CI runs a gitleaks scan on every push/PR and will fail if secrets are detected. Run it locally before opening a PR:
+
+```bash
+# Install gitleaks (macOS example)
+brew install gitleaks
+
+# Run scan (matches CI behavior)
+gitleaks detect --source . --redact --no-banner
+```
+
+If you hit a false positive, remove the secret from history or rotate it, then re-run the scan.
+
 ## Code Style
 
 ### Python
