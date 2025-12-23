@@ -6,11 +6,14 @@ import { IPC_CHANNELS, getSpecsDir, AUTO_BUILD_PATHS } from '../../shared/consta
 import type { IPCResult, InsightsSession, InsightsSessionSummary, InsightsModelConfig, Task, TaskMetadata } from '../../shared/types';
 import { projectStore } from '../project-store';
 import { insightsService } from '../insights-service';
+import type { PythonEnvManager } from '../python-env-manager';
+import { getAutoBuildSourcePath } from './context/utils';
 
 /**
  * Register all insights-related IPC handlers
  */
 export function registerInsightsHandlers(
+  pythonEnvManager: PythonEnvManager,
   getMainWindow: () => BrowserWindow | null
 ): void {
   // ============================================
@@ -42,8 +45,36 @@ export function registerInsightsHandlers(
         return;
       }
 
-      // Note: Python environment initialization should be handled by insightsService
-      // or added here with proper dependency injection if needed
+      // Ensure Python env is ready before running the insights runner
+      const autoBuildSource = getAutoBuildSourcePath();
+      if (!autoBuildSource) {
+        const mainWindow = getMainWindow();
+        if (mainWindow) {
+          mainWindow.webContents.send(IPC_CHANNELS.INSIGHTS_ERROR, projectId, 'Auto Codex source not found');
+        }
+        return;
+      }
+
+      if (!pythonEnvManager.isEnvReady()) {
+        const status = await pythonEnvManager.initialize(autoBuildSource);
+        if (!status.ready || !status.pythonPath) {
+          const mainWindow = getMainWindow();
+          if (mainWindow) {
+            mainWindow.webContents.send(
+              IPC_CHANNELS.INSIGHTS_ERROR,
+              projectId,
+              status.error || 'Python environment not ready'
+            );
+          }
+          return;
+        }
+      }
+
+      const pythonPath = pythonEnvManager.getPythonPath();
+      if (pythonPath) {
+        insightsService.configure(pythonPath, autoBuildSource);
+      }
+
       insightsService.sendMessage(projectId, project.path, message, modelConfig);
     }
   );

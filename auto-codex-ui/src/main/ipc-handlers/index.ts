@@ -66,7 +66,7 @@ export function setupIpcHandlers(
   registerFileHandlers();
 
   // Roadmap handlers
-  registerRoadmapHandlers(agentManager, getMainWindow);
+  registerRoadmapHandlers(agentManager, pythonEnvManager, getMainWindow);
 
   // Context and memory handlers
   registerContextHandlers(getMainWindow, pythonEnvManager);
@@ -84,13 +84,13 @@ export function setupIpcHandlers(
   registerAutobuildSourceHandlers(getMainWindow);
 
   // Ideation handlers
-  registerIdeationHandlers(agentManager, getMainWindow);
+  registerIdeationHandlers(agentManager, pythonEnvManager, getMainWindow);
 
   // Changelog handlers
   registerChangelogHandlers(getMainWindow);
 
   // Insights handlers
-  registerInsightsHandlers(getMainWindow);
+  registerInsightsHandlers(pythonEnvManager, getMainWindow);
 
   // Docker & infrastructure handlers (for Graphiti/FalkorDB)
   registerDockerHandlers();

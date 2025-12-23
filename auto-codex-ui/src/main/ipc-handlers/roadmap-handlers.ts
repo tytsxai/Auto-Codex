@@ -8,6 +8,8 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync } from 
 import { projectStore } from '../project-store';
 import { AgentManager } from '../agent';
 import { debugLog, debugError } from '../../shared/utils/debug-logger';
+import type { PythonEnvManager } from '../python-env-manager';
+import { getAutoBuildSourcePath } from './context/utils';
 
 /**
  * Read feature settings from the settings file
@@ -46,6 +48,7 @@ function getFeatureSettings(): { model?: string; thinkingLevel?: string } {
  */
 export function registerRoadmapHandlers(
   agentManager: AgentManager,
+  pythonEnvManager: PythonEnvManager,
   getMainWindow: () => BrowserWindow | null
 ): void {
   // ============================================
@@ -204,7 +207,7 @@ export function registerRoadmapHandlers(
 
   ipcMain.on(
     IPC_CHANNELS.ROADMAP_GENERATE,
-    (_, projectId: string, enableCompetitorAnalysis?: boolean, refreshCompetitorAnalysis?: boolean) => {
+    async (_, projectId: string, enableCompetitorAnalysis?: boolean, refreshCompetitorAnalysis?: boolean) => {
       // Get feature settings for roadmap
       const featureSettings = getFeatureSettings();
       const config: RoadmapConfig = {
@@ -231,6 +234,26 @@ export function registerRoadmapHandlers(
           'Project not found'
         );
         return;
+      }
+
+      const autoBuildSource = getAutoBuildSourcePath();
+      if (!autoBuildSource) {
+        mainWindow.webContents.send(IPC_CHANNELS.ROADMAP_ERROR, projectId, 'Auto Codex source not found');
+        return;
+      }
+
+      if (!pythonEnvManager.isEnvReady()) {
+        const status = await pythonEnvManager.initialize(autoBuildSource);
+        if (!status.ready || !status.pythonPath) {
+          mainWindow.webContents.send(IPC_CHANNELS.ROADMAP_ERROR, projectId, status.error || 'Python environment not ready');
+          return;
+        }
+        agentManager.configure(status.pythonPath, autoBuildSource);
+      } else {
+        const pythonPath = pythonEnvManager.getPythonPath();
+        if (pythonPath) {
+          agentManager.configure(pythonPath, autoBuildSource);
+        }
       }
 
       debugLog('[Roadmap Handler] Starting agent manager generation:', {
@@ -264,7 +287,7 @@ export function registerRoadmapHandlers(
 
   ipcMain.on(
     IPC_CHANNELS.ROADMAP_REFRESH,
-    (_, projectId: string, enableCompetitorAnalysis?: boolean, refreshCompetitorAnalysis?: boolean) => {
+    async (_, projectId: string, enableCompetitorAnalysis?: boolean, refreshCompetitorAnalysis?: boolean) => {
       // Get feature settings for roadmap
       const featureSettings = getFeatureSettings();
       const config: RoadmapConfig = {
@@ -290,6 +313,26 @@ export function registerRoadmapHandlers(
           'Project not found'
         );
         return;
+      }
+
+      const autoBuildSource = getAutoBuildSourcePath();
+      if (!autoBuildSource) {
+        mainWindow.webContents.send(IPC_CHANNELS.ROADMAP_ERROR, projectId, 'Auto Codex source not found');
+        return;
+      }
+
+      if (!pythonEnvManager.isEnvReady()) {
+        const status = await pythonEnvManager.initialize(autoBuildSource);
+        if (!status.ready || !status.pythonPath) {
+          mainWindow.webContents.send(IPC_CHANNELS.ROADMAP_ERROR, projectId, status.error || 'Python environment not ready');
+          return;
+        }
+        agentManager.configure(status.pythonPath, autoBuildSource);
+      } else {
+        const pythonPath = pythonEnvManager.getPythonPath();
+        if (pythonPath) {
+          agentManager.configure(pythonPath, autoBuildSource);
+        }
       }
 
       // Start roadmap regeneration with refresh flag

@@ -16,6 +16,8 @@ import { ipcMain } from 'electron';
 import type { BrowserWindow } from 'electron';
 import { IPC_CHANNELS } from '../../shared/constants';
 import type { AgentManager } from '../agent';
+import type { PythonEnvManager } from '../python-env-manager';
+import { getAutoBuildSourcePath } from './context/utils';
 import {
   getIdeationSession,
   updateIdeaStatus,
@@ -35,6 +37,7 @@ import {
  */
 export function registerIdeationHandlers(
   agentManager: AgentManager,
+  pythonEnvManager: PythonEnvManager,
   getMainWindow: () => BrowserWindow | null
 ): void {
   // Session management
@@ -77,14 +80,66 @@ export function registerIdeationHandlers(
   // Generation operations
   ipcMain.on(
     IPC_CHANNELS.IDEATION_GENERATE,
-    (event, projectId, config) =>
-      startIdeationGeneration(event, projectId, config, agentManager, getMainWindow())
+    async (event, projectId, config) => {
+      const mainWindow = getMainWindow();
+      const autoBuildSource = getAutoBuildSourcePath();
+      if (!autoBuildSource) {
+        if (mainWindow) {
+          mainWindow.webContents.send(IPC_CHANNELS.IDEATION_ERROR, projectId, 'Auto Codex source not found');
+        }
+        return;
+      }
+
+      if (!pythonEnvManager.isEnvReady()) {
+        const status = await pythonEnvManager.initialize(autoBuildSource);
+        if (!status.ready || !status.pythonPath) {
+          if (mainWindow) {
+            mainWindow.webContents.send(IPC_CHANNELS.IDEATION_ERROR, projectId, status.error || 'Python environment not ready');
+          }
+          return;
+        }
+        agentManager.configure(status.pythonPath, autoBuildSource);
+      } else {
+        const pythonPath = pythonEnvManager.getPythonPath();
+        if (pythonPath) {
+          agentManager.configure(pythonPath, autoBuildSource);
+        }
+      }
+
+      startIdeationGeneration(event, projectId, config, agentManager, getMainWindow());
+    }
   );
 
   ipcMain.on(
     IPC_CHANNELS.IDEATION_REFRESH,
-    (event, projectId, config) =>
-      refreshIdeationSession(event, projectId, config, agentManager, getMainWindow())
+    async (event, projectId, config) => {
+      const mainWindow = getMainWindow();
+      const autoBuildSource = getAutoBuildSourcePath();
+      if (!autoBuildSource) {
+        if (mainWindow) {
+          mainWindow.webContents.send(IPC_CHANNELS.IDEATION_ERROR, projectId, 'Auto Codex source not found');
+        }
+        return;
+      }
+
+      if (!pythonEnvManager.isEnvReady()) {
+        const status = await pythonEnvManager.initialize(autoBuildSource);
+        if (!status.ready || !status.pythonPath) {
+          if (mainWindow) {
+            mainWindow.webContents.send(IPC_CHANNELS.IDEATION_ERROR, projectId, status.error || 'Python environment not ready');
+          }
+          return;
+        }
+        agentManager.configure(status.pythonPath, autoBuildSource);
+      } else {
+        const pythonPath = pythonEnvManager.getPythonPath();
+        if (pythonPath) {
+          agentManager.configure(pythonPath, autoBuildSource);
+        }
+      }
+
+      refreshIdeationSession(event, projectId, config, agentManager, getMainWindow());
+    }
   );
 
   ipcMain.handle(
