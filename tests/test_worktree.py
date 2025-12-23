@@ -111,6 +111,17 @@ class TestWorktreeCreation:
         # The test file should still be there (same worktree)
         assert (info2.path / "test-file.txt").exists()
 
+    def test_create_worktree_refuses_dirty_existing(self, temp_git_repo: Path):
+        """create_worktree refuses to delete an existing dirty worktree."""
+        manager = WorktreeManager(temp_git_repo)
+        manager.setup()
+
+        info = manager.create_worktree("dirty-spec")
+        (info.path / "dirty.txt").write_text("uncommitted")
+
+        with pytest.raises(WorktreeError):
+            manager.create_worktree("dirty-spec")
+
 
 class TestStagingWorktree:
     """Tests for staging worktree operations (backward compatibility)."""

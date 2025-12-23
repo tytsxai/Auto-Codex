@@ -14,11 +14,11 @@ This allows:
 4. Clear 1:1:1 mapping: spec → worktree → branch
 """
 
-import asyncio
 import os
 import re
 import shutil
 import subprocess
+import threading
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -56,7 +56,7 @@ class WorktreeManager:
         self.project_dir = project_dir
         self.base_branch = base_branch or self._detect_base_branch()
         self.worktrees_dir = project_dir / ".worktrees"
-        self._merge_lock = asyncio.Lock()
+        self._merge_lock = threading.Lock()
 
     def _detect_base_branch(self) -> str:
         """
@@ -135,6 +135,16 @@ class WorktreeManager:
             encoding="utf-8",
             errors="replace",
         )
+
+    def _is_git_worktree(self, path: Path) -> bool:
+        """Check whether a path is a git worktree root."""
+        result = self._run_git(["rev-parse", "--show-toplevel"], cwd=path)
+        if result.returncode != 0:
+            return False
+        try:
+            return Path(result.stdout.strip()).resolve() == path.resolve()
+        except OSError:
+            return False
 
     def _unstage_gitignored_files(self) -> None:
         """
@@ -322,7 +332,49 @@ class WorktreeManager:
 
         # Remove existing if present (from crashed previous run)
         if worktree_path.exists():
-            self._run_git(["worktree", "remove", "--force", str(worktree_path)])
+            if worktree_path.is_file():
+                raise WorktreeError(
+                    f"Worktree path '{worktree_path}' exists and is not a directory.\n"
+                    "Refusing to remove it automatically."
+                )
+            if self._is_git_worktree(worktree_path):
+                status_result = self._run_git(
+                    ["status", "--porcelain"], cwd=worktree_path
+                )
+                if status_result.returncode != 0:
+                    raise WorktreeError(
+                        f"Failed to inspect existing worktree '{worktree_path}': "
+                        f"{status_result.stderr}"
+                    )
+                if status_result.stdout.strip():
+                    raise WorktreeError(
+                        f"Worktree path '{worktree_path}' already exists and has "
+                        "uncommitted changes.\n"
+                        "Refusing to remove it automatically. Commit, stash, or "
+                        "delete it manually before retrying."
+                    )
+                remove_result = self._run_git(
+                    ["worktree", "remove", "--force", str(worktree_path)]
+                )
+                if remove_result.returncode != 0:
+                    raise WorktreeError(
+                        f"Failed to remove existing worktree '{worktree_path}': "
+                        f"{remove_result.stderr}"
+                    )
+            else:
+                try:
+                    is_empty = not any(worktree_path.iterdir())
+                except OSError as exc:
+                    raise WorktreeError(
+                        f"Worktree path '{worktree_path}' exists and could not be inspected: {exc}"
+                    ) from exc
+                if not is_empty:
+                    raise WorktreeError(
+                        f"Worktree path '{worktree_path}' exists and is not a git worktree.\n"
+                        "Refusing to remove it automatically. Remove or rename it "
+                        "before retrying."
+                    )
+                worktree_path.rmdir()
 
         # Delete branch if it exists (from previous attempt) and has no unique commits
         existing_branch = self._run_git(["rev-parse", "--verify", branch_name])
@@ -424,6 +476,12 @@ class WorktreeManager:
         Returns:
             True if merge succeeded
         """
+        with self._merge_lock:
+            return self._merge_worktree_unlocked(spec_name, delete_after, no_commit)
+
+    def _merge_worktree_unlocked(
+        self, spec_name: str, delete_after: bool = False, no_commit: bool = False
+    ) -> bool:
         info = self.get_worktree_info(spec_name)
         if not info:
             print(f"No worktree found for spec: {spec_name}")
@@ -571,11 +629,11 @@ class WorktreeManager:
         registered_paths = set()
         for line in result.stdout.split("\n"):
             if line.startswith("worktree "):
-                registered_paths.add(Path(line.split(" ", 1)[1]))
+                registered_paths.add(Path(line.split(" ", 1)[1]).resolve())
 
         # Remove unregistered directories
         for item in self.worktrees_dir.iterdir():
-            if item.is_dir() and item not in registered_paths:
+            if item.is_dir() and item.resolve() not in registered_paths:
                 print(f"Removing stale worktree directory: {item.name}")
                 shutil.rmtree(item, ignore_errors=True)
 
