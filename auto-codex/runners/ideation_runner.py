@@ -14,9 +14,9 @@ Analyzes project context, existing features, and generates three types of ideas:
 3. High-Value Features - Strategic features for target users
 
 Usage:
-    python auto-codex/ideation_runner.py --project /path/to/project
-    python auto-codex/ideation_runner.py --project /path/to/project --types low_hanging_fruit,high_value_features
-    python auto-codex/ideation_runner.py --project /path/to/project --refresh
+    python3 auto-codex/ideation_runner.py --project /path/to/project
+    python3 auto-codex/ideation_runner.py --project /path/to/project --types low_hanging_fruit,high_value_features
+    python3 auto-codex/ideation_runner.py --project /path/to/project --refresh
 """
 
 import asyncio

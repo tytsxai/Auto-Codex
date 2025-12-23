@@ -8,13 +8,13 @@ Supports monorepos with multiple services.
 
 Usage:
     # Index entire project (creates project_index.json)
-    python auto-codex/analyzer.py --index
+    python3 auto-codex/analyzer.py --index
 
     # Analyze specific service
-    python auto-codex/analyzer.py --service backend
+    python3 auto-codex/analyzer.py --service backend
 
     # Output to specific file
-    python auto-codex/analyzer.py --index --output path/to/output.json
+    python3 auto-codex/analyzer.py --index --output path/to/output.json
 
 The analyzer will:
 1. Detect if this is a monorepo or single project

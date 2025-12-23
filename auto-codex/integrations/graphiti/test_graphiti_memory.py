@@ -41,7 +41,7 @@ Usage:
     export GRAPHITI_FALKORDB_PORT=6380
 
     # Run the test:
-    python auto-codex/test_graphiti_memory.py
+    python3 auto-codex/test_graphiti_memory.py
 """
 
 import asyncio
@@ -57,7 +57,7 @@ if "pytest" in sys.modules:
     import pytest
 
     pytest.skip(
-        "Graphiti integration smoke script; run directly with `python` and proper env.",
+        "Graphiti integration smoke script; run directly with `python3` and proper env.",
         allow_module_level=True,
     )
 

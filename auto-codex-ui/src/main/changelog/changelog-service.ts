@@ -211,7 +211,7 @@ export class ChangelogService extends EventEmitter {
 
       // Verify codex CLI is available
       if (this.codexPath !== 'codex' && !existsSync(this.codexPath)) {
-        throw new Error(`Codex CLI not found. Please ensure Codex Code is installed. Looked for: ${this.codexPath}`);
+        throw new Error(`Codex CLI not found. Please ensure Codex CLI is installed. Looked for: ${this.codexPath}`);
       }
 
       const autoBuildEnv = this.loadAutoBuildEnv();
@@ -257,7 +257,7 @@ export class ChangelogService extends EventEmitter {
 
       // Verify codex CLI is available
       if (this.codexPath !== 'codex' && !existsSync(this.codexPath)) {
-        throw new Error(`Codex CLI not found. Please ensure Codex Code is installed. Looked for: ${this.codexPath}`);
+        throw new Error(`Codex CLI not found. Please ensure Codex CLI is installed. Looked for: ${this.codexPath}`);
       }
 
       this.versionSuggester = new VersionSuggester(

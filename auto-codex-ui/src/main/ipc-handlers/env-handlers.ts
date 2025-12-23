@@ -140,7 +140,7 @@ export function registerEnvHandlers(
     const content = `# Auto Codex Framework Environment Variables
 # Managed by Auto Codex UI
 
-# Codex Code OAuth Token (OPTIONAL)
+# Codex OAuth Token (OPTIONAL)
 CODEX_CODE_OAUTH_TOKEN=${existingVars['CODEX_CODE_OAUTH_TOKEN'] || ''}
 
 # Model override (OPTIONAL)

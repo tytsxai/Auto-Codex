@@ -7,11 +7,11 @@ Validates spec outputs at each checkpoint to ensure reliability.
 This is the enforcement layer that catches errors before they propagate.
 
 Usage:
-    python auto-codex/spec/validate_spec.py --spec-dir .auto-codex/specs/001-feature/ --checkpoint prereqs
-    python auto-codex/spec/validate_spec.py --spec-dir .auto-codex/specs/001-feature/ --checkpoint context
-    python auto-codex/spec/validate_spec.py --spec-dir .auto-codex/specs/001-feature/ --checkpoint spec
-    python auto-codex/spec/validate_spec.py --spec-dir .auto-codex/specs/001-feature/ --checkpoint plan
-    python auto-codex/spec/validate_spec.py --spec-dir .auto-codex/specs/001-feature/ --checkpoint all
+    python3 auto-codex/spec/validate_spec.py --spec-dir .auto-codex/specs/001-feature/ --checkpoint prereqs
+    python3 auto-codex/spec/validate_spec.py --spec-dir .auto-codex/specs/001-feature/ --checkpoint context
+    python3 auto-codex/spec/validate_spec.py --spec-dir .auto-codex/specs/001-feature/ --checkpoint spec
+    python3 auto-codex/spec/validate_spec.py --spec-dir .auto-codex/specs/001-feature/ --checkpoint plan
+    python3 auto-codex/spec/validate_spec.py --spec-dir .auto-codex/specs/001-feature/ --checkpoint all
 """
 
 import argparse

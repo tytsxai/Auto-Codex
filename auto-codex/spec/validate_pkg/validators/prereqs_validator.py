@@ -50,7 +50,7 @@ class PrereqsValidator:
             else:
                 errors.append("project_index.json not found")
                 fixes.append(
-                    "Run: python auto-codex/analyzer.py --output auto-codex/project_index.json"
+                    "Run: python3 auto-codex/analyzer.py --output auto-codex/project_index.json"
                 )
 
         return ValidationResult(

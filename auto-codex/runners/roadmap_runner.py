@@ -8,9 +8,9 @@ Analyzes project structure, understands target audience, and generates
 a strategic feature roadmap.
 
 Usage:
-    python auto-codex/roadmap_runner.py --project /path/to/project
-    python auto-codex/roadmap_runner.py --project /path/to/project --refresh
-    python auto-codex/roadmap_runner.py --project /path/to/project --output roadmap.json
+    python3 auto-codex/roadmap_runner.py --project /path/to/project
+    python3 auto-codex/roadmap_runner.py --project /path/to/project --refresh
+    python3 auto-codex/roadmap_runner.py --project /path/to/project --output roadmap.json
 """
 
 import asyncio

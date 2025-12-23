@@ -15,7 +15,7 @@ The planner:
 6. Outputs implementation_plan.json
 
 Usage:
-    python auto-codex/planner.py --spec-dir .auto-codex/specs/001-feature/
+    python3 auto-codex/planner.py --spec-dir .auto-codex/specs/001-feature/
 """
 
 import json

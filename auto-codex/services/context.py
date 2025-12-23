@@ -9,13 +9,13 @@ analyzing the entire codebase.
 
 Usage:
     # Generate for a specific service
-    python auto-codex/service_context.py --service backend --output backend/SERVICE_CONTEXT.md
+    python3 auto-codex/service_context.py --service backend --output backend/SERVICE_CONTEXT.md
 
     # Generate for all services (using project index)
-    python auto-codex/service_context.py --all
+    python3 auto-codex/service_context.py --all
 
     # Generate with custom project index
-    python auto-codex/service_context.py --service frontend --index auto-codex/project_index.json
+    python3 auto-codex/service_context.py --service frontend --index auto-codex/project_index.json
 """
 
 import json

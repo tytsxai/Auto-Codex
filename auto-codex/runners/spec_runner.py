@@ -26,11 +26,11 @@ The AI considers:
 - Risk factors and edge cases
 
 Usage:
-    python auto-codex/runners/spec_runner.py --task "Add user authentication"
-    python auto-codex/runners/spec_runner.py --interactive
-    python auto-codex/runners/spec_runner.py --continue 001-feature
-    python auto-codex/runners/spec_runner.py --task "Fix button color" --complexity simple
-    python auto-codex/runners/spec_runner.py --task "Simple fix" --no-ai-assessment
+    python3 auto-codex/runners/spec_runner.py --task "Add user authentication"
+    python3 auto-codex/runners/spec_runner.py --interactive
+    python3 auto-codex/runners/spec_runner.py --continue 001-feature
+    python3 auto-codex/runners/spec_runner.py --task "Fix button color" --complexity simple
+    python3 auto-codex/runners/spec_runner.py --task "Simple fix" --no-ai-assessment
 """
 
 import sys

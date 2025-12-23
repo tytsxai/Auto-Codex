@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Backward compatibility shim for task context discovery.
+CLI entrypoint for task context discovery.
 
-Prefer importing from `context` as a package. This file exists so internal
-callers and documentation can run `python3 auto-codex/context.py ...`.
+We keep the `context` name for the package (`auto-codex/context/`), so this file
+avoids the ambiguous `context.py` module name that would shadow the package.
 """
 
 import sys
@@ -16,3 +16,4 @@ from context.main import main
 
 if __name__ == "__main__":
     main()
+

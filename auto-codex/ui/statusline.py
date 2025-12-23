@@ -3,20 +3,20 @@
 Status Line Provider for ccstatusline Integration
 =================================================
 
-Provides compact, real-time build status for display in Codex Code's status line
+Provides compact, real-time build status for display in Codex CLI's status line
 via ccstatusline's Custom Command widget.
 
 Usage:
     # Get current status (auto-detect active spec)
-    python statusline.py
+    python3 statusline.py
 
     # Get status for specific spec
-    python statusline.py --spec 001-feature
+    python3 statusline.py --spec 001-feature
 
     # Different output formats
-    python statusline.py --format compact   # "▣ 3/12 │ ◆ Setup → │ 25%"
-    python statusline.py --format full      # More detailed output
-    python statusline.py --format json      # Raw JSON data
+    python3 statusline.py --format compact   # "▣ 3/12 │ ◆ Setup → │ 25%"
+    python3 statusline.py --format full      # More detailed output
+    python3 statusline.py --format json      # Raw JSON data
 
 ccstatusline Configuration:
     Add to ~/.config/ccstatusline/settings.json:
@@ -24,7 +24,7 @@ ccstatusline Configuration:
         "widgets": [
             {
                 "type": "custom_command",
-                "command": "python /path/to/auto-codex/statusline.py",
+                "command": "python3 /path/to/auto-codex/statusline.py",
                 "refresh": 5000
             }
         ]
