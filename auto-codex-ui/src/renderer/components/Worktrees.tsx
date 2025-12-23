@@ -229,7 +229,7 @@ export function Worktrees({ projectId }: WorktreesProps) {
           <div className="rounded-full bg-muted p-4 mb-4">
             <GitBranch className="h-8 w-8 text-muted-foreground" />
           </div>
-          <h3 className="text-lg font-semibold text-foreground">No Worktrees</h3>
+          <h3 className="text-lg font-semibold text-foreground">暂无工作树</h3>
           <p className="text-sm text-muted-foreground mt-2 max-w-md">
             Auto Codex 构建功能时会自动创建工作树。
             它们为每个任务提供独立的工作区。

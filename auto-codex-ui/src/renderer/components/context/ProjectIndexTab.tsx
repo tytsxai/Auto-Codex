@@ -22,6 +22,12 @@ export function ProjectIndexTab({
   indexError,
   onRefresh
 }: ProjectIndexTabProps) {
+  const projectTypeLabels: Record<string, string> = {
+    single: '单项目',
+    monorepo: '多项目仓库',
+    unknown: '未知'
+  };
+
   return (
     <ScrollArea className="h-full">
       <div className="p-6 space-y-6">
@@ -93,7 +99,7 @@ export function ProjectIndexTab({
               <CardContent className="space-y-3">
                 <div className="flex items-center gap-2">
                   <Badge variant="outline" className="capitalize">
-                    {projectIndex.project_type}
+                    {projectTypeLabels[projectIndex.project_type] ?? projectIndex.project_type}
                   </Badge>
                   {Object.keys(projectIndex.services).length > 0 && (
                     <Badge variant="secondary">

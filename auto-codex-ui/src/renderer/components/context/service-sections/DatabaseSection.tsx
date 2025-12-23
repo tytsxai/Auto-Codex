@@ -28,7 +28,7 @@ export function DatabaseSection({ database }: DatabaseSectionProps) {
       <CollapsibleTrigger className="flex w-full items-center justify-between text-xs font-medium hover:text-foreground">
         <div className="flex items-center gap-2">
           <Database className="h-3 w-3" />
-          Database Models ({database.total_models})
+          数据库模型（{database.total_models}）
         </div>
         {expanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
       </CollapsibleTrigger>
@@ -40,7 +40,7 @@ export function DatabaseSection({ database }: DatabaseSectionProps) {
               <Badge variant="outline" className="text-xs shrink-0">{model.orm}</Badge>
               <code className="flex-1 font-mono text-muted-foreground truncate">{modelName}</code>
               <span className="text-muted-foreground shrink-0 text-xs">
-                {Object.keys(model.fields).length} fields
+                {Object.keys(model.fields).length} 个字段
               </span>
             </div>
           );

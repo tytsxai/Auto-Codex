@@ -34,11 +34,11 @@ export function Context({ projectId }: ContextProps) {
           <TabsList className="grid w-full max-w-md grid-cols-2">
             <TabsTrigger value="index" className="gap-2">
               <FolderTree className="h-4 w-4" />
-              Project Index
+              项目索引
             </TabsTrigger>
             <TabsTrigger value="memories" className="gap-2">
               <Brain className="h-4 w-4" />
-              Memories
+              记忆
             </TabsTrigger>
           </TabsList>
         </div>

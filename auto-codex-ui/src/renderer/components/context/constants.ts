@@ -22,6 +22,16 @@ export const serviceTypeIcons: Record<string, React.ElementType> = {
   unknown: FileCode
 };
 
+export const serviceTypeLabels: Record<string, string> = {
+  backend: '后端',
+  frontend: '前端',
+  worker: '后台任务',
+  scraper: '采集',
+  library: '库',
+  proxy: '代理',
+  unknown: '未知'
+};
+
 // Service type color mapping
 export const serviceTypeColors: Record<string, string> = {
   backend: 'bg-blue-500/10 text-blue-400 border-blue-500/30',

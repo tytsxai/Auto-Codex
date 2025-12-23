@@ -27,16 +27,16 @@ export function MonitoringSection({ monitoring }: MonitoringSectionProps) {
       <CollapsibleTrigger className="flex w-full items-center justify-between text-xs font-medium hover:text-foreground">
         <div className="flex items-center gap-2">
           <Activity className="h-3 w-3" />
-          Monitoring
+          监控
         </div>
         {expanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
       </CollapsibleTrigger>
       <CollapsibleContent className="mt-2 space-y-2 text-xs text-muted-foreground">
         {monitoring.metrics_endpoint && (
-          <div>Metrics: <code className="text-xs">{monitoring.metrics_endpoint}</code> ({monitoring.metrics_type})</div>
+          <div>指标：<code className="text-xs">{monitoring.metrics_endpoint}</code>（{monitoring.metrics_type}）</div>
         )}
         {monitoring.health_checks && monitoring.health_checks.length > 0 && (
-          <div>Health: {monitoring.health_checks.join(', ')}</div>
+          <div>健康检查：{monitoring.health_checks.join('，')}</div>
         )}
       </CollapsibleContent>
     </Collapsible>

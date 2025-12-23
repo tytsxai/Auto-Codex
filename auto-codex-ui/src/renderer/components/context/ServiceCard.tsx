@@ -4,7 +4,7 @@ import { Badge } from '../ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import { cn } from '../../lib/utils';
 import type { ServiceInfo } from '../../../shared/types';
-import { serviceTypeIcons, serviceTypeColors } from './constants';
+import { serviceTypeIcons, serviceTypeColors, serviceTypeLabels } from './constants';
 import {
   EnvironmentSection,
   APIRoutesSection,
@@ -20,8 +20,10 @@ interface ServiceCardProps {
 }
 
 export function ServiceCard({ name, service }: ServiceCardProps) {
-  const Icon = serviceTypeIcons[service.type || 'unknown'];
-  const colorClass = serviceTypeColors[service.type || 'unknown'];
+  const typeKey = service.type || 'unknown';
+  const Icon = serviceTypeIcons[typeKey] || serviceTypeIcons.unknown;
+  const colorClass = serviceTypeColors[typeKey] || serviceTypeColors.unknown;
+  const typeLabel = serviceTypeLabels[typeKey] || service.type || '未知';
 
   return (
     <Card className="overflow-hidden">
@@ -32,7 +34,7 @@ export function ServiceCard({ name, service }: ServiceCardProps) {
             {name}
           </CardTitle>
           <Badge variant="outline" className={cn('capitalize text-xs', colorClass)}>
-            {service.type || '未知'}
+            {typeLabel}
           </Badge>
         </div>
         {service.path && (
