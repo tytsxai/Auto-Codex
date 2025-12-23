@@ -60,7 +60,8 @@ export {
   getApiKeyFromAuthJson,
   getProviderEnvInfoFromConfigToml,
   configPrefersApiKey,
-  buildProviderEnvFromConfig
+  buildProviderEnvFromConfig,
+  buildAuthEnvFromConfig
 } from './codex-config';
 
 // Usage monitoring (proactive account switching)

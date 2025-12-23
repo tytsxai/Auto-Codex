@@ -146,6 +146,50 @@ export function buildProviderEnvFromConfig(
   return { [envKey]: apiKey };
 }
 
+/**
+ * Build a robust environment map from Codex config directory.
+ *
+ * Supports third-party activators/gateways that store credentials in
+ * `~/.codex/auth.json` and configure provider-specific `env_key` in `config.toml`.
+ *
+ * Returns a minimal set of env vars that help non-shell-launched processes
+ * (Electron, Python subprocesses) authenticate reliably.
+ */
+export function buildAuthEnvFromConfig(
+  configDir: string,
+  existingEnv: Record<string, string | undefined>
+): Record<string, string> {
+  const dir = expandHomePath(configDir || '');
+  if (!configDirLooksConfigured(dir)) return {};
+
+  const env: Record<string, string> = {};
+  const authJson = readAuthJson(dir);
+
+  // 1) Provider-specific env_key (e.g. YUNYI_KEY) when declared by config.toml.
+  Object.assign(env, buildProviderEnvFromConfig(dir, existingEnv));
+
+  // 2) OpenAI-compatible API key - some subprocesses/tools expect OPENAI_API_KEY explicitly.
+  if (!(existingEnv.OPENAI_API_KEY || '').trim()) {
+    const apiKey = getCredentialFromAuthJson(authJson);
+    if (apiKey) {
+      env.OPENAI_API_KEY = apiKey;
+    }
+  }
+
+  // 3) OpenAI-compatible base URL for gateway/proxy setups.
+  // Codex CLI reads config.toml directly, but SDK clients and other tools may rely on env vars.
+  const baseUrl = (typeof authJson?.api_base_url === 'string' ? authJson.api_base_url : '').trim();
+  if (baseUrl && !(existingEnv.OPENAI_BASE_URL || '').trim()) {
+    env.OPENAI_BASE_URL = baseUrl;
+  }
+  // Back-compat for some tooling that uses OPENAI_API_BASE.
+  if (baseUrl && !(existingEnv.OPENAI_API_BASE || '').trim()) {
+    env.OPENAI_API_BASE = baseUrl;
+  }
+
+  return env;
+}
+
 function escapeRegExp(input: string): string {
   return input.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
