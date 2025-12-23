@@ -7,6 +7,8 @@ Main builder class that orchestrates context building for tasks.
 
 import asyncio
 import json
+import queue
+import threading
 from dataclasses import asdict
 from pathlib import Path
 
@@ -37,13 +39,37 @@ class ContextBuilder:
         """Load project index from file or create new one (.auto-codex is the installed instance)."""
         index_file = self.project_dir / ".auto-codex" / "project_index.json"
         if index_file.exists():
-            with open(index_file) as f:
-                return json.load(f)
+            try:
+                with open(index_file, encoding="utf-8") as f:
+                    return json.load(f)
+            except (OSError, json.JSONDecodeError):
+                pass
 
         # Try to create one
         from analyzer import analyze_project
 
         return analyze_project(self.project_dir)
+
+    def _fetch_graph_hints_sync(self, task: str) -> list[dict]:
+        """Fetch graph hints in a sync context, even if a loop is already running."""
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            return asyncio.run(fetch_graph_hints(task, str(self.project_dir)))
+
+        result_queue: queue.SimpleQueue = queue.SimpleQueue()
+
+        def runner() -> None:
+            try:
+                result_queue.put(
+                    asyncio.run(fetch_graph_hints(task, str(self.project_dir)))
+                )
+            except Exception:
+                result_queue.put([])
+
+        thread = threading.Thread(target=runner, daemon=True)
+        thread.start()
+        return result_queue.get()
 
     def build_context(
         self,
@@ -107,21 +133,7 @@ class ContextBuilder:
         # Get graph hints (synchronously wrap async call)
         graph_hints = []
         if include_graph_hints and is_graphiti_enabled():
-            try:
-                # Run the async function in a new event loop if necessary
-                try:
-                    loop = asyncio.get_running_loop()
-                    # We're already in an async context - this shouldn't happen in CLI
-                    # but handle it gracefully
-                    graph_hints = []
-                except RuntimeError:
-                    # No event loop running - create one
-                    graph_hints = asyncio.run(
-                        fetch_graph_hints(task, str(self.project_dir))
-                    )
-            except Exception:
-                # Graphiti is optional - fail gracefully
-                graph_hints = []
+            graph_hints = self._fetch_graph_hints_sync(task)
 
         return TaskContext(
             task_description=task,

@@ -113,6 +113,7 @@ async def get_graphiti_context(
             debug("memory", "Graphiti not enabled, skipping context retrieval")
         return None
 
+    memory = None
     try:
         from graphiti_memory import GraphitiMemory
 
@@ -130,7 +131,6 @@ async def get_graphiti_context(
         query = f"{subtask_desc} {subtask_id}".strip()
 
         if not query:
-            await memory.close()
             if is_debug_enabled():
                 debug_warning("memory", "Empty query, skipping context retrieval")
             return None
@@ -148,8 +148,6 @@ async def get_graphiti_context(
 
         # Also get recent session history
         session_history = await memory.get_session_history(limit=3)
-
-        await memory.close()
 
         if is_debug_enabled():
             debug(
@@ -201,6 +199,12 @@ async def get_graphiti_context(
     except Exception as e:
         logger.warning(f"Failed to get Graphiti context: {e}")
         return None
+    finally:
+        if memory:
+            try:
+                await memory.close()
+            except Exception as e:
+                logger.debug(f"Failed to close Graphiti memory: {e}")
 
 
 async def save_session_memory(
@@ -290,46 +294,47 @@ async def save_session_memory(
 
             memory = GraphitiMemory(spec_dir, project_dir)
 
-            if is_debug_enabled():
-                debug_detailed(
-                    "memory",
-                    "GraphitiMemory instance created",
-                    is_enabled=memory.is_enabled,
-                    group_id=getattr(memory, "group_id", "unknown"),
-                )
-
-            if memory.is_enabled:
+            try:
                 if is_debug_enabled():
-                    debug("memory", "Saving to Graphiti...")
-
-                # Use structured insights if we have rich extracted data
-                if discoveries and discoveries.get("file_insights"):
-                    # Rich insights from insight_extractor
-                    if is_debug_enabled():
-                        debug(
-                            "memory",
-                            "Using save_structured_insights (rich data available)",
-                        )
-                    result = await memory.save_structured_insights(discoveries)
-                else:
-                    # Fallback to basic session insights
-                    result = await memory.save_session_insights(session_num, insights)
-
-                await memory.close()
-
-                if result:
-                    logger.info(
-                        f"Session {session_num} insights saved to Graphiti (primary)"
+                    debug_detailed(
+                        "memory",
+                        "GraphitiMemory instance created",
+                        is_enabled=memory.is_enabled,
+                        group_id=getattr(memory, "group_id", "unknown"),
                     )
+
+                if memory.is_enabled:
                     if is_debug_enabled():
-                        debug_success(
-                            "memory",
-                            f"Session {session_num} saved to Graphiti (PRIMARY)",
-                            storage_type="graphiti",
-                            subtasks_saved=len(subtasks_completed),
+                        debug("memory", "Saving to Graphiti...")
+
+                    # Use structured insights if we have rich extracted data
+                    if discoveries and discoveries.get("file_insights"):
+                        # Rich insights from insight_extractor
+                        if is_debug_enabled():
+                            debug(
+                                "memory",
+                                "Using save_structured_insights (rich data available)",
+                            )
+                        result = await memory.save_structured_insights(discoveries)
+                    else:
+                        # Fallback to basic session insights
+                        result = await memory.save_session_insights(
+                            session_num, insights
                         )
-                    return True, "graphiti"
-                else:
+
+                    if result:
+                        logger.info(
+                            f"Session {session_num} insights saved to Graphiti (primary)"
+                        )
+                        if is_debug_enabled():
+                            debug_success(
+                                "memory",
+                                f"Session {session_num} saved to Graphiti (PRIMARY)",
+                                storage_type="graphiti",
+                                subtasks_saved=len(subtasks_completed),
+                            )
+                        return True, "graphiti"
+
                     logger.warning(
                         "Graphiti save returned False, falling back to file-based"
                     )
@@ -337,14 +342,19 @@ async def save_session_memory(
                         debug_warning(
                             "memory", "Graphiti save returned False, using FALLBACK"
                         )
-            else:
-                logger.warning(
-                    "Graphiti memory not enabled, falling back to file-based"
-                )
-                if is_debug_enabled():
-                    debug_warning(
-                        "memory", "GraphitiMemory.is_enabled=False, using FALLBACK"
+                else:
+                    logger.warning(
+                        "Graphiti memory not enabled, falling back to file-based"
                     )
+                    if is_debug_enabled():
+                        debug_warning(
+                            "memory", "GraphitiMemory.is_enabled=False, using FALLBACK"
+                        )
+            finally:
+                try:
+                    await memory.close()
+                except Exception as e:
+                    logger.debug(f"Failed to close Graphiti memory: {e}")
 
         except ImportError as e:
             logger.debug("Graphiti packages not installed, falling back to file-based")
