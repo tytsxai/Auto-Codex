@@ -501,7 +501,6 @@ def main() -> int:
         "--staged-only",
         "-s",
         action="store_true",
-        default=True,
         help="Only scan staged files (default)",
     )
     parser.add_argument(
@@ -533,6 +532,8 @@ def main() -> int:
             return 2
     elif args.all_files:
         files = get_all_tracked_files()
+    elif args.staged_only:
+        files = get_staged_files()
     else:
         files = get_staged_files()
 

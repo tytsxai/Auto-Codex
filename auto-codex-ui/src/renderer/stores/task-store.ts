@@ -259,6 +259,7 @@ export async function persistTaskStatus(
   status: TaskStatus
 ): Promise<boolean> {
   const store = useTaskStore.getState();
+  const previousTask = store.tasks.find((t) => t.id === taskId || t.specId === taskId);
 
   try {
     // 先更新本地状态以获得即时反馈
@@ -268,11 +269,25 @@ export async function persistTaskStatus(
     const result = await window.electronAPI.updateTaskStatus(taskId, status);
     if (!result.success) {
       console.error('Failed to persist task status:', result.error);
+      if (previousTask) {
+        store.updateTask(taskId, {
+          status: previousTask.status,
+          executionProgress: previousTask.executionProgress,
+          updatedAt: previousTask.updatedAt
+        });
+      }
       return false;
     }
     return true;
   } catch (error) {
     console.error('Error persisting task status:', error);
+    if (previousTask) {
+      store.updateTask(taskId, {
+        status: previousTask.status,
+        executionProgress: previousTask.executionProgress,
+        updatedAt: previousTask.updatedAt
+      });
+    }
     return false;
   }
 }

@@ -145,8 +145,11 @@ class ProjectAnalyzer:
             filepath = self.project_dir / filename
             if filepath.exists():
                 try:
-                    stat = filepath.stat()
-                    hasher.update(f"{filename}:{stat.st_mtime}:{stat.st_size}".encode())
+                    hasher.update(filename.encode())
+                    with open(filepath, "rb") as f:
+                        for chunk in iter(lambda: f.read(8192), b""):
+                            hasher.update(chunk)
+                    hasher.update(b"\0")
                     files_found += 1
                 except OSError:
                     pass
