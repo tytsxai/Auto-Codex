@@ -108,7 +108,13 @@ export function CodexAuthSection({
               </p>
             ) : (
               <p className="text-xs text-muted-foreground">
-                Paste an OAuth token if you have one (e.g. <code className="px-1 bg-muted rounded">codex login --device-auth</code>). For API key login, run <code className="px-1 bg-muted rounded">codex setup-token</code> (writes to <code className="px-1 bg-muted rounded">~/.codex/auth.json</code>).
+                Paste an OAuth token if you have one (e.g.{' '}
+                <code className="px-1 bg-muted rounded">codex login --device-auth</code>). For API key
+                login, run{' '}
+                <code className="px-1 bg-muted rounded">
+                  printenv OPENAI_API_KEY | codex login --with-api-key
+                </code>{' '}
+                (writes to <code className="px-1 bg-muted rounded">~/.codex/auth.json</code>).
               </p>
             )}
             <PasswordInput

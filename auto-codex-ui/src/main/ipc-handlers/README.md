@@ -132,7 +132,7 @@ Environment configuration:
 - `ENV_GET` - Get project environment
 - `ENV_UPDATE` - Update environment variables
 - `ENV_CHECK_CODEX_AUTH` - Check Codex authentication
-- `ENV_INVOKE_CODEX_SETUP` - Run Codex setup
+- `ENV_INVOKE_CODEX_SETUP` - Run Codex login (device auth)
 
 #### `autobuild-source-handlers.ts` (8.9KB)
 Auto-Codex source updates (`autoBuildPath` points to the backend source directory):

@@ -175,8 +175,8 @@
           }
         }
 
-        // Create a terminal and run codex setup-token there
-        // This is needed because codex setup-token requires TTY/raw mode
+        // Create a terminal and run codex login (device auth) there.
+        // This is needed because codex login requires TTY/raw mode.
         const terminalId = `codex-login-${profileId}-${Date.now()}`;
         const homeDir = process.env.HOME || process.env.USERPROFILE || '/tmp';
 
@@ -194,13 +194,13 @@
         await new Promise(resolve => setTimeout(resolve, 500));
 
         // Build the login command with the profile's config dir
-        // Use export to ensure the variable persists, then run setup-token
+        // Use export to ensure the variable persists, then run codex login.
         let loginCommand: string;
         if (!profile.isDefault && profile.configDir) {
           // Use export and run in subshell to ensure CODEX_CONFIG_DIR is properly set
-          loginCommand = `export CODEX_CONFIG_DIR="${profile.configDir}" && echo "Config dir: $CODEX_CONFIG_DIR" && codex setup-token`;
+          loginCommand = `export CODEX_CONFIG_DIR="${profile.configDir}" && echo "Config dir: $CODEX_CONFIG_DIR" && codex login --device-auth`;
         } else {
-          loginCommand = 'codex setup-token';
+          loginCommand = 'codex login --device-auth';
         }
 
         console.log('[IPC] Sending login command to terminal:', loginCommand);

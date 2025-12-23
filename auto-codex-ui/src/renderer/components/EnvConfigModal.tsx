@@ -509,9 +509,14 @@ export function EnvConfigModal({
                     </ol>
                     <p className="text-xs text-muted-foreground">
                       API Key 登录：运行{' '}
-                      <code className="px-1 py-0.5 bg-muted rounded font-mono">codex setup-token</code>
-                      （会写入 <code className="px-1 py-0.5 bg-muted rounded font-mono">~/.codex/auth.json</code>，无需粘贴到这里）。
-                      你也可以在 <code className="px-1 py-0.5 bg-muted rounded font-mono">auto-codex/.env</code> 中设置{' '}
+                      <code className="px-1 py-0.5 bg-muted rounded font-mono">
+                        printenv OPENAI_API_KEY | codex login --with-api-key
+                      </code>
+                      （会写入{' '}
+                      <code className="px-1 py-0.5 bg-muted rounded font-mono">~/.codex/auth.json</code>
+                      ，无需粘贴到这里）。你也可以在{' '}
+                      <code className="px-1 py-0.5 bg-muted rounded font-mono">auto-codex/.env</code>{' '}
+                      中设置{' '}
                       <code className="px-1 py-0.5 bg-muted rounded font-mono">OPENAI_API_KEY</code>。
                     </p>
                     <button

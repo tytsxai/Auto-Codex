@@ -385,9 +385,9 @@ ${existingVars['GRAPHITI_DATABASE'] ? `GRAPHITI_DATABASE=${existingVars['GRAPHIT
       }
 
       try {
-        // Run codex setup-token which will open browser for OAuth
+        // Run codex login (device auth) which will open browser for OAuth
         const result = await new Promise<CodexAuthResult>((resolve) => {
-          const proc = spawn('codex', ['setup-token'], {
+          const proc = spawn('codex', ['login', '--device-auth'], {
             cwd: project.path,
             env: { ...process.env },
             shell: true,
@@ -422,7 +422,7 @@ ${existingVars['GRAPHITI_DATABASE'] ? `GRAPHITI_DATABASE=${existingVars['GRAPHIT
       } catch (error) {
         return {
           success: false,
-          error: error instanceof Error ? error.message : 'Failed to invoke Codex setup'
+          error: error instanceof Error ? error.message : 'Failed to invoke Codex login'
         };
       }
     }

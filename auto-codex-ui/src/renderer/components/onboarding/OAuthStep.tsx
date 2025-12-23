@@ -503,8 +503,15 @@ export function OAuthStep({ onNext, onBack, onSkip }: OAuthStepProps) {
                                 手动输入 OAuth 令牌
                               </Label>
                               <span className="text-xs text-muted-foreground">
-                                OAuth：<code className="px-1 py-0.5 bg-muted rounded font-mono text-xs">codex login --device-auth</code>；
-                                API Key：<code className="px-1 py-0.5 bg-muted rounded font-mono text-xs">codex setup-token</code>（写入 `~/.codex`，无需粘贴到这里）
+                                OAuth：
+                                <code className="px-1 py-0.5 bg-muted rounded font-mono text-xs">
+                                  codex login --device-auth
+                                </code>
+                                ；API Key：
+                                <code className="px-1 py-0.5 bg-muted rounded font-mono text-xs">
+                                  printenv OPENAI_API_KEY | codex login --with-api-key
+                                </code>
+                                （写入 `~/.codex`，无需粘贴到这里）
                               </span>
                             </div>
 
