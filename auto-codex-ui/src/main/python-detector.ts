@@ -1,4 +1,5 @@
 import { execSync } from 'child_process';
+import { existsSync } from 'fs';
 
 /**
  * Detect and return the best available Python command.
@@ -9,21 +10,51 @@ import { execSync } from 'child_process';
 export function findPythonCommand(): string | null {
   const isWindows = process.platform === 'win32';
 
+  const isUsablePython = (versionText: string): boolean => {
+    const match = versionText.match(/Python\s+(\d+)\.(\d+)(?:\.(\d+))?/i);
+    if (!match) return false;
+    const major = parseInt(match[1], 10);
+    const minor = parseInt(match[2], 10);
+    return major === 3 && minor >= 10;
+  };
+
   // On Windows, try py launcher first (most reliable), then python, then python3
   // On Unix, try python3 first, then python
   const candidates = isWindows
     ? ['py -3', 'python', 'python3', 'py']
-    : ['python3', 'python'];
+    : [
+      'python3.13',
+      'python3.12',
+      'python3.11',
+      'python3.10',
+      '/opt/homebrew/bin/python3.13',
+      '/opt/homebrew/bin/python3.12',
+      '/opt/homebrew/bin/python3.11',
+      '/opt/homebrew/bin/python3.10',
+      '/opt/homebrew/bin/python3',
+      '/usr/local/bin/python3.13',
+      '/usr/local/bin/python3.12',
+      '/usr/local/bin/python3.11',
+      '/usr/local/bin/python3.10',
+      '/usr/local/bin/python3',
+      '/usr/bin/python3',
+      'python3',
+      'python'
+    ];
 
   for (const cmd of candidates) {
     try {
+      // Fast-skip missing absolute paths.
+      if (cmd.startsWith('/') && !existsSync(cmd)) {
+        continue;
+      }
       const version = execSync(`${cmd} --version`, {
         stdio: 'pipe',
         timeout: 5000,
         windowsHide: true
       }).toString();
 
-      if (version.includes('Python 3')) {
+      if (isUsablePython(version)) {
         return cmd;
       }
     } catch {
@@ -33,7 +64,7 @@ export function findPythonCommand(): string | null {
   }
 
   // Fallback to platform-specific default
-  return isWindows ? 'python' : 'python3';
+  return null;
 }
 
 /**

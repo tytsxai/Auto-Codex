@@ -2,6 +2,7 @@ import { spawn, execSync } from 'child_process';
 import { existsSync } from 'fs';
 import path from 'path';
 import { EventEmitter } from 'events';
+import { app } from 'electron';
 
 export interface PythonEnvStatus {
   ready: boolean;
@@ -22,15 +23,36 @@ export class PythonEnvManager extends EventEmitter {
   private isReady = false;
 
   /**
+   * Return the directory where the venv should live.
+   *
+   * In packaged apps, the bundled `auto-codex` source is inside the app bundle
+   * (often read-only / not safe to mutate). Use a userData location instead.
+   */
+  private getVenvDir(): string | null {
+    if (!this.autoBuildSourcePath) return null;
+
+    const sourcePath = path.resolve(this.autoBuildSourcePath);
+    if (app.isPackaged) {
+      const resourcesPath = path.resolve(process.resourcesPath);
+      if (sourcePath.startsWith(resourcesPath + path.sep)) {
+        return path.join(app.getPath('userData'), 'python-venv');
+      }
+    }
+
+    return path.join(this.autoBuildSourcePath, '.venv');
+  }
+
+  /**
    * Get the path to the venv Python executable
    */
   private getVenvPythonPath(): string | null {
-    if (!this.autoBuildSourcePath) return null;
+    const venvDir = this.getVenvDir();
+    if (!venvDir) return null;
 
     const venvPython =
       process.platform === 'win32'
-        ? path.join(this.autoBuildSourcePath, '.venv', 'Scripts', 'python.exe')
-        : path.join(this.autoBuildSourcePath, '.venv', 'bin', 'python');
+        ? path.join(venvDir, 'Scripts', 'python.exe')
+        : path.join(venvDir, 'bin', 'python');
 
     return venvPython;
   }
@@ -60,10 +82,20 @@ export class PythonEnvManager extends EventEmitter {
     if (!venvPython || !existsSync(venvPython)) return false;
 
     try {
-      execSync(`"${venvPython}" --version`, {
+      const version = execSync(`"${venvPython}" --version`, {
         stdio: 'pipe',
         timeout: 5000
-      });
+      }).toString();
+      // Auto-Codex backend requires Python 3.10+ (uses modern typing features).
+      const match = version.match(/Python\s+(\d+)\.(\d+)(?:\.(\d+))?/i);
+      if (match) {
+        const major = parseInt(match[1], 10);
+        const minor = parseInt(match[2], 10);
+        if (major < 3 || (major === 3 && minor < 10)) {
+          console.warn('[PythonEnvManager] Venv Python too old:', version.trim());
+          return true;
+        }
+      }
       return false;
     } catch {
       console.warn('[PythonEnvManager] Venv appears corrupted');
@@ -75,9 +107,8 @@ export class PythonEnvManager extends EventEmitter {
    * Remove corrupted venv directory
    */
   private async removeCorruptedVenv(): Promise<boolean> {
-    if (!this.autoBuildSourcePath) return false;
-
-    const venvPath = path.join(this.autoBuildSourcePath, '.venv');
+    const venvPath = this.getVenvDir();
+    if (!venvPath) return false;
     if (!existsSync(venvPath)) return true;
 
     this.emit('status', 'Removing corrupted virtual environment...');
@@ -102,8 +133,9 @@ export class PythonEnvManager extends EventEmitter {
     if (!venvPython || !existsSync(venvPython)) return false;
 
     try {
-      // Check if codex_agent_sdk can be imported
-      execSync(`"${venvPython}" -c "import codex_agent_sdk"`, {
+      // Check if required runtime deps can be imported.
+      // `python-dotenv` is required by all runners (insights/roadmap/ideation).
+      execSync(`"${venvPython}" -c "import dotenv"`, {
         stdio: 'pipe',
         timeout: 10000
       });
@@ -119,11 +151,37 @@ export class PythonEnvManager extends EventEmitter {
   private findSystemPython(): string | null {
     const isWindows = process.platform === 'win32';
 
+    const isUsablePython = (versionText: string): boolean => {
+      const match = versionText.match(/Python\s+(\d+)\.(\d+)(?:\.(\d+))?/i);
+      if (!match) return false;
+      const major = parseInt(match[1], 10);
+      const minor = parseInt(match[2], 10);
+      return major === 3 && minor >= 10;
+    };
+
     // Windows candidates - py launcher is handled specially
-    // Unix candidates - try python3 first, then python
-    const candidates = isWindows
-      ? ['python', 'python3']
-      : ['python3', 'python'];
+    // Unix candidates - prefer modern python3.x explicitly
+    const unixCandidates = [
+      'python3.13',
+      'python3.12',
+      'python3.11',
+      'python3.10',
+      '/opt/homebrew/bin/python3.13',
+      '/opt/homebrew/bin/python3.12',
+      '/opt/homebrew/bin/python3.11',
+      '/opt/homebrew/bin/python3.10',
+      '/opt/homebrew/bin/python3',
+      '/usr/local/bin/python3.13',
+      '/usr/local/bin/python3.12',
+      '/usr/local/bin/python3.11',
+      '/usr/local/bin/python3.10',
+      '/usr/local/bin/python3',
+      '/usr/bin/python3',
+      'python3',
+      'python'
+    ];
+
+    const candidates = isWindows ? ['python', 'python3'] : unixCandidates;
 
     // On Windows, try the py launcher first (most reliable)
     if (isWindows) {
@@ -133,7 +191,7 @@ export class PythonEnvManager extends EventEmitter {
           stdio: 'pipe',
           timeout: 5000
         }).toString();
-        if (version.includes('Python 3')) {
+        if (isUsablePython(version)) {
           // Get the actual executable path
           const pythonPath = execSync('py -3 -c "import sys; print(sys.executable)"', {
             stdio: 'pipe',
@@ -152,16 +210,24 @@ export class PythonEnvManager extends EventEmitter {
           stdio: 'pipe',
           timeout: 5000
         }).toString();
-        if (version.includes('Python 3')) {
+        if (isUsablePython(version)) {
           // Get the actual path
           // On Windows, use Python itself to get the path
           // On Unix, use 'which'
-          const pathCmd = isWindows
-            ? `${cmd} -c "import sys; print(sys.executable)"`
-            : `which ${cmd}`;
-          const pythonPath = execSync(pathCmd, { stdio: 'pipe', timeout: 5000 })
-            .toString()
-            .trim();
+          if (isWindows) {
+            const pythonPath = execSync(`${cmd} -c "import sys; print(sys.executable)"`, {
+              stdio: 'pipe',
+              timeout: 5000
+            }).toString().trim();
+            return pythonPath;
+          }
+
+          // Absolute paths don't need resolution.
+          if (cmd.startsWith('/')) {
+            return cmd;
+          }
+
+          const pythonPath = execSync(`which ${cmd}`, { stdio: 'pipe', timeout: 5000 }).toString().trim();
           return pythonPath;
         }
       } catch {
@@ -175,11 +241,12 @@ export class PythonEnvManager extends EventEmitter {
    * Create the virtual environment
    */
   private async createVenv(): Promise<boolean> {
-    if (!this.autoBuildSourcePath) return false;
+    const venvPath = this.getVenvDir();
+    if (!this.autoBuildSourcePath || !venvPath) return false;
 
     const systemPython = this.findSystemPython();
     if (!systemPython) {
-      this.emit('error', 'Python 3 not found. Please install Python 3.12+');
+      this.emit('error', 'Python 3.10+ not found. Please install Python 3.10+ (recommended: 3.12+)');
       return false;
     }
 
@@ -187,7 +254,6 @@ export class PythonEnvManager extends EventEmitter {
     console.warn('[PythonEnvManager] Creating venv with:', systemPython);
 
     return new Promise((resolve) => {
-      const venvPath = path.join(this.autoBuildSourcePath!, '.venv');
       const proc = spawn(systemPython, ['-m', 'venv', venvPath], {
         cwd: this.autoBuildSourcePath!,
         stdio: 'pipe'
@@ -326,6 +392,30 @@ export class PythonEnvManager extends EventEmitter {
   }
 
   /**
+   * Preflight check to ensure the backend can actually start under this venv.
+   * This catches common regressions:
+   * - Python < 3.10 (auto-codex uses modern typing syntax)
+   * - Missing required imports after dependency installation
+   */
+  private async runBackendPreflight(): Promise<{ ok: boolean; error?: string }> {
+    const venvPython = this.getVenvPythonPath();
+    if (!venvPython || !existsSync(venvPython) || !this.autoBuildSourcePath) {
+      return { ok: false, error: 'Python environment not found' };
+    }
+
+    const src = JSON.stringify(this.autoBuildSourcePath);
+    const cmd = `"${venvPython}" -c "import sys; sys.path.insert(0, ${src}); import dotenv; import core.auth"`;
+
+    try {
+      execSync(cmd, { stdio: 'pipe', timeout: 15000 });
+      return { ok: true };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return { ok: false, error: message };
+    }
+  }
+
+  /**
    * Initialize the Python environment.
    * Creates venv and installs deps if needed.
    */
@@ -404,6 +494,22 @@ export class PythonEnvManager extends EventEmitter {
       this.pythonPath = this.getVenvPythonPath();
       this.isReady = true;
       this.isInitializing = false;
+
+      // Final sanity check: ensure backend imports work (prevents "code 1" silent exits).
+      const preflight = await this.runBackendPreflight();
+      if (!preflight.ok) {
+        this.isReady = false;
+        const message = preflight.error || 'Backend preflight failed';
+        console.error('[PythonEnvManager] Backend preflight failed:', message);
+        this.emit('error', message);
+        return {
+          ready: false,
+          pythonPath: this.pythonPath,
+          venvExists: true,
+          depsInstalled: true,
+          error: message
+        };
+      }
 
       this.emit('ready', this.pythonPath);
       console.warn('[PythonEnvManager] Ready with Python path:', this.pythonPath);
