@@ -34,7 +34,7 @@ export interface AgentManagerEvents {
 
 export interface RoadmapConfig {
   model?: string;          // Model shorthand (codex)
-  thinkingLevel?: string;  // Thinking level (none, low, medium, high, ultrathink)
+  thinkingLevel?: string;  // Thinking level (none, low, medium, high, xhigh)
 }
 
 export interface TaskExecutionOptions {
@@ -54,14 +54,14 @@ export interface SpecCreationMetadata {
     qa: 'codex';
   };
   phaseThinking?: {
-    spec: 'none' | 'low' | 'medium' | 'high' | 'ultrathink';
-    planning: 'none' | 'low' | 'medium' | 'high' | 'ultrathink';
-    coding: 'none' | 'low' | 'medium' | 'high' | 'ultrathink';
-    qa: 'none' | 'low' | 'medium' | 'high' | 'ultrathink';
+    spec: 'none' | 'low' | 'medium' | 'high' | 'xhigh';
+    planning: 'none' | 'low' | 'medium' | 'high' | 'xhigh';
+    coding: 'none' | 'low' | 'medium' | 'high' | 'xhigh';
+    qa: 'none' | 'low' | 'medium' | 'high' | 'xhigh';
   };
   // Non-auto profile - single model and thinking level
   model?: 'codex';
-  thinkingLevel?: 'none' | 'low' | 'medium' | 'high' | 'ultrathink';
+  thinkingLevel?: 'none' | 'low' | 'medium' | 'high' | 'xhigh';
 }
 
 export interface IdeationProgressData {

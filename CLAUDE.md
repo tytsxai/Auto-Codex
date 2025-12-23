@@ -35,40 +35,40 @@ export OPENAI_API_KEY=your-key
 ### Creating and Running Specs
 ```bash
 # Create a spec interactively
-python auto-codex/runners/spec_runner.py --interactive
+python3 auto-codex/runners/spec_runner.py --interactive
 
 # Create spec from task description
-python auto-codex/runners/spec_runner.py --task "Add user authentication"
+python3 auto-codex/runners/spec_runner.py --task "Add user authentication"
 
 # Force complexity level (simple/standard/complex)
-python auto-codex/runners/spec_runner.py --task "Fix button" --complexity simple
+python3 auto-codex/runners/spec_runner.py --task "Fix button" --complexity simple
 
 # Run autonomous build
-python auto-codex/run.py --spec 001
+python3 auto-codex/run.py --spec 001
 
 # List all specs
-python auto-codex/run.py --list
+python3 auto-codex/run.py --list
 ```
 
 ### Workspace Management
 ```bash
 # Review changes in isolated worktree
-python auto-codex/run.py --spec 001 --review
+python3 auto-codex/run.py --spec 001 --review
 
 # Merge completed build into project
-python auto-codex/run.py --spec 001 --merge
+python3 auto-codex/run.py --spec 001 --merge
 
 # Discard build
-python auto-codex/run.py --spec 001 --discard
+python3 auto-codex/run.py --spec 001 --discard
 ```
 
 ### QA Validation
 ```bash
 # Run QA manually
-python auto-codex/run.py --spec 001 --qa
+python3 auto-codex/run.py --spec 001 --qa
 
 # Check QA status
-python auto-codex/run.py --spec 001 --qa-status
+python3 auto-codex/run.py --spec 001 --qa-status
 ```
 
 ### Testing
@@ -91,7 +91,7 @@ auto-codex/.venv/bin/python -m pytest -m "not slow"
 
 ### Spec Validation
 ```bash
-python auto-codex/spec/validate_spec.py --spec-dir /path/to/your-project/.auto-codex/specs/001-feature --checkpoint all
+python3 auto-codex/spec/validate_spec.py --spec-dir /path/to/your-project/.auto-codex/specs/001-feature --checkpoint all
 ```
 
 ### Releases
@@ -162,7 +162,7 @@ Each spec in `.auto-codex/specs/XXX-name/` (inside your target project) contains
 
 ### Branching & Worktree Strategy
 
-Auto Codex uses git worktrees for isolated builds. All branches stay LOCAL until user explicitly pushes:
+Auto-Codex uses git worktrees for isolated builds. All branches stay LOCAL until user explicitly pushes:
 
 ```
 main (user's branch)
@@ -212,11 +212,11 @@ Enable with: `GRAPHITI_ENABLED=true` + provider credentials. See `.env.example`.
 
 ## Project Structure
 
-Auto Codex can be used in two ways:
+Auto-Codex can be used in two ways:
 
 **As a standalone CLI tool**:
 ```bash
-python auto-codex/run.py --spec 001
+python3 auto-codex/run.py --spec 001
 ```
 
 **With the optional Electron frontend** (`auto-codex-ui/`):

@@ -35,7 +35,9 @@ function getSettingsPath(): string | null {
 function thinkingLevelToReasoningEffort(thinkingLevel: unknown): string | null {
   const level = typeof thinkingLevel === 'string' ? thinkingLevel.toLowerCase() : '';
   if (level === 'none' || !level) return null;
-  if (level === 'ultrathink') return 'xhigh';
+  if (level === 'xhigh' || level === 'ultrathink' || level === 'ultra' || level === 'ultra think' || level === 'uitra') {
+    return 'xhigh';
+  }
   if (level === 'low' || level === 'medium' || level === 'high') return level;
   return null;
 }

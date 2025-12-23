@@ -33,6 +33,7 @@ from core.debug import is_debug_enabled
 
 # Import from refactored roadmap package
 from runners.roadmap import RoadmapOrchestrator
+from phase_config import normalize_thinking_level
 
 
 def main():
@@ -64,7 +65,7 @@ def main():
         "--thinking-level",
         type=str,
         default="medium",
-        choices=["none", "low", "medium", "high", "ultrathink"],
+        choices=["none", "low", "medium", "high", "xhigh", "ultrathink"],
         help="Thinking level for extended reasoning (default: medium)",
     )
     parser.add_argument(
@@ -86,6 +87,7 @@ def main():
     )
 
     args = parser.parse_args()
+    args.thinking_level = normalize_thinking_level(args.thinking_level)
 
     debug(
         "roadmap_runner",

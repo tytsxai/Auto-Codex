@@ -118,6 +118,21 @@ export function registerSettingsHandlers(
         return undefined;
       };
 
+      // Migration: normalize thinking level values to runtime reasoning effort names.
+      // Valid values: none/low/medium/high/xhigh (legacy: ultrathink).
+      const migrateThinkingLevel = (value: unknown): 'none' | 'low' | 'medium' | 'high' | 'xhigh' | undefined => {
+        if (typeof value !== 'string') return undefined;
+        const normalized = value.trim().toLowerCase();
+        if (!normalized) return undefined;
+        if (normalized === 'ultrathink' || normalized === 'ultra' || normalized === 'ultra think' || normalized === 'uitra') {
+          return 'xhigh';
+        }
+        if (normalized === 'none' || normalized === 'low' || normalized === 'medium' || normalized === 'high' || normalized === 'xhigh') {
+          return normalized;
+        }
+        return undefined;
+      };
+
       const migratedDefaultModel = migrateModel(settings.defaultModel);
       if (migratedDefaultModel && settings.defaultModel !== migratedDefaultModel) {
         settings.defaultModel = migratedDefaultModel;
@@ -141,6 +156,28 @@ export function registerSettingsHandlers(
           const migrated = migrateModel(settings.featureModels[feature]);
           if (migrated && settings.featureModels[feature] !== migrated) {
             settings.featureModels[feature] = migrated;
+            needsSave = true;
+          }
+        }
+      }
+
+      // Migration: thinking levels (custom phase + feature thinking)
+      if (settings.customPhaseThinking) {
+        const phases = ['spec', 'planning', 'coding', 'qa'] as const;
+        for (const phase of phases) {
+          const migrated = migrateThinkingLevel(settings.customPhaseThinking[phase]);
+          if (migrated && settings.customPhaseThinking[phase] !== migrated) {
+            settings.customPhaseThinking[phase] = migrated;
+            needsSave = true;
+          }
+        }
+      }
+      if (settings.featureThinking) {
+        const features = ['insights', 'ideation', 'roadmap'] as const;
+        for (const feature of features) {
+          const migrated = migrateThinkingLevel(settings.featureThinking[feature]);
+          if (migrated && settings.featureThinking[feature] !== migrated) {
+            settings.featureThinking[feature] = migrated;
             needsSave = true;
           }
         }
@@ -229,15 +266,18 @@ export function registerSettingsHandlers(
 
         if (saveResult.wrotePlaintext) {
           const mainWindow = getMainWindow();
-          const result = await dialog.showMessageBox(mainWindow ?? undefined, {
-            type: 'warning',
+          const options = {
+            type: 'warning' as const,
             title: 'Unsafe Secret Storage',
             message: 'Secure storage is unavailable on this system.',
             detail: 'API keys will be stored in plaintext on disk. Re-enter these credentials later to migrate once secure storage is available.',
             buttons: ['Save Anyway', 'Cancel'],
             defaultId: 1,
             cancelId: 1
-          });
+          };
+          const result = mainWindow
+            ? await dialog.showMessageBox(mainWindow, options)
+            : await dialog.showMessageBox(options);
           if (result.response === 1) {
             return { success: false, error: 'Save canceled to avoid plaintext secret storage' };
           }

@@ -1,6 +1,6 @@
 import { app } from 'electron';
 import path from 'path';
-import { existsSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import { getEffectiveSourcePath } from '../../updater/path-resolver';
 import { loadSettingsWithDecryptedSecrets } from '../../utils/secure-settings';
 

@@ -23,24 +23,43 @@ MODEL_ID_MAP: dict[str, str] = {
     "haiku": _DEFAULT_MODEL,
 }
 
+_CANONICAL_THINKING_LEVELS: tuple[str, ...] = ("none", "low", "medium", "high", "xhigh")
+_LEGACY_THINKING_ALIASES: dict[str, str] = {
+    # Legacy UI/CLI label; keep reading it but do not emit it.
+    "ultrathink": "xhigh",
+    "ultra": "xhigh",
+    "ultra think": "xhigh",
+    "uitra": "xhigh",
+}
+
+
+def normalize_thinking_level(value: str) -> str:
+    normalized = value.strip().lower()
+    if normalized in _LEGACY_THINKING_ALIASES:
+        return _LEGACY_THINKING_ALIASES[normalized]
+    return normalized
+
+
 # Thinking level to budget tokens mapping (None = no extended thinking)
 # Values must match auto-codex-ui/src/shared/constants/models.ts THINKING_BUDGET_MAP
 THINKING_BUDGET_MAP: dict[str, int | None] = {
     "none": None,
     "low": 1024,
     "medium": 4096,  # Moderate analysis
-    "high": 16384,  # Deep thinking for QA review
-    "ultrathink": 65536,  # Maximum reasoning depth
+    "high": 16384,  # Deep thinking for QA review (usually avoid; prefer medium/xhigh)
+    "xhigh": 65536,  # Maximum reasoning depth
+    # Legacy alias (do not emit)
+    "ultrathink": 65536,
 }
 
 # Spec runner phase-specific thinking levels
-# Heavy phases use ultrathink for deep analysis
+# Heavy phases use xhigh for deep analysis
 # Light phases use medium after compaction
 SPEC_PHASE_THINKING_LEVELS: dict[str, str] = {
-    # Heavy phases - ultrathink (discovery, spec creation, self-critique)
-    "discovery": "ultrathink",
-    "spec_writing": "ultrathink",
-    "self_critique": "ultrathink",
+    # Heavy phases - xhigh (discovery, spec creation, self-critique)
+    "discovery": "xhigh",
+    "spec_writing": "xhigh",
+    "self_critique": "xhigh",
     # Light phases - medium (after first invocation with compaction)
     "requirements": "medium",
     "research": "medium",
@@ -62,7 +81,7 @@ DEFAULT_PHASE_MODELS: dict[str, str] = {
 
 DEFAULT_PHASE_THINKING: dict[str, str] = {
     # Prefer medium / xhigh; avoid "high" by default
-    "spec": "ultrathink",
+    "spec": "xhigh",
     "planning": "medium",
     "coding": "low",
     "qa": "medium",
@@ -120,22 +139,23 @@ def get_thinking_budget(thinking_level: str) -> int | None:
     Get the thinking budget for a thinking level.
 
     Args:
-        thinking_level: Thinking level (none, low, medium, high, ultrathink)
+        thinking_level: Thinking level (none, low, medium, high, xhigh)
 
     Returns:
         Token budget or None for no extended thinking
     """
     import logging
 
-    if thinking_level not in THINKING_BUDGET_MAP:
-        valid_levels = ", ".join(THINKING_BUDGET_MAP.keys())
+    normalized = normalize_thinking_level(thinking_level)
+    if normalized not in THINKING_BUDGET_MAP:
+        valid_levels = ", ".join(_CANONICAL_THINKING_LEVELS)
         logging.warning(
             f"Invalid thinking_level '{thinking_level}'. Valid values: {valid_levels}. "
             f"Defaulting to 'medium'."
         )
         return THINKING_BUDGET_MAP["medium"]
 
-    return THINKING_BUDGET_MAP[thinking_level]
+    return THINKING_BUDGET_MAP[normalized]
 
 
 def load_task_metadata(spec_dir: Path) -> TaskMetadataConfig | None:

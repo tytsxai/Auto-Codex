@@ -96,15 +96,17 @@ runner.print_summary(insights)
 
 ### From CLI
 
+> Note: On macOS/Linux, use `python3`. On Windows, use `python`.
+
 ```bash
 # Run full analysis
-python ai_analyzer_runner.py --project-dir /path/to/project
+python3 ai_analyzer_runner.py --project-dir /path/to/project
 
 # Run specific analyzers
-python ai_analyzer_runner.py --analyzers security performance
+python3 ai_analyzer_runner.py --analyzers security performance
 
 # Skip cache
-python ai_analyzer_runner.py --skip-cache
+python3 ai_analyzer_runner.py --skip-cache
 ```
 
 ## Design Principles

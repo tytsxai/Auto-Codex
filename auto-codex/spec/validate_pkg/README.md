@@ -105,18 +105,20 @@ if auto_fix_plan(spec_dir):
 
 ### CLI
 
+> Note: On macOS/Linux, use `python3`. On Windows, use `python`.
+
 ```bash
 # Validate all checkpoints
-python auto-codex/spec/validate_spec.py --spec-dir .auto-codex/specs/001-feature/ --checkpoint all
+python3 auto-codex/spec/validate_spec.py --spec-dir .auto-codex/specs/001-feature/ --checkpoint all
 
 # Validate specific checkpoint
-python auto-codex/spec/validate_spec.py --spec-dir .auto-codex/specs/001-feature/ --checkpoint context
+python3 auto-codex/spec/validate_spec.py --spec-dir .auto-codex/specs/001-feature/ --checkpoint context
 
 # Auto-fix and validate
-python auto-codex/spec/validate_spec.py --spec-dir .auto-codex/specs/001-feature/ --auto-fix --checkpoint plan
+python3 auto-codex/spec/validate_spec.py --spec-dir .auto-codex/specs/001-feature/ --auto-fix --checkpoint plan
 
 # JSON output
-python auto-codex/spec/validate_spec.py --spec-dir .auto-codex/specs/001-feature/ --checkpoint all --json
+python3 auto-codex/spec/validate_spec.py --spec-dir .auto-codex/specs/001-feature/ --checkpoint all --json
 ```
 
 ## Imports

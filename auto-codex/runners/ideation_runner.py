@@ -40,6 +40,7 @@ from ideation import (
     IdeationPhaseResult,
 )
 from ideation.generator import IDEATION_TYPE_LABELS, IDEATION_TYPES
+from phase_config import normalize_thinking_level
 
 # Re-export for backward compatibility
 __all__ = [
@@ -101,7 +102,7 @@ def main():
         "--thinking-level",
         type=str,
         default="medium",
-        choices=["none", "low", "medium", "high", "ultrathink"],
+        choices=["none", "low", "medium", "high", "xhigh", "ultrathink"],
         help="Thinking level for extended reasoning (default: medium)",
     )
     parser.add_argument(
@@ -116,6 +117,7 @@ def main():
     )
 
     args = parser.parse_args()
+    args.thinking_level = normalize_thinking_level(args.thinking_level)
 
     # Validate project directory
     project_dir = args.project.resolve()

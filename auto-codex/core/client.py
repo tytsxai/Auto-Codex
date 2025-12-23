@@ -137,7 +137,7 @@ def create_client(
     Args:
         project_dir: Root directory for the project (working directory)
         spec_dir: Directory containing the spec (for security profiling)
-        model: Codex model to use (legacy reasoning suffix like -xhigh is accepted but discouraged)
+        model: Codex model to use (model ID is stable; legacy suffix input like -xhigh is accepted but discouraged)
         agent_type: Agent role (reserved for future routing)
         max_thinking_tokens: Token budget used to infer Codex reasoning effort
     """

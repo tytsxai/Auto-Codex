@@ -181,7 +181,19 @@ def merge_existing_build(
         else None
     )
 
+    # Determine the actual spec branch from the worktree (supports legacy prefixes like auto-claude/*).
     spec_branch = f"auto-codex/{spec_name}"
+    try:
+        branch_result = subprocess.run(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            cwd=worktree_path,
+            capture_output=True,
+            text=True,
+        )
+        if branch_result.returncode == 0 and branch_result.stdout.strip():
+            spec_branch = branch_result.stdout.strip()
+    except Exception:
+        pass
 
     # Don't merge a branch into itself
     if current_branch == spec_branch:
@@ -506,7 +518,21 @@ def _check_git_conflicts(project_dir: Path, spec_name: str) -> dict:
     """
     import re
 
+    # Determine the actual spec branch from the worktree (supports legacy prefixes like auto-claude/*).
     spec_branch = f"auto-codex/{spec_name}"
+    try:
+        worktree_path = project_dir / ".worktrees" / spec_name
+        if worktree_path.exists():
+            branch_result = subprocess.run(
+                ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+                cwd=worktree_path,
+                capture_output=True,
+                text=True,
+            )
+            if branch_result.returncode == 0 and branch_result.stdout.strip():
+                spec_branch = branch_result.stdout.strip()
+    except Exception:
+        pass
     result = {
         "has_conflicts": False,
         "conflicting_files": [],

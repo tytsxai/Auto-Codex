@@ -68,12 +68,14 @@ const MODEL_SHORT_LABELS: Record<ModelTypeShort, string> = {
 };
 
 // Short labels for thinking levels
-const THINKING_SHORT_LABELS: Record<ThinkingLevel, string> = {
+const THINKING_SHORT_LABELS: Record<string, string> = {
   none: '无',
   low: '低',
   medium: '中',
   high: '高',
-  ultrathink: '超强'
+  xhigh: '极高',
+  // Legacy alias (old settings/tasks)
+  ultrathink: '极高'
 };
 
 // Helper to get model and thinking info for a log phase

@@ -5,21 +5,23 @@
 ## 快速开始
 
 ```bash
-# 1. 克隆仓库（如果尚未克隆）
-git clone https://github.com/tytsxai/Auto-Codex.git
-cd Auto-Codex/auto-codex-ui
+# 1. 进入 UI 目录
+cd auto-codex-ui
 
 # 2. 安装依赖
 pnpm install
 
-# 3. 构建桌面应用
+# 3. 构建并启动（开发者常用）
+pnpm run build && pnpm run start
+
+# 4. 打包桌面应用（发布/分发）
 pnpm run package:win    # Windows
 pnpm run package:mac    # macOS
 pnpm run package:linux  # Linux
 
-# 4. 运行应用
+# 5. 运行打包产物（也可用下面的快捷脚本）
 # Windows: .\\dist\\win-unpacked\\Auto-Codex.exe
-# macOS:   open dist/mac-arm64/Auto\\ Codex.app
+# macOS:   open dist/mac-arm64/Auto-Codex.app
 # Linux:   ./dist/linux-unpacked/auto-codex
 ```
 
@@ -60,7 +62,7 @@ pnpm run package:linux
 .\dist\Auto-Codex Setup X.X.X.exe
 
 # macOS
-open dist/mac-arm64/Auto\ Codex.app
+open dist/mac-arm64/Auto-Codex.app || open dist/mac/Auto-Codex.app
 
 # Linux
 ./dist/linux-unpacked/auto-codex
@@ -71,7 +73,7 @@ open dist/mac-arm64/Auto\ Codex.app
 用于带热重载的开发（可选）：
 
 ```bash
-npm run dev
+pnpm run dev
 ```
 
 > **注意**：某些功能（如自动更新）仅在打包版本中可用。
@@ -115,7 +117,7 @@ pnpm run typecheck
 
 ## 技术栈
 
-- **框架**：Electron + React 18（TypeScript）
+- **框架**：Electron + React 19（TypeScript）
 - **构建工具**：electron-vite + electron-builder
 - **UI 组件**：Radix UI（shadcn/ui 模式）
 - **样式**：TailwindCSS
@@ -123,7 +125,7 @@ pnpm run typecheck
 
 ## 环境变量
 
-- `OPENAI_API_KEY`：OpenAI Codex CLI 的 API Key（来自 auto-codex/.env）
+- `OPENAI_API_KEY`：Codex CLI 的 API Key（可通过应用设置配置，或在 `auto-codex/.env` 中提供）
 - `FALKORDB_URL`：FalkorDB 连接 URL（可选）
 
 ## 许可证

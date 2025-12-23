@@ -49,8 +49,8 @@ export function useIdeation(projectId: string, options: UseIdeationOptions = {})
 
   // Token check disabled - backend handles authentication via .env
   // const { hasToken, isLoading: isCheckingToken, checkToken } = useCodexTokenCheck();
-  const hasToken = true;
-  const isCheckingToken = false;
+  const hasToken: boolean = true;
+  const isCheckingToken: boolean = false;
 
   // Set up IPC listeners and load ideation on mount
   useEffect(() => {
@@ -60,20 +60,10 @@ export function useIdeation(projectId: string, options: UseIdeationOptions = {})
   }, [projectId]);
 
   const handleGenerate = async () => {
-    if (hasToken === false) {
-      setPendingAction('generate');
-      setShowEnvConfigModal(true);
-      return;
-    }
     generateIdeation(projectId);
   };
 
   const handleRefresh = async () => {
-    if (hasToken === false) {
-      setPendingAction('refresh');
-      setShowEnvConfigModal(true);
-      return;
-    }
     refreshIdeation(projectId);
   };
 
@@ -106,12 +96,6 @@ export function useIdeation(projectId: string, options: UseIdeationOptions = {})
 
   const handleAddMoreIdeas = () => {
     if (typesToAdd.length === 0) return;
-
-    if (hasToken === false) {
-      setPendingAction('append');
-      setShowEnvConfigModal(true);
-      return;
-    }
 
     appendIdeation(projectId, typesToAdd);
     setTypesToAdd([]);

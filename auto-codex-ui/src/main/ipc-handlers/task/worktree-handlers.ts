@@ -444,7 +444,12 @@ export function registerWorktreeHandlers(
 
                   if (!hasActualStagedChanges) {
                     // Check if worktree branch was already merged (merge commit exists)
-                    const specBranch = `auto-codex/${task.specId}`;
+                    let specBranch = `auto-codex/${task.specId}`;
+                    try {
+                      specBranch = getCurrentBranch(worktreePath);
+                    } catch {
+                      // Fall back to default branch naming
+                    }
                     try {
                       const mergeCheck = spawnSync('git', ['merge-base', '--is-ancestor', specBranch, 'HEAD'], {
                         cwd: project.path,
@@ -866,6 +871,17 @@ export function registerWorktreeHandlers(
         const project = projectStore.getProject(projectId);
         if (!project) {
           return { success: false, error: 'Project not found' };
+        }
+
+        // Clean up stale/prunable worktree metadata so future worktree operations don't fail.
+        // This is safe: it only removes admin data for missing worktrees.
+        try {
+          runGit(project.path, ['worktree', 'prune']);
+        } catch (pruneError) {
+          console.warn(
+            'Failed to prune worktrees (continuing):',
+            pruneError instanceof Error ? pruneError.message : pruneError
+          );
         }
 
         const worktreesDir = path.join(project.path, '.worktrees');

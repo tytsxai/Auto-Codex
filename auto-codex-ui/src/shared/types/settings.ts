@@ -22,8 +22,9 @@ export interface ColorThemeDefinition {
   previewColors: ThemePreviewColors;
 }
 
-// Thinking level for Codex model (budget token allocation)
-export type ThinkingLevel = 'none' | 'low' | 'medium' | 'high' | 'ultrathink';
+// Thinking level / reasoning effort for Codex model (budget token allocation)
+// Note: This is a runtime parameter (low/medium/high/xhigh), not part of the model name.
+export type ThinkingLevel = 'none' | 'low' | 'medium' | 'high' | 'xhigh';
 
 // Model type shorthand
 export type ModelTypeShort = 'codex';

@@ -354,7 +354,7 @@ python3 /path/to/auto-codex/run.py --spec 001
 
 **When developing Auto-Codex itself:**
 ```bash
-git clone https://github.com/yourusername/auto-codex
+git clone https://github.com/tytsxai/Auto-Codex.git
 cd auto-codex/               # You're working in the framework repo
 ```
 

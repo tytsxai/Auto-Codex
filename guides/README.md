@@ -8,6 +8,7 @@ Detailed documentation for Auto-Codex setup and usage.
 |-------|-------------|
 | **[CLI-USAGE.md](CLI-USAGE.md)** | Terminal-only usage for power users, headless servers, and CI/CD |
 | **[DOCKER-SETUP.md](DOCKER-SETUP.md)** | Docker Desktop installation, FalkorDB setup, and troubleshooting |
+| **[OPERATIONS.md](OPERATIONS.md)** | Backup/restore, rollback, and operational procedures |
 
 ## Quick Links
 

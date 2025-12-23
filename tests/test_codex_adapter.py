@@ -78,7 +78,7 @@ def test_parse_output_line_variants() -> None:
     assert non_json.data["content"] == "not json"
 
 
-def test_model_suffix_maps_to_reasoning_effort() -> None:
+def test_legacy_model_suffix_is_parsed_as_reasoning_effort() -> None:
     client = CodexCliClient(model="gpt-5.2-codex-xhigh")
     assert client.model == "gpt-5.2-codex"
     assert client.reasoning_effort == "xhigh"
@@ -126,15 +126,17 @@ async def test_timeout_emits_error(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_is_available_checks_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    import providers.codex_cli as codex_cli
+
     client = CodexCliClient()
 
-    monkeypatch.setattr("shutil.which", lambda name: "/usr/bin/codex")
-    monkeypatch.setenv("OPENAI_API_KEY", "test")
+    monkeypatch.setattr(codex_cli, "find_codex_path", lambda: "/usr/bin/codex")
+    monkeypatch.setattr(codex_cli, "get_auth_token", lambda: "test-token")
     assert client.is_available() is True
 
-    monkeypatch.setattr("shutil.which", lambda name: None)
+    monkeypatch.setattr(codex_cli, "find_codex_path", lambda: None)
     assert client.is_available() is False
 
-    monkeypatch.setattr("shutil.which", lambda name: "/usr/bin/codex")
-    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.setattr(codex_cli, "find_codex_path", lambda: "/usr/bin/codex")
+    monkeypatch.setattr(codex_cli, "get_auth_token", lambda: "")
     assert client.is_available() is False

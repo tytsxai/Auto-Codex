@@ -1,6 +1,6 @@
 # GitHub Issues Module
 
-A well-structured, modular implementation of the GitHub Issues feature for the Auto Codex UI.
+A well-structured, modular implementation of the GitHub Issues feature for the Auto-Codex UI.
 
 ## Quick Stats
 
@@ -279,4 +279,4 @@ When contributing to this module:
 
 ## License
 
-Part of the Auto Codex project.
+Part of the Auto-Codex project.

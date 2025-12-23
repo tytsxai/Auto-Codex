@@ -138,12 +138,14 @@ Will continue to work without changes.
 
 The CLI interface remains **completely unchanged**:
 
+> Note: On macOS/Linux, use `python3`. On Windows, use `python`.
+
 ```bash
 # All existing commands work exactly the same
-python auto-codex/spec/validate_spec.py --spec-dir path/to/spec --checkpoint all
-python auto-codex/spec/validate_spec.py --spec-dir path/to/spec --checkpoint context
-python auto-codex/spec/validate_spec.py --spec-dir path/to/spec --auto-fix --checkpoint plan
-python auto-codex/spec/validate_spec.py --spec-dir path/to/spec --checkpoint all --json
+python3 auto-codex/spec/validate_spec.py --spec-dir path/to/spec --checkpoint all
+python3 auto-codex/spec/validate_spec.py --spec-dir path/to/spec --checkpoint context
+python3 auto-codex/spec/validate_spec.py --spec-dir path/to/spec --auto-fix --checkpoint plan
+python3 auto-codex/spec/validate_spec.py --spec-dir path/to/spec --checkpoint all --json
 ```
 
 ## Testing

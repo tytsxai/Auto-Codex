@@ -24,6 +24,8 @@ export const THINKING_BUDGET_MAP: Record<string, number | null> = {
   low: 1024,
   medium: 4096,
   high: 16384,
+  xhigh: 65536,
+  // Legacy alias (do not surface in UI)
   ultrathink: 65536
 } as const;
 
@@ -37,7 +39,7 @@ export const THINKING_LEVELS = [
   { value: 'low', label: 'Low', description: 'Brief consideration' },
   { value: 'medium', label: 'Medium', description: 'Moderate analysis' },
   { value: 'high', label: 'High', description: 'Deep thinking' },
-  { value: 'ultrathink', label: 'Ultra Think', description: 'Maximum reasoning depth' }
+  { value: 'xhigh', label: 'XHigh', description: 'Maximum reasoning depth' }
 ] as const;
 
 // ============================================
@@ -55,7 +57,7 @@ export const DEFAULT_PHASE_MODELS: PhaseModelConfig = {
 
 // Auto 配置的默认阶段思考设置
 export const DEFAULT_PHASE_THINKING: import('../types/settings').PhaseThinkingConfig = {
-  spec: 'ultrathink',   // 关键路径：用 xhigh 映射深度推理
+  spec: 'xhigh',        // 关键路径：深度推理
   planning: 'medium',   // 默认优先 medium / xhigh（避免 high）
   coding: 'low',        // 更快的编码迭代
   qa: 'medium'          // 默认优先 medium / xhigh（避免 high）
@@ -75,8 +77,8 @@ export const DEFAULT_FEATURE_MODELS: FeatureModelConfig = {
 // 默认功能思考配置
 export const DEFAULT_FEATURE_THINKING: FeatureThinkingConfig = {
   insights: 'medium',   // 对话所需的平衡思考
-  ideation: 'high',     // 创意想法需要深度思考
-  roadmap: 'high'       // 路线图需要战略性思考
+  ideation: 'xhigh',    // 默认优先 medium / xhigh（避免 high）
+  roadmap: 'xhigh'      // 默认优先 medium / xhigh（避免 high）
 };
 
 // UI 展示的功能标签
@@ -104,7 +106,7 @@ export const DEFAULT_AGENT_PROFILES: AgentProfile[] = [
     name: 'Complex Tasks',
     description: 'For intricate, multi-step implementations requiring deep analysis',
     model: 'codex',
-    thinkingLevel: 'ultrathink',
+    thinkingLevel: 'xhigh',
     icon: 'Brain'
   },
   {

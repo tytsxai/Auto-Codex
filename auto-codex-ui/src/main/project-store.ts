@@ -572,7 +572,7 @@ export class ProjectStore {
           metadata.archivedInVersion = version;
         }
 
-        writeFileSync(metadataPath, JSON.stringify(metadata, null, 2));
+        atomicWriteFileSync(metadataPath, JSON.stringify(metadata, null, 2));
       } catch {
         // Continue with other tasks even if one fails
       }
@@ -602,7 +602,7 @@ export class ProjectStore {
           const metadata: TaskMetadata = JSON.parse(readFileSync(metadataPath, 'utf-8'));
           delete metadata.archivedAt;
           delete metadata.archivedInVersion;
-          writeFileSync(metadataPath, JSON.stringify(metadata, null, 2));
+          atomicWriteFileSync(metadataPath, JSON.stringify(metadata, null, 2));
         }
       } catch {
         // Continue with other tasks even if one fails

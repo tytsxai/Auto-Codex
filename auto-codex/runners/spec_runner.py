@@ -93,7 +93,7 @@ elif dev_env_file.exists():
 
 from core.auth import require_auth_token
 from debug import debug, debug_error, debug_section, debug_success
-from phase_config import resolve_model_id
+from phase_config import normalize_thinking_level, resolve_model_id
 from review import ReviewState
 from spec import SpecOrchestrator
 from ui import Icons, highlight, icon, muted, print_section, print_status
@@ -173,8 +173,8 @@ Examples:
         "--thinking-level",
         type=str,
         default="medium",
-        choices=["none", "low", "medium", "high", "ultrathink"],
-        help="Thinking level for extended thinking (none, low, medium, high, ultrathink)",
+        choices=["none", "low", "medium", "high", "xhigh", "ultrathink"],
+        help="Thinking level for extended thinking (none, low, medium, high, xhigh)",
     )
     parser.add_argument(
         "--no-ai-assessment",
@@ -203,6 +203,7 @@ Examples:
     )
 
     args = parser.parse_args()
+    args.thinking_level = normalize_thinking_level(args.thinking_level)
 
     # Validate authentication early for clearer UX
     try:

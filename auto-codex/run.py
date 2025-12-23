@@ -24,8 +24,8 @@ Usage:
 
 Prerequisites:
     - Codex authentication configured (OPENAI_API_KEY, CODEX_CODE_OAUTH_TOKEN, or CODEX_CONFIG_DIR)
-    - Spec created via: codex /spec
-    - Codex Code CLI installed
+    - Spec created via: python auto-codex/runners/spec_runner.py (writes to .auto-codex/specs/)
+    - Codex CLI installed (`codex` available on PATH)
 """
 
 import sys

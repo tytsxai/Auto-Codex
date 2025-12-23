@@ -449,7 +449,7 @@ docker system prune -a --volumes
 
 If you're still having issues:
 
-1. Check the [Auto-Codex GitHub Issues](https://github.com/auto-codex/auto-codex/issues)
+1. Check the [Auto-Codex GitHub Issues](https://github.com/tytsxai/Auto-Codex/issues)
 2. Search for your error message
 3. Create a new issue with:
    - Your operating system and version

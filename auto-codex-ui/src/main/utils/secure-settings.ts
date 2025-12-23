@@ -4,13 +4,15 @@ import { DEFAULT_APP_SETTINGS } from '../../shared/constants';
 import type { AppSettings } from '../../shared/types';
 import { decryptToken, encryptToken, isTokenEncrypted } from '../codex-profile/token-encryption';
 
-export const SENSITIVE_SETTINGS_FIELDS: Array<keyof AppSettings> = [
+export const SENSITIVE_SETTINGS_FIELDS = [
   'globalCodexOAuthToken',
   'globalOpenAIApiKey',
   'globalAnthropicApiKey',
   'globalGoogleApiKey',
   'globalGroqApiKey'
-];
+] as const satisfies ReadonlyArray<keyof AppSettings>;
+
+type SensitiveSettingsField = typeof SENSITIVE_SETTINGS_FIELDS[number];
 
 export interface SecureSettingsLoadResult {
   settings: AppSettings;
@@ -49,7 +51,7 @@ export function loadSettingsWithDecryptedSecrets(settingsPath: string): SecureSe
       if (encryptionAvailable) {
         const decrypted = decryptToken(value);
         if (decrypted) {
-          settings[field] = decrypted as AppSettings[typeof field];
+          settings[field] = decrypted as AppSettings[SensitiveSettingsField];
         } else {
           settings[field] = undefined;
           requiresReauth = true;
@@ -97,7 +99,7 @@ export function prepareSettingsForSave(settings: AppSettings): SecureSettingsSav
 
     if (encryptionAvailable) {
       const encrypted = encryptToken(value);
-      nextSettings[field] = encrypted as AppSettings[typeof field];
+      nextSettings[field] = encrypted as AppSettings[SensitiveSettingsField];
       if (!isTokenEncrypted(encrypted)) {
         wrotePlaintext = true;
       }

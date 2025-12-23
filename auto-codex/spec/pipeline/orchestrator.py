@@ -10,7 +10,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from analysis.analyzers import analyze_project
-from phase_config import get_thinking_budget
+from phase_config import get_thinking_budget, normalize_thinking_level
 from prompts_pkg.project_context import should_refresh_project_index
 from review import run_review_checkpoint
 from task_logger import (
@@ -70,7 +70,7 @@ class SpecOrchestrator:
             spec_name: Optional spec name (for existing specs)
             spec_dir: Optional existing spec directory (for UI integration)
             model: The model to use for agent execution
-            thinking_level: Thinking level (none, low, medium, high, ultrathink)
+            thinking_level: Thinking level (none, low, medium, high, xhigh)
             complexity_override: Force a specific complexity level
             use_ai_assessment: Whether to use AI for complexity assessment
             dev_mode: Deprecated, kept for API compatibility
@@ -78,7 +78,7 @@ class SpecOrchestrator:
         self.project_dir = Path(project_dir)
         self.task_description = task_description
         self.model = model
-        self.thinking_level = thinking_level
+        self.thinking_level = normalize_thinking_level(thinking_level)
         self.complexity_override = complexity_override
         self.use_ai_assessment = use_ai_assessment
         self.dev_mode = dev_mode

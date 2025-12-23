@@ -49,7 +49,7 @@ You should see JSON output with a message event.
 ## 4) Run Auto-Codex
 
 ```bash
-python auto-codex/run.py --spec 001
+python3 auto-codex/run.py --spec 001
 ```
 
 ## Environment Variable Changes

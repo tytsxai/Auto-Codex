@@ -1,6 +1,6 @@
 # Auto-Codex CLI Usage
 
-This document covers terminal-only usage of Auto-Codex. **For most users, we recommend using the [Desktop UI](#) instead** - it provides a better experience with visual task management, progress tracking, and automatic Python environment setup.
+This document covers terminal-only usage of Auto-Codex. **For most users, we recommend using the [Desktop UI](../README.md) instead** - it provides a better experience with visual task management, progress tracking, and automatic Python environment setup.
 
 ## When to Use CLI
 
@@ -51,16 +51,16 @@ Run these commands from your **project root** and point to the Auto-Codex script
 source .venv/bin/activate
 
 # Create a spec interactively
-python /path/to/auto-codex/runners/spec_runner.py --interactive
+python3 /path/to/auto-codex/runners/spec_runner.py --interactive
 
 # Or with a task description
-python /path/to/auto-codex/runners/spec_runner.py --task "Add user authentication with OAuth"
+python3 /path/to/auto-codex/runners/spec_runner.py --task "Add user authentication with OAuth"
 
 # Force a specific complexity level
-python /path/to/auto-codex/runners/spec_runner.py --task "Fix button color" --complexity simple
+python3 /path/to/auto-codex/runners/spec_runner.py --task "Fix button color" --complexity simple
 
 # Continue an interrupted spec
-python /path/to/auto-codex/runners/spec_runner.py --continue 001-feature
+python3 /path/to/auto-codex/runners/spec_runner.py --continue 001-feature
 ```
 
 ### Complexity Tiers
@@ -77,14 +77,14 @@ The spec runner automatically assesses task complexity:
 
 ```bash
 # List all specs and their status
-python /path/to/auto-codex/run.py --list
+python3 /path/to/auto-codex/run.py --list
 
 # Run a specific spec
-python /path/to/auto-codex/run.py --spec 001
-python /path/to/auto-codex/run.py --spec 001-feature-name
+python3 /path/to/auto-codex/run.py --spec 001
+python3 /path/to/auto-codex/run.py --spec 001-feature-name
 
 # Limit iterations for testing
-python /path/to/auto-codex/run.py --spec 001 --max-iterations 5
+python3 /path/to/auto-codex/run.py --spec 001 --max-iterations 5
 ```
 
 ## QA Validation
@@ -93,13 +93,13 @@ After all chunks are complete, QA validation runs automatically:
 
 ```bash
 # Skip automatic QA
-python /path/to/auto-codex/run.py --spec 001 --skip-qa
+python3 /path/to/auto-codex/run.py --spec 001 --skip-qa
 
 # Run QA validation manually
-python /path/to/auto-codex/run.py --spec 001 --qa
+python3 /path/to/auto-codex/run.py --spec 001 --qa
 
 # Check QA status
-python /path/to/auto-codex/run.py --spec 001 --qa-status
+python3 /path/to/auto-codex/run.py --spec 001 --qa-status
 ```
 
 The QA validation loop:
@@ -114,17 +114,18 @@ Auto-Codex uses Git worktrees for isolated builds:
 
 ```bash
 # Test the feature in the isolated workspace
-cd .worktrees/auto-codex/
+cd .worktrees/<spec-name>/
+# e.g. cd .worktrees/001-feature-name/
 npm run dev  # or your project's run command
 
 # See what was changed
-python /path/to/auto-codex/run.py --spec 001 --review
+python3 /path/to/auto-codex/run.py --spec 001 --review
 
 # Merge changes into your project
-python /path/to/auto-codex/run.py --spec 001 --merge
+python3 /path/to/auto-codex/run.py --spec 001 --merge
 
 # Discard if you don't like it
-python /path/to/auto-codex/run.py --spec 001 --discard
+python3 /path/to/auto-codex/run.py --spec 001 --discard
 ```
 
 ## Interactive Controls
@@ -151,7 +152,7 @@ echo "Focus on fixing the login bug first" > specs/001-name/HUMAN_INPUT.md
 ## Spec Validation
 
 ```bash
-python /path/to/auto-codex/spec/validate_spec.py --spec-dir .auto-codex/specs/001-feature --checkpoint all
+python3 /path/to/auto-codex/spec/validate_spec.py --spec-dir .auto-codex/specs/001-feature --checkpoint all
 ```
 
 ## Environment Variables
@@ -173,5 +174,5 @@ For cross-session context retention, see the main README for Memory Layer setup 
 ```bash
 cd /path/to/auto-codex
 source .venv/bin/activate
-python integrations/graphiti/test_graphiti_memory.py
+python3 integrations/graphiti/test_graphiti_memory.py
 ```

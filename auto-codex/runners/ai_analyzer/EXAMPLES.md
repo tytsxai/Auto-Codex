@@ -6,19 +6,19 @@
 
 ```bash
 # Run full analysis on current directory
-python ai_analyzer_runner.py
+python3 ai_analyzer_runner.py
 
 # Analyze specific project
-python ai_analyzer_runner.py --project-dir /path/to/project
+python3 ai_analyzer_runner.py --project-dir /path/to/project
 
 # Run only security and performance analyzers
-python ai_analyzer_runner.py --analyzers security performance
+python3 ai_analyzer_runner.py --analyzers security performance
 
 # Force fresh analysis (skip cache)
-python ai_analyzer_runner.py --skip-cache
+python3 ai_analyzer_runner.py --skip-cache
 
 # Use custom programmatic analysis file
-python ai_analyzer_runner.py --index custom_analysis.json
+python3 ai_analyzer_runner.py --index custom_analysis.json
 ```
 
 ## Python API
@@ -260,13 +260,13 @@ runner.print_summary(insights)  # Outputs JSON
 set -e
 
 # Run programmatic analysis first
-python analyzer.py --project-dir . --index
+python3 analyzer.py --project-dir . --index
 
 # Run AI analysis
-python ai_analyzer_runner.py --project-dir . --analyzers security
+python3 ai_analyzer_runner.py --project-dir . --analyzers security
 
 # Check security score
-SECURITY_SCORE=$(python -c "
+SECURITY_SCORE=$(python3 -c "
 import json
 data = json.load(open('comprehensive_analysis.json'))
 print(data.get('security', {}).get('score', 0))

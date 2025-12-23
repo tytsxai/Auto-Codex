@@ -25,7 +25,7 @@ if env_file.exists():
 from core.auth import get_auth_token
 from core.client import create_client
 from providers.codex_cli import find_codex_path, get_gui_env
-from phase_config import get_thinking_budget
+from phase_config import get_thinking_budget, normalize_thinking_level
 from debug import (
     debug,
     debug_detailed,
@@ -341,7 +341,7 @@ def main():
     parser.add_argument(
         "--thinking-level",
         default="medium",
-        choices=["none", "low", "medium", "high", "ultrathink"],
+        choices=["none", "low", "medium", "high", "xhigh", "ultrathink"],
         help="Thinking level for extended reasoning (default: medium)",
     )
     args = parser.parse_args()
@@ -351,7 +351,7 @@ def main():
     project_dir = args.project_dir
     user_message = args.message
     model = args.model
-    thinking_level = args.thinking_level
+    thinking_level = normalize_thinking_level(args.thinking_level)
 
     debug(
         "insights_runner",

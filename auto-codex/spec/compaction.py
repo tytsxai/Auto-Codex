@@ -71,7 +71,7 @@ Be concise and use bullet points. Skip boilerplate and meta-commentary.
         spec_dir=spec_dir,
         model=model,
         agent_type="planner",
-        max_thinking_tokens=get_thinking_budget("ultrathink"),
+        max_thinking_tokens=get_thinking_budget("xhigh"),
     )
 
     try:
