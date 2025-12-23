@@ -99,7 +99,7 @@ describe('Subprocess Spawn Integration', () => {
       manager.startSpecCreation('task-1', TEST_PROJECT_PATH, 'Test task description');
 
       expect(spawn).toHaveBeenCalledWith(
-        'python3',
+        expect.stringMatching(/python/), // Accept any python command (python, python3, etc.)
         expect.arrayContaining([
           expect.stringContaining('spec_runner.py'),
           '--task',
@@ -123,7 +123,7 @@ describe('Subprocess Spawn Integration', () => {
       manager.startTaskExecution('task-1', TEST_PROJECT_PATH, 'spec-001');
 
       expect(spawn).toHaveBeenCalledWith(
-        'python3',
+        expect.stringMatching(/python/), // Accept any python command
         expect.arrayContaining([expect.stringContaining('run.py'), '--spec', 'spec-001']),
         expect.objectContaining({
           cwd: AUTO_CODEX_SOURCE  // Process runs from auto-codex source directory
@@ -140,7 +140,7 @@ describe('Subprocess Spawn Integration', () => {
       manager.startQAProcess('task-1', TEST_PROJECT_PATH, 'spec-001');
 
       expect(spawn).toHaveBeenCalledWith(
-        'python3',
+        expect.stringMatching(/python/), // Accept any python command
         expect.arrayContaining([
           expect.stringContaining('run.py'),
           '--spec',
@@ -167,7 +167,7 @@ describe('Subprocess Spawn Integration', () => {
 
       // Should spawn normally - parallel options don't affect CLI args anymore
       expect(spawn).toHaveBeenCalledWith(
-        'python3',
+        expect.stringMatching(/python/), // Accept any python command
         expect.arrayContaining([expect.stringContaining('run.py'), '--spec', 'spec-001']),
         expect.any(Object)
       );

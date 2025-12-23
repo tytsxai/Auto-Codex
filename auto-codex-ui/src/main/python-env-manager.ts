@@ -1,4 +1,4 @@
-import { spawn, execSync } from 'child_process';
+import { spawn } from 'child_process';
 import { existsSync } from 'fs';
 import path from 'path';
 import { EventEmitter } from 'events';
@@ -76,16 +76,25 @@ export class PythonEnvManager extends EventEmitter {
 
   /**
    * Check if venv is corrupted (exists but doesn't work)
+   * Uses spawnSync to avoid shell quoting issues with paths containing spaces
    */
   private isVenvCorrupted(): boolean {
     const venvPython = this.getVenvPythonPath();
     if (!venvPython || !existsSync(venvPython)) return false;
 
     try {
-      const version = execSync(`"${venvPython}" --version`, {
+      const { spawnSync } = require('child_process');
+      const result = spawnSync(venvPython, ['--version'], {
         stdio: 'pipe',
         timeout: 5000
-      }).toString();
+      });
+
+      if (result.error || result.status !== 0) {
+        console.warn('[PythonEnvManager] Venv appears corrupted');
+        return true;
+      }
+
+      const version = result.stdout?.toString() || '';
       // Auto-Codex backend requires Python 3.10+ (uses modern typing features).
       const match = version.match(/Python\s+(\d+)\.(\d+)(?:\.(\d+))?/i);
       if (match) {
@@ -127,19 +136,21 @@ export class PythonEnvManager extends EventEmitter {
 
   /**
    * Check if codex-agent-sdk is installed
+   * Uses spawnSync to avoid shell quoting issues with paths containing spaces
    */
   private async checkDepsInstalled(): Promise<boolean> {
     const venvPython = this.getVenvPythonPath();
     if (!venvPython || !existsSync(venvPython)) return false;
 
     try {
+      const { spawnSync } = require('child_process');
       // Check if required runtime deps can be imported.
       // `python-dotenv` is required by all runners (insights/roadmap/ideation).
-      execSync(`"${venvPython}" -c "import dotenv"`, {
+      const result = spawnSync(venvPython, ['-c', 'import dotenv'], {
         stdio: 'pipe',
         timeout: 10000
       });
-      return true;
+      return result.status === 0;
     } catch {
       return false;
     }
@@ -147,8 +158,10 @@ export class PythonEnvManager extends EventEmitter {
 
   /**
    * Find system Python3
+   * Uses spawnSync to avoid shell quoting issues
    */
   private findSystemPython(): string | null {
+    const { spawnSync } = require('child_process');
     const isWindows = process.platform === 'win32';
 
     const isUsablePython = (versionText: string): boolean => {
@@ -187,17 +200,22 @@ export class PythonEnvManager extends EventEmitter {
     if (isWindows) {
       try {
         // py -3 runs Python 3, verify it works
-        const version = execSync('py -3 --version', {
+        const versionResult = spawnSync('py', ['-3', '--version'], {
           stdio: 'pipe',
           timeout: 5000
-        }).toString();
-        if (isUsablePython(version)) {
-          // Get the actual executable path
-          const pythonPath = execSync('py -3 -c "import sys; print(sys.executable)"', {
-            stdio: 'pipe',
-            timeout: 5000
-          }).toString().trim();
-          return pythonPath;
+        });
+        if (versionResult.status === 0) {
+          const version = versionResult.stdout?.toString() || '';
+          if (isUsablePython(version)) {
+            // Get the actual executable path
+            const pathResult = spawnSync('py', ['-3', '-c', 'import sys; print(sys.executable)'], {
+              stdio: 'pipe',
+              timeout: 5000
+            });
+            if (pathResult.status === 0) {
+              return pathResult.stdout?.toString().trim() || null;
+            }
+          }
         }
       } catch {
         // py launcher not available, continue with other candidates
@@ -206,29 +224,45 @@ export class PythonEnvManager extends EventEmitter {
 
     for (const cmd of candidates) {
       try {
-        const version = execSync(`${cmd} --version`, {
+        // Skip missing absolute paths
+        if (cmd.startsWith('/') && !existsSync(cmd)) {
+          continue;
+        }
+
+        const versionResult = spawnSync(cmd, ['--version'], {
           stdio: 'pipe',
           timeout: 5000
-        }).toString();
-        if (isUsablePython(version)) {
-          // Get the actual path
-          // On Windows, use Python itself to get the path
-          // On Unix, use 'which'
-          if (isWindows) {
-            const pythonPath = execSync(`${cmd} -c "import sys; print(sys.executable)"`, {
-              stdio: 'pipe',
-              timeout: 5000
-            }).toString().trim();
-            return pythonPath;
-          }
+        });
 
-          // Absolute paths don't need resolution.
+        if (versionResult.status !== 0) continue;
+
+        const version = versionResult.stdout?.toString() || '';
+        if (isUsablePython(version)) {
+          // Absolute paths don't need resolution
           if (cmd.startsWith('/')) {
             return cmd;
           }
 
-          const pythonPath = execSync(`which ${cmd}`, { stdio: 'pipe', timeout: 5000 }).toString().trim();
-          return pythonPath;
+          // On Windows, use Python itself to get the path
+          if (isWindows) {
+            const pathResult = spawnSync(cmd, ['-c', 'import sys; print(sys.executable)'], {
+              stdio: 'pipe',
+              timeout: 5000
+            });
+            if (pathResult.status === 0) {
+              return pathResult.stdout?.toString().trim() || null;
+            }
+            continue;
+          }
+
+          // On Unix, use 'which' to resolve the path
+          const whichResult = spawnSync('which', [cmd], {
+            stdio: 'pipe',
+            timeout: 5000
+          });
+          if (whichResult.status === 0) {
+            return whichResult.stdout?.toString().trim() || null;
+          }
         }
       } catch {
         continue;
@@ -403,16 +437,32 @@ export class PythonEnvManager extends EventEmitter {
       return { ok: false, error: 'Python environment not found' };
     }
 
-    const src = JSON.stringify(this.autoBuildSourcePath);
-    const cmd = `"${venvPython}" -c "import sys; sys.path.insert(0, ${src}); import dotenv; import core.auth"`;
+    // Use spawn instead of execSync to avoid shell quoting issues
+    return new Promise((resolve) => {
+      const pythonCode = `import sys; sys.path.insert(0, ${JSON.stringify(this.autoBuildSourcePath)}); import dotenv; import core.auth`;
+      const proc = spawn(venvPython, ['-c', pythonCode], {
+        cwd: this.autoBuildSourcePath!,
+        stdio: 'pipe',
+        timeout: 15000
+      });
 
-    try {
-      execSync(cmd, { stdio: 'pipe', timeout: 15000 });
-      return { ok: true };
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      return { ok: false, error: message };
-    }
+      let stderr = '';
+      proc.stderr?.on('data', (data) => {
+        stderr += data.toString();
+      });
+
+      proc.on('close', (code) => {
+        if (code === 0) {
+          resolve({ ok: true });
+        } else {
+          resolve({ ok: false, error: stderr || `Exit code ${code}` });
+        }
+      });
+
+      proc.on('error', (err) => {
+        resolve({ ok: false, error: err.message });
+      });
+    });
   }
 
   /**
