@@ -12,7 +12,6 @@ from pathlib import Path
 from typing import Literal, TypedDict
 
 # Default model from environment or fallback to gpt-5.2-codex
-# Note: gpt-5.2-codex-xhigh requires Codex Pro subscription
 _DEFAULT_MODEL = os.environ.get("AUTO_BUILD_MODEL", "gpt-5.2-codex")
 
 # Model shorthand to full model ID mapping
@@ -62,10 +61,11 @@ DEFAULT_PHASE_MODELS: dict[str, str] = {
 }
 
 DEFAULT_PHASE_THINKING: dict[str, str] = {
-    "spec": "medium",
-    "planning": "high",
-    "coding": "medium",
-    "qa": "high",
+    # Prefer medium / xhigh; avoid "high" by default
+    "spec": "ultrathink",
+    "planning": "medium",
+    "coding": "low",
+    "qa": "medium",
 }
 
 

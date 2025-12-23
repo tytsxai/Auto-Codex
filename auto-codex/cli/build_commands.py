@@ -152,7 +152,12 @@ def handle_build_command(
                 [
                     "",
                     highlight("To review and approve:"),
-                    f"  python auto-codex/review.py --spec-dir {spec_dir}",
+                    (
+                        "  "
+                        f"\"{sys.executable}\" "
+                        f"\"{_PARENT_DIR / 'review' / 'main.py'}\" "
+                        f"--spec-dir \"{spec_dir}\""
+                    ),
                     "",
                     muted("Or use --force to bypass this check (not recommended)."),
                 ]

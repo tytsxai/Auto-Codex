@@ -140,10 +140,10 @@ The CLI interface remains **completely unchanged**:
 
 ```bash
 # All existing commands work exactly the same
-python auto-codex/validate_spec.py --spec-dir path/to/spec --checkpoint all
-python auto-codex/validate_spec.py --spec-dir path/to/spec --checkpoint context
-python auto-codex/validate_spec.py --spec-dir path/to/spec --auto-fix --checkpoint plan
-python auto-codex/validate_spec.py --spec-dir path/to/spec --checkpoint all --json
+python auto-codex/spec/validate_spec.py --spec-dir path/to/spec --checkpoint all
+python auto-codex/spec/validate_spec.py --spec-dir path/to/spec --checkpoint context
+python auto-codex/spec/validate_spec.py --spec-dir path/to/spec --auto-fix --checkpoint plan
+python auto-codex/spec/validate_spec.py --spec-dir path/to/spec --checkpoint all --json
 ```
 
 ## Testing

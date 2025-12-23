@@ -324,8 +324,27 @@ class WorktreeManager:
         if worktree_path.exists():
             self._run_git(["worktree", "remove", "--force", str(worktree_path)])
 
-        # Delete branch if it exists (from previous attempt)
-        self._run_git(["branch", "-D", branch_name])
+        # Delete branch if it exists (from previous attempt) and has no unique commits
+        existing_branch = self._run_git(["rev-parse", "--verify", branch_name])
+        if existing_branch.returncode == 0:
+            count_result = self._run_git(
+                ["rev-list", "--count", f"{self.base_branch}..{branch_name}"]
+            )
+            if count_result.returncode != 0:
+                raise WorktreeError(
+                    f"Failed to check existing branch '{branch_name}': {count_result.stderr}"
+                )
+            if int(count_result.stdout.strip() or "0") > 0:
+                raise WorktreeError(
+                    f"Branch '{branch_name}' has unmerged commits and no worktree.\n"
+                    f"Refusing to delete it automatically.\n"
+                    f"Resolve it manually (merge, rename, or delete) before retrying."
+                )
+            delete_result = self._run_git(["branch", "-D", branch_name])
+            if delete_result.returncode != 0:
+                raise WorktreeError(
+                    f"Failed to delete existing branch '{branch_name}': {delete_result.stderr}"
+                )
 
         # Create worktree with new branch from base
         result = self._run_git(

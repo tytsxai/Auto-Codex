@@ -13,6 +13,23 @@ from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger(__name__)
+_pending_tasks: set[asyncio.Task] = set()
+
+
+def _track_task(task: asyncio.Task) -> asyncio.Task:
+    _pending_tasks.add(task)
+
+    def _on_done(done_task: asyncio.Task) -> None:
+        _pending_tasks.discard(done_task)
+        if done_task.cancelled():
+            return
+        try:
+            done_task.result()
+        except Exception as exc:
+            logger.warning(f"Graphiti async task failed: {exc}")
+
+    task.add_done_callback(_on_done)
+    return task
 
 
 def is_graphiti_memory_enabled() -> bool:
@@ -77,8 +94,9 @@ def run_async(coro):
     """
     try:
         loop = asyncio.get_running_loop()
-        # Already in an event loop - create a task
-        return asyncio.ensure_future(coro)
+        # Already in an event loop - create a task with error tracking
+        task = loop.create_task(coro)
+        return _track_task(task)
     except RuntimeError:
         # No event loop running - create one
         return asyncio.run(coro)

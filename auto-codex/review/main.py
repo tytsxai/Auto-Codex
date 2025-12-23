@@ -33,7 +33,7 @@ Usage:
         state = run_review_checkpoint(spec_dir)
 
     # CLI use (for manual review)
-    python auto-codex/review.py --spec-dir .auto-codex/specs/001-feature
+    python auto-codex/review/main.py --spec-dir .auto-codex/specs/001-feature
 """
 
 import sys

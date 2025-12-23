@@ -114,7 +114,7 @@ def _create_linear_client() -> CodexClientAdapter:
     return create_client(
         project_dir=None,
         spec_dir=None,
-        model="gpt-5.2-codex-xhigh",
+        model="gpt-5.2-codex",
         agent_type="planner",
     )
 

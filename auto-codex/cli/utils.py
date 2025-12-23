@@ -36,9 +36,9 @@ from ui import (
 )
 
 # Configuration
-# Default model - can be overridden via AUTO_BUILD_MODEL environment variable
-# Note: gpt-5.2-codex-xhigh requires Codex Pro subscription
-# For non-Codex accounts, set AUTO_BUILD_MODEL to gpt-4o or another supported model
+# Default model - can be overridden via AUTO_BUILD_MODEL environment variable.
+# Reasoning depth is configured at runtime via `model_reasoning_effort` (low/medium/high/xhigh),
+# not by encoding it into the model name.
 DEFAULT_MODEL = os.environ.get("AUTO_BUILD_MODEL", "gpt-5.2-codex")
 
 

@@ -137,9 +137,9 @@ def create_client(
     Args:
         project_dir: Root directory for the project (working directory)
         spec_dir: Directory containing the spec (for security profiling)
-        model: Codex model to use (can include reasoning effort suffix like gpt-5.2-codex-xhigh)
+        model: Codex model to use (legacy reasoning suffix like -xhigh is accepted but discouraged)
         agent_type: Agent role (reserved for future routing)
-        max_thinking_tokens: Reserved for future Codex settings
+        max_thinking_tokens: Token budget used to infer Codex reasoning effort
     """
     require_auth_token()
 
@@ -155,9 +155,15 @@ def create_client(
     )
     codex_security_args = codex_security_config.to_codex_args()
 
-    # CodexCliClient will parse model string to extract base model and reasoning effort
+    reasoning_effort = _infer_reasoning_effort(max_thinking_tokens)
+
+    # CodexCliClient will parse model string to extract base model and reasoning effort.
+    # We additionally pass `reasoning_effort` inferred from the UI "thinking level"
+    # (mapped via max_thinking_tokens budgets) so Codex uses the correct runtime setting
+    # instead of relying on model-name suffixes.
     client = CodexCliClient(
         model=model,  # Will use AUTO_BUILD_MODEL env var if None
+        reasoning_effort=reasoning_effort,
         workdir=str(resolved_project_dir),
         timeout=600,
         bypass_sandbox=(os.environ.get("AUTO_CODEX_BYPASS_CODEX_SANDBOX", "1") != "0"),
@@ -176,8 +182,29 @@ def get_client(provider: str = "codex", **kwargs) -> LLMClientProtocol:
     workdir = str(project_dir) if project_dir is not None else None
     return CodexCliClient(
         model=kwargs.get("model"),  # Will use AUTO_BUILD_MODEL env var if None
+        reasoning_effort=kwargs.get("reasoning_effort"),
         workdir=workdir,
         timeout=kwargs.get("timeout", 600),
         bypass_sandbox=kwargs.get("bypass_sandbox", True),
         extra_args=kwargs.get("extra_args"),
     )
+
+
+def _infer_reasoning_effort(max_thinking_tokens: int | None) -> str | None:
+    """
+    Infer Codex `model_reasoning_effort` from the UI thinking token budget.
+
+    The desktop UI expresses "thinking level" as a fixed token budget; Codex uses
+    `model_reasoning_effort` (low/medium/high/xhigh). This keeps the public model
+    ID stable (e.g. `gpt-5.2-codex`) and applies reasoning as a runtime parameter.
+    """
+    if max_thinking_tokens is None:
+        return None
+
+    budget_to_effort: dict[int, str] = {
+        1024: "low",
+        4096: "medium",
+        16384: "high",
+        65536: "xhigh",
+    }
+    return budget_to_effort.get(int(max_thinking_tokens))

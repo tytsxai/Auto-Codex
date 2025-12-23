@@ -195,7 +195,7 @@ class TestSpecOrchestratorInit:
 
             orchestrator = SpecOrchestrator(project_dir=temp_dir)
 
-            assert orchestrator.model == "gpt-5.2-codex-xhigh"
+            assert orchestrator.model == "gpt-5.2-codex"
 
     def test_init_custom_model(self, temp_dir: Path):
         """Uses custom model."""

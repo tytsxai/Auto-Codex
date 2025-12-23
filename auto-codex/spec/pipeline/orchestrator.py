@@ -56,7 +56,7 @@ class SpecOrchestrator:
         spec_name: str | None = None,
         spec_dir: Path
         | None = None,  # Use existing spec directory (for UI integration)
-        model: str = "gpt-5.2-codex-xhigh",
+        model: str = "gpt-5.2-codex",
         thinking_level: str = "medium",  # Thinking level for extended thinking
         complexity_override: str | None = None,  # Force a specific complexity
         use_ai_assessment: bool = True,  # Use AI for complexity assessment (vs heuristics)
@@ -176,7 +176,7 @@ class SpecOrchestrator:
                 phase_output,
                 project_dir=self.project_dir,
                 spec_dir=self.spec_dir,
-                model="gpt-5.2-codex-xhigh",
+                model="gpt-5.2-codex",
                 target_words=500,
             )
 

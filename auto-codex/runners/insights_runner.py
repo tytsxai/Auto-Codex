@@ -25,6 +25,7 @@ if env_file.exists():
 from core.auth import get_auth_token
 from core.client import create_client
 from providers.codex_cli import find_codex_path, get_gui_env
+from phase_config import get_thinking_budget
 from debug import (
     debug,
     debug_detailed,
@@ -125,7 +126,7 @@ async def run_with_client(
     project_dir: str,
     message: str,
     history: list,
-    model: str = "gpt-5.2-codex-xhigh",
+    model: str = "gpt-5.2-codex",
     thinking_level: str = "medium",
 ) -> None:
     """Run the chat using the Codex client adapter with streaming."""
@@ -168,6 +169,7 @@ Current question: {message}"""
             spec_dir=None,
             model=model,
             agent_type="planner",
+            max_thinking_tokens=get_thinking_budget(thinking_level),
         )
 
         # Use async context manager pattern
@@ -333,8 +335,8 @@ def main():
     )
     parser.add_argument(
         "--model",
-        default="gpt-5.2-codex-xhigh",
-        help="Codex model ID (default: gpt-5.2-codex-xhigh)",
+        default="gpt-5.2-codex",
+        help="Codex model ID (default: gpt-5.2-codex)",
     )
     parser.add_argument(
         "--thinking-level",

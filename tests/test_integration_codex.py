@@ -7,7 +7,7 @@ from tests.fixtures.codex_mocks import MockCodexClient
 
 
 async def _run_session(client: MockCodexClient, prompt: str, message: str):
-    session_id = await client.start_session(prompt, model="gpt-5.2-codex-xhigh")
+    session_id = await client.start_session(prompt, model="gpt-5.2-codex")
     await client.send(session_id, message)
     events = [event async for event in client.stream_events(session_id)]
     await client.close(session_id)
@@ -31,7 +31,7 @@ async def test_codex_end_to_end_flow() -> None:
         EventType.TOOL_START,
         EventType.TOOL_RESULT,
     ]
-    assert ("start_session", "prompt", {"model": "gpt-5.2-codex-xhigh"}) in client.calls
+    assert ("start_session", "prompt", {"model": "gpt-5.2-codex"}) in client.calls
     assert ("send", session_id, "message") in client.calls
     assert ("stream_events", session_id) in client.calls
     assert ("close", session_id) in client.calls

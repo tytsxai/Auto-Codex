@@ -78,6 +78,18 @@ def test_parse_output_line_variants() -> None:
     assert non_json.data["content"] == "not json"
 
 
+def test_model_suffix_maps_to_reasoning_effort() -> None:
+    client = CodexCliClient(model="gpt-5.2-codex-xhigh")
+    assert client.model == "gpt-5.2-codex"
+    assert client.reasoning_effort == "xhigh"
+
+
+def test_explicit_reasoning_effort_overrides_suffix() -> None:
+    client = CodexCliClient(model="gpt-5.2-codex-xhigh", reasoning_effort="low")
+    assert client.model == "gpt-5.2-codex"
+    assert client.reasoning_effort == "low"
+
+
 @pytest.mark.asyncio
 async def test_process_crash_emits_error(monkeypatch: pytest.MonkeyPatch) -> None:
     client = CodexCliClient(timeout=1)

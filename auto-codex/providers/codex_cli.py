@@ -97,7 +97,7 @@ def parse_model_string(model_str: str) -> tuple[str, str | None, bool]:
     Parse a model string that may include reasoning effort suffix.
 
     Examples:
-        "gpt-5.2-codex-xhigh" -> ("gpt-5.2-codex", "xhigh")
+        "gpt-5.2-codex-xhigh" -> ("gpt-5.2-codex", "xhigh")  # legacy suffix form
         "gpt-5.2-codex" -> ("gpt-5.2-codex", DEFAULT_REASONING_EFFORT)
         "gpt-4o" -> ("gpt-4o", DEFAULT_REASONING_EFFORT)
 
@@ -137,22 +137,16 @@ class CodexCliClient(LLMClientProtocol):
         bypass_sandbox: bool = True,
         extra_args: Optional[list[str]] = None,
     ) -> None:
-        # Parse model string to extract base model and reasoning effort
+        # Parse model string to extract base model and (optional) reasoning effort.
+        # We treat any "-low/-medium/-high/-xhigh" suffix as legacy input and
+        # always translate it into `model_reasoning_effort` instead of passing
+        # a synthetic model name to the Codex CLI.
         raw_model = model or os.environ.get("AUTO_BUILD_MODEL", DEFAULT_MODEL)
-        parsed_model, parsed_effort, has_suffix = parse_model_string(raw_model)
+        parsed_model, parsed_effort, _has_suffix = parse_model_string(raw_model)
 
-        explicit_effort = (
-            normalize_reasoning_effort(reasoning_effort)
-            if reasoning_effort
-            else DEFAULT_REASONING_EFFORT
-        )
-
-        if has_suffix and explicit_effort is None:
-            self.model = raw_model
-            self.reasoning_effort = None
-        else:
-            self.model = parsed_model
-            self.reasoning_effort = explicit_effort or parsed_effort
+        explicit_effort = normalize_reasoning_effort(reasoning_effort) if reasoning_effort else None
+        self.model = parsed_model
+        self.reasoning_effort = explicit_effort or parsed_effort
         self.workdir = workdir or os.getcwd()
         self.timeout = timeout
         self.bypass_sandbox = bypass_sandbox

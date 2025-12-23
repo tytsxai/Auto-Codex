@@ -264,6 +264,7 @@ async def escalate_to_human(
     summary = get_recurring_issue_summary(history)
 
     escalation_file = spec_dir / "QA_ESCALATION.md"
+    run_script = Path(__file__).resolve().parents[1] / "run.py"
 
     content = f"""# QA Escalation - Human Intervention Required
 
@@ -304,7 +305,7 @@ These issues have appeared {RECURRING_ISSUE_THRESHOLD}+ times without being reso
             content += f" in `{issue['file']}`"
         content += "\n"
 
-    content += """
+    content += f"""
 
 ## Recommended Actions
 
@@ -315,7 +316,7 @@ These issues have appeared {RECURRING_ISSUE_THRESHOLD}+ times without being reso
    - Infrastructure/environment problem
    - Test framework limitations
 3. Update the spec or acceptance criteria if needed
-4. Run QA manually after making changes: `python run.py --spec {spec} --qa`
+4. Run QA manually after making changes: `python "{run_script}" --spec {spec_dir.name} --qa`
 
 ## Related Files
 

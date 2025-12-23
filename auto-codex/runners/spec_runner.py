@@ -26,19 +26,19 @@ The AI considers:
 - Risk factors and edge cases
 
 Usage:
-    python auto-codex/spec_runner.py --task "Add user authentication"
-    python auto-codex/spec_runner.py --interactive
-    python auto-codex/spec_runner.py --continue 001-feature
-    python auto-codex/spec_runner.py --task "Fix button color" --complexity simple
-    python auto-codex/spec_runner.py --task "Simple fix" --no-ai-assessment
+    python auto-codex/runners/spec_runner.py --task "Add user authentication"
+    python auto-codex/runners/spec_runner.py --interactive
+    python auto-codex/runners/spec_runner.py --continue 001-feature
+    python auto-codex/runners/spec_runner.py --task "Fix button color" --complexity simple
+    python auto-codex/runners/spec_runner.py --task "Simple fix" --no-ai-assessment
 """
 
 import sys
 
-# Python version check - must be before any imports using 3.10+ syntax
-if sys.version_info < (3, 10):  # noqa: UP036
+# Python version check - must be before any imports using 3.12+ syntax
+if sys.version_info < (3, 12):  # noqa: UP036
     sys.exit(
-        f"Error: Auto Codex requires Python 3.10 or higher.\n"
+        f"Error: Auto Codex requires Python 3.12 or higher.\n"
         f"You are running Python {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}\n"
         f"\n"
         f"Please upgrade Python: https://www.python.org/downloads/"
@@ -104,6 +104,9 @@ def main():
     debug_section("spec_runner", "Spec Runner CLI")
     import argparse
 
+    spec_runner_path = Path(__file__).resolve()
+    review_script_path = spec_runner_path.parent.parent / "review" / "main.py"
+
     parser = argparse.ArgumentParser(
         description="Dynamic spec creation with complexity-based phase selection",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -115,16 +118,16 @@ Complexity Tiers:
 
 Examples:
   # Simple UI fix (auto-detected as simple)
-  python spec_runner.py --task "Fix button color in Header component"
+  python runners/spec_runner.py --task "Fix button color in Header component"
 
   # Force simple mode
-  python spec_runner.py --task "Update text" --complexity simple
+  python runners/spec_runner.py --task "Update text" --complexity simple
 
   # Complex integration (auto-detected)
-  python spec_runner.py --task "Add Graphiti memory integration with FalkorDB"
+  python runners/spec_runner.py --task "Add Graphiti memory integration with FalkorDB"
 
   # Interactive mode
-  python spec_runner.py --interactive
+  python runners/spec_runner.py --interactive
         """,
     )
     parser.add_argument(
@@ -308,15 +311,17 @@ Examples:
                 print_status("Build cannot start: spec not approved.", "error")
                 print()
                 print(f"  {muted('To approve the spec, run:')}")
-                print(
-                    f"  {highlight(f'python auto-codex/review.py --spec-dir {orchestrator.spec_dir}')}"
+                review_cmd = (
+                    f"\"{sys.executable}\" \"{review_script_path}\" "
+                    f"--spec-dir \"{orchestrator.spec_dir}\""
                 )
+                print(f"  {highlight(review_cmd)}")
                 print()
                 print(
                     f"  {muted('Or re-run spec_runner with --auto-approve to skip review:')}"
                 )
                 example_cmd = (
-                    'python auto-codex/spec_runner.py --task "..." --auto-approve'
+                    f"\"{sys.executable}\" \"{spec_runner_path}\" --task \"...\" --auto-approve"
                 )
                 print(f"  {highlight(example_cmd)}")
                 sys.exit(1)
@@ -363,7 +368,7 @@ Examples:
         debug_error("spec_runner", "Spec creation interrupted by user")
         print("\n\nSpec creation interrupted.")
         print(
-            f"To continue: python auto-codex/spec_runner.py --continue {orchestrator.spec_dir.name}"
+            f"To continue: \"{sys.executable}\" \"{spec_runner_path}\" --continue {orchestrator.spec_dir.name}"
         )
         sys.exit(1)
 

@@ -64,6 +64,22 @@ class TestProjectAnalyzerInitialization:
         # Use resolve() to handle /var -> /private/var symlinks on macOS
         assert path.resolve() == (spec_dir / ".auto-codex-security.json").resolve()
 
+    def test_summary_prints_to_stderr_not_stdout(self, temp_dir: Path, capsys):
+        """
+        Analyzer summary should never go to stdout.
+
+        The Electron Insights UI treats stdout as assistant text, so any analyzer
+        diagnostics on stdout can leak into chat transcripts.
+        """
+        (temp_dir / "main.go").write_text("package main\nfunc main() {}\n")
+        analyzer = ProjectAnalyzer(temp_dir)
+
+        analyzer.analyze(force=True)
+
+        captured = capsys.readouterr()
+        assert "SECURITY PROFILE ANALYSIS" not in captured.out
+        assert "SECURITY PROFILE ANALYSIS" in captured.err
+
 
 class TestLanguageDetection:
     """Tests for programming language detection."""

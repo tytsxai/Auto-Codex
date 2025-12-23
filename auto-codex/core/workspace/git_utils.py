@@ -164,16 +164,34 @@ def get_changed_files_from_branch(
     )
 
     files = []
+
+    def _append_file(file_path: str, status: str) -> None:
+        if exclude_auto_claude and _is_auto_claude_file(file_path):
+            return
+        files.append((file_path, status))
+
     if result.returncode == 0:
         for line in result.stdout.strip().split("\n"):
-            if line:
-                parts = line.split("\t", 1)
-                if len(parts) == 2:
-                    file_path = parts[1]
-                    # Exclude .auto-codex directory files from merge
-                    if exclude_auto_claude and _is_auto_claude_file(file_path):
-                        continue
-                    files.append((file_path, parts[0]))  # (file_path, status)
+            if not line:
+                continue
+            parts = line.split("\t")
+            status = parts[0].strip()
+            if not status:
+                continue
+            status_code = status[0]
+
+            if status_code in {"R", "C"}:
+                if len(parts) >= 3:
+                    old_path = parts[1]
+                    new_path = parts[2]
+                    if status_code == "R":
+                        _append_file(old_path, "D")
+                    _append_file(new_path, "A")
+                continue
+
+            if len(parts) >= 2:
+                file_path = parts[1]
+                _append_file(file_path, status_code)
     return files
 
 

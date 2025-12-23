@@ -107,16 +107,16 @@ if auto_fix_plan(spec_dir):
 
 ```bash
 # Validate all checkpoints
-python auto-codex/validate_spec.py --spec-dir .auto-codex/specs/001-feature/ --checkpoint all
+python auto-codex/spec/validate_spec.py --spec-dir .auto-codex/specs/001-feature/ --checkpoint all
 
 # Validate specific checkpoint
-python auto-codex/validate_spec.py --spec-dir .auto-codex/specs/001-feature/ --checkpoint context
+python auto-codex/spec/validate_spec.py --spec-dir .auto-codex/specs/001-feature/ --checkpoint context
 
 # Auto-fix and validate
-python auto-codex/validate_spec.py --spec-dir .auto-codex/specs/001-feature/ --auto-fix --checkpoint plan
+python auto-codex/spec/validate_spec.py --spec-dir .auto-codex/specs/001-feature/ --auto-fix --checkpoint plan
 
 # JSON output
-python auto-codex/validate_spec.py --spec-dir .auto-codex/specs/001-feature/ --checkpoint all --json
+python auto-codex/spec/validate_spec.py --spec-dir .auto-codex/specs/001-feature/ --checkpoint all --json
 ```
 
 ## Imports

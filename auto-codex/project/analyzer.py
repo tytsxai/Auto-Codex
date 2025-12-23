@@ -337,35 +337,53 @@ class ProjectAnalyzer:
         stack = self.profile.detected_stack
         scripts = self.profile.custom_scripts
 
-        print("\n" + "=" * 60)
-        print("  SECURITY PROFILE ANALYSIS")
-        print("=" * 60)
+        # IMPORTANT: write summaries to stderr.
+        # The Electron Insights UI treats stdout as assistant text, so any
+        # diagnostic output on stdout can "leak" into the chat transcript.
+        print("\n" + "=" * 60, file=sys.stderr)
+        print("  SECURITY PROFILE ANALYSIS", file=sys.stderr)
+        print("=" * 60, file=sys.stderr)
 
         if stack.languages:
-            print(f"\nLanguages: {', '.join(stack.languages)}")
+            print(f"\nLanguages: {', '.join(stack.languages)}", file=sys.stderr)
 
         if stack.package_managers:
-            print(f"Package Managers: {', '.join(stack.package_managers)}")
+            print(
+                f"Package Managers: {', '.join(stack.package_managers)}",
+                file=sys.stderr,
+            )
 
         if stack.frameworks:
-            print(f"Frameworks: {', '.join(stack.frameworks)}")
+            print(f"Frameworks: {', '.join(stack.frameworks)}", file=sys.stderr)
 
         if stack.databases:
-            print(f"Databases: {', '.join(stack.databases)}")
+            print(f"Databases: {', '.join(stack.databases)}", file=sys.stderr)
 
         if stack.infrastructure:
-            print(f"Infrastructure: {', '.join(stack.infrastructure)}")
+            print(
+                f"Infrastructure: {', '.join(stack.infrastructure)}",
+                file=sys.stderr,
+            )
 
         if stack.cloud_providers:
-            print(f"Cloud Providers: {', '.join(stack.cloud_providers)}")
+            print(
+                f"Cloud Providers: {', '.join(stack.cloud_providers)}",
+                file=sys.stderr,
+            )
 
         if scripts.npm_scripts:
-            print(f"NPM Scripts: {len(scripts.npm_scripts)} detected")
+            print(
+                f"NPM Scripts: {len(scripts.npm_scripts)} detected",
+                file=sys.stderr,
+            )
 
         if scripts.make_targets:
-            print(f"Make Targets: {len(scripts.make_targets)} detected")
+            print(
+                f"Make Targets: {len(scripts.make_targets)} detected",
+                file=sys.stderr,
+            )
 
         total_commands = len(self.profile.get_all_allowed_commands())
-        print(f"\nTotal Allowed Commands: {total_commands}")
+        print(f"\nTotal Allowed Commands: {total_commands}", file=sys.stderr)
 
-        print("-" * 60)
+        print("-" * 60, file=sys.stderr)

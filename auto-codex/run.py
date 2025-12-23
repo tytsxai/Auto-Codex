@@ -30,10 +30,10 @@ Prerequisites:
 
 import sys
 
-# Python version check - must be before any imports using 3.10+ syntax
-if sys.version_info < (3, 10):  # noqa: UP036
+# Python version check - must be before any imports using 3.12+ syntax
+if sys.version_info < (3, 12):  # noqa: UP036
     sys.exit(
-        f"Error: Auto-Codex requires Python 3.10 or higher.\n"
+        f"Error: Auto-Codex requires Python 3.12 or higher.\n"
         f"You are running Python {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}\n"
         f"\n"
         f"Please upgrade Python: https://www.python.org/downloads/"
