@@ -288,5 +288,17 @@ export const IPC_CHANNELS = {
   RELEASE_GET_VERSIONS: 'release:getVersions',
 
   // 发布事件（主进程 -> 渲染进程）
-  RELEASE_PROGRESS: 'release:progress'
+  RELEASE_PROGRESS: 'release:progress',
+
+  // 工作流操作（智能工作树管理）
+  WORKFLOW_STAGE_WORKTREE: 'workflow:stageWorktree',
+  WORKFLOW_GET_STAGED_CHANGES: 'workflow:getStagedChanges',
+  WORKFLOW_COMMIT_CHANGES: 'workflow:commitChanges',
+  WORKFLOW_DISCARD_CHANGES: 'workflow:discardChanges',
+  WORKFLOW_GET_HEALTH_STATUS: 'workflow:getHealthStatus',
+  WORKFLOW_GET_CONFLICT_RISKS: 'workflow:getConflictRisks',
+  WORKFLOW_GET_MERGE_ORDER: 'workflow:getMergeOrder',
+  WORKFLOW_AI_REVIEW: 'workflow:aiReview',
+  WORKFLOW_CLEANUP_STALE: 'workflow:cleanupStale',
+  WORKFLOW_GENERATE_COMMIT_MESSAGE: 'workflow:generateCommitMessage'
 } as const;
