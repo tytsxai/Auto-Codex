@@ -38,7 +38,7 @@ cp .env.example .env
 
 # Add one Codex auth option
 # OPENAI_API_KEY=sk-...
-# CODEX_CODE_OAUTH_TOKEN=... (from `codex setup-token`)
+# CODEX_CODE_OAUTH_TOKEN=... (from Codex CLI login, e.g. `codex login --device-auth`)
 # CODEX_CONFIG_DIR=/path/to/codex/config
 ```
 
@@ -157,7 +157,7 @@ python validate_spec.py --spec-dir specs/001-feature --checkpoint all
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `OPENAI_API_KEY` | One of | OpenAI API key for Codex CLI |
-| `CODEX_CODE_OAUTH_TOKEN` | One of | OAuth token from `codex setup-token` |
+| `CODEX_CODE_OAUTH_TOKEN` | One of | OAuth token from Codex CLI login (e.g. `codex login --device-auth`) |
 | `CODEX_CONFIG_DIR` | One of | Path to Codex CLI config directory |
 | `AUTO_BUILD_MODEL` | No | Model override (default: gpt-5.2-codex-xhigh) |
 

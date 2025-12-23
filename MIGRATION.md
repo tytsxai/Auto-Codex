@@ -26,7 +26,7 @@ cp .env.example .env
 
 # Add one of these (new)
 OPENAI_API_KEY=sk-...
-# or CODEX_CODE_OAUTH_TOKEN=... (from `codex setup-token`)
+# or CODEX_CODE_OAUTH_TOKEN=... (from Codex CLI login, e.g. `codex login --device-auth`)
 # or CODEX_CONFIG_DIR=/path/to/codex/config
 ```
 

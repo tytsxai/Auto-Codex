@@ -61,7 +61,7 @@ codex login
 # Shell env (one-off)
 export OPENAI_API_KEY=sk-...
 
-# Or use an OAuth token from `codex setup-token`
+# Or use an OAuth token from Codex CLI login (e.g. `codex login --device-auth`)
 export CODEX_CODE_OAUTH_TOKEN=...
 
 # Or point to an existing Codex CLI config directory
@@ -359,7 +359,7 @@ Existing users migrating from Claude SDK should read `MIGRATION.md`.
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `OPENAI_API_KEY` | One of | OpenAI API key for Codex CLI and OpenAI-backed memory providers |
-| `CODEX_CODE_OAUTH_TOKEN` | One of | OAuth token from `codex setup-token` (Codex CLI/desktop profiles) |
+| `CODEX_CODE_OAUTH_TOKEN` | One of | OAuth token from Codex CLI login (e.g. `codex login --device-auth`) |
 | `CODEX_CONFIG_DIR` | One of | Path to Codex CLI config directory for profile-based auth |
 | `AUTO_CODEX_DISABLE_DEFAULT_CODEX_CONFIG_DIR` | No | Set to `1` to ignore the default `~/.codex` config directory |
 | `AUTO_CODEX_BYPASS_CODEX_SANDBOX` | No | Set to `0` to keep Codex CLI sandboxing enabled |
