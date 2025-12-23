@@ -125,37 +125,93 @@ check_file() {
 }
 
 check_auth() {
-  local auth_source=""
-  if [[ -n "${OPENAI_API_KEY:-}" ]]; then
-    auth_source="OPENAI_API_KEY (env)"
-  elif [[ -n "${CODEX_CODE_OAUTH_TOKEN:-}" ]]; then
-    auth_source="CODEX_CODE_OAUTH_TOKEN (env)"
-  elif [[ -n "${CODEX_CONFIG_DIR:-}" ]]; then
-    auth_source="CODEX_CONFIG_DIR (env)"
-  fi
+  # Use Python health check for comprehensive auth verification
+  local python_output python_exit_code
+  python_output=$(python3 -c "
+import sys
+sys.path.insert(0, '$ROOT_DIR/auto-codex')
+from core.auth import check_auth_health
 
-  if [[ -z "$auth_source" ]]; then
-    local env_file="$ROOT_DIR/auto-codex/.env"
-    if get_env_value "OPENAI_API_KEY" "$env_file" >/dev/null; then
-      auth_source="OPENAI_API_KEY (auto-codex/.env)"
-    elif get_env_value "CODEX_CODE_OAUTH_TOKEN" "$env_file" >/dev/null; then
-      auth_source="CODEX_CODE_OAUTH_TOKEN (auto-codex/.env)"
-    elif get_env_value "CODEX_CONFIG_DIR" "$env_file" >/dev/null; then
-      auth_source="CODEX_CONFIG_DIR (auto-codex/.env)"
+status = check_auth_health()
+
+# Print auth source
+if status.is_authenticated:
+    print(f'AUTH_SOURCE={status.source}')
+    if status.config_dir:
+        print(f'CONFIG_DIR={status.config_dir}')
+else:
+    print('AUTH_SOURCE=')
+
+# Print CLI status
+if status.codex_cli_available:
+    print(f'CLI_PATH={status.codex_cli_path}')
+else:
+    print('CLI_PATH=')
+
+# Print errors
+if status.errors:
+    print(f'ERRORS={\"|\".join(status.errors)}')
+else:
+    print('ERRORS=')
+" 2>&1) || true
+  python_exit_code=$?
+
+  if [[ -n "$python_output" ]] && echo "$python_output" | grep -q '^AUTH_SOURCE='; then
+    local auth_source cli_path errors config_dir
+    auth_source=$(echo "$python_output" | grep '^AUTH_SOURCE=' | cut -d= -f2- || true)
+    config_dir=$(echo "$python_output" | grep '^CONFIG_DIR=' | cut -d= -f2- || true)
+    cli_path=$(echo "$python_output" | grep '^CLI_PATH=' | cut -d= -f2- || true)
+    errors=$(echo "$python_output" | grep '^ERRORS=' | cut -d= -f2- || true)
+
+    if [[ -n "$auth_source" ]]; then
+      if [[ -n "$config_dir" ]]; then
+        log_ok "Codex auth source: $auth_source ($config_dir)"
+      else
+        log_ok "Codex auth source: $auth_source"
+      fi
+    else
+      log_fail "Codex auth not found (set OPENAI_API_KEY/CODEX_CODE_OAUTH_TOKEN/CODEX_CONFIG_DIR)"
     fi
-  fi
 
-  if [[ -z "$auth_source" ]]; then
-    local codex_dir="$HOME/.codex"
-    if [[ -z "${AUTO_CODEX_DISABLE_DEFAULT_CODEX_CONFIG_DIR:-}" ]] && [[ -f "$codex_dir/config.toml" || -f "$codex_dir/auth.json" ]]; then
-      auth_source="DEFAULT_CODEX_CONFIG_DIR (~/.codex)"
+    if [[ -n "$cli_path" ]]; then
+      log_ok "Codex CLI: $cli_path"
+    else
+      log_fail "Codex CLI not found"
     fi
-  fi
-
-  if [[ -n "$auth_source" ]]; then
-    log_ok "Codex auth source: $auth_source"
   else
-    log_fail "Codex auth not found (set OPENAI_API_KEY/CODEX_CODE_OAUTH_TOKEN/CODEX_CONFIG_DIR)"
+    # Fallback to shell-based check if Python fails
+    local auth_source=""
+    if [[ -n "${OPENAI_API_KEY:-}" ]]; then
+      auth_source="OPENAI_API_KEY (env)"
+    elif [[ -n "${CODEX_CODE_OAUTH_TOKEN:-}" ]]; then
+      auth_source="CODEX_CODE_OAUTH_TOKEN (env)"
+    elif [[ -n "${CODEX_CONFIG_DIR:-}" ]]; then
+      auth_source="CODEX_CONFIG_DIR (env)"
+    fi
+
+    if [[ -z "$auth_source" ]]; then
+      local env_file="$ROOT_DIR/auto-codex/.env"
+      if get_env_value "OPENAI_API_KEY" "$env_file" >/dev/null; then
+        auth_source="OPENAI_API_KEY (auto-codex/.env)"
+      elif get_env_value "CODEX_CODE_OAUTH_TOKEN" "$env_file" >/dev/null; then
+        auth_source="CODEX_CODE_OAUTH_TOKEN (auto-codex/.env)"
+      elif get_env_value "CODEX_CONFIG_DIR" "$env_file" >/dev/null; then
+        auth_source="CODEX_CONFIG_DIR (auto-codex/.env)"
+      fi
+    fi
+
+    if [[ -z "$auth_source" ]]; then
+      local codex_dir="$HOME/.codex"
+      if [[ -z "${AUTO_CODEX_DISABLE_DEFAULT_CODEX_CONFIG_DIR:-}" ]] && [[ -f "$codex_dir/config.toml" || -f "$codex_dir/auth.json" ]]; then
+        auth_source="DEFAULT_CODEX_CONFIG_DIR (~/.codex)"
+      fi
+    fi
+
+    if [[ -n "$auth_source" ]]; then
+      log_ok "Codex auth source: $auth_source"
+    else
+      log_fail "Codex auth not found (set OPENAI_API_KEY/CODEX_CODE_OAUTH_TOKEN/CODEX_CONFIG_DIR)"
+    fi
   fi
 }
 
@@ -238,7 +294,6 @@ check_node
 check_cmd git "git"
 check_git_repo
 check_git_clean
-check_cmd codex "codex CLI"
 check_auth
 check_graphiti
 
