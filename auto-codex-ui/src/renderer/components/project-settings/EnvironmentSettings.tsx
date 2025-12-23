@@ -42,7 +42,7 @@ export function EnvironmentSettings({
   envError,
   isCheckingCodexAuth,
   codexAuthStatus,
-  handleCodexSetup,
+  handleCodexSetup: _handleCodexSetup,
   expanded,
   onToggle
 }: EnvironmentSettingsProps) {
@@ -76,6 +76,11 @@ export function EnvironmentSettings({
   };
   const hasAuthenticatedProfiles = codexProfiles.some(isProfileAuthenticated);
 
+  const showChecking = isCheckingCodexAuth || codexAuthStatus === 'checking';
+  const cliConnected = codexAuthStatus === 'authenticated';
+  const isConfigured = hasAuthenticatedProfiles;
+  const showConfiguredButNotConnected = isConfigured && !cliConnected && !showChecking && codexAuthStatus !== 'error';
+
   return (
     <section className="space-y-3">
       <button
@@ -85,12 +90,28 @@ export function EnvironmentSettings({
         <div className="flex items-center gap-2">
           <Key className="h-4 w-4" />
           Codex 认证
-          {codexAuthStatus === 'authenticated' && (
+          {showChecking && (
+            <span className="px-2 py-0.5 text-xs bg-muted text-muted-foreground rounded-full inline-flex items-center gap-1">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              检查中
+            </span>
+          )}
+          {!showChecking && codexAuthStatus === 'error' && (
+            <span className="px-2 py-0.5 text-xs bg-destructive/10 text-destructive rounded-full">
+              检查失败
+            </span>
+          )}
+          {!showChecking && cliConnected && (
             <span className="px-2 py-0.5 text-xs bg-success/10 text-success rounded-full">
               已连接
             </span>
           )}
-          {codexAuthStatus === 'not_authenticated' && (
+          {!showChecking && !cliConnected && codexAuthStatus !== 'error' && isConfigured && (
+            <span className="px-2 py-0.5 text-xs bg-info/10 text-info rounded-full">
+              已配置
+            </span>
+          )}
+          {!showChecking && !cliConnected && codexAuthStatus !== 'error' && !isConfigured && (
             <span className="px-2 py-0.5 text-xs bg-warning/10 text-warning rounded-full">
               未连接
             </span>
@@ -132,6 +153,14 @@ export function EnvironmentSettings({
               {/* Active Account Display */}
               {hasAuthenticatedProfiles ? (
                 <div className="rounded-lg border border-border bg-muted/30 p-3">
+                  {showConfiguredButNotConnected && (
+                    <div className="mb-3 rounded-lg border border-warning/30 bg-warning/5 p-3">
+                      <p className="text-xs text-muted-foreground">
+                        已检测到可用的 Codex 凭证（例如第三方渠道的 `~/.codex/auth.json` / `~/.codex/config.toml`），但 CLI 登录状态未确认。
+                        如遇功能不可用，请在终端运行 `codex login status` 检查。
+                      </p>
+                    </div>
+                  )}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="flex items-center gap-2">
@@ -142,7 +171,9 @@ export function EnvironmentSettings({
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={handleCodexSetup}
+                      onClick={() => {
+                        window.dispatchEvent(new CustomEvent('open-app-settings', { detail: 'integrations' }));
+                      }}
                       disabled={isCheckingCodexAuth}
                     >
                       {isCheckingCodexAuth ? (
@@ -150,7 +181,7 @@ export function EnvironmentSettings({
                       ) : (
                         <>
                           <ExternalLink className="h-4 w-4 mr-2" />
-                          重新认证
+                          管理认证
                         </>
                       )}
                     </Button>
@@ -194,14 +225,14 @@ export function EnvironmentSettings({
                   ) : null}
 
                   {/* Show other authenticated accounts */}
-                  {codexProfiles.filter(p => p.id !== activeProfileId && p.oauthToken).length > 0 && (
+                  {codexProfiles.filter(p => p.id !== activeProfileId && isProfileAuthenticated(p)).length > 0 && (
                     <div className="mt-3 pt-3 border-t border-border/50">
                       <p className="text-xs text-muted-foreground mb-2">
                         其他已认证账号（用于限流备用）：
                       </p>
                       <div className="flex flex-wrap gap-2">
                         {codexProfiles
-                          .filter(p => p.id !== activeProfileId && p.oauthToken)
+                          .filter(p => p.id !== activeProfileId && isProfileAuthenticated(p))
                           .map(profile => (
                             <div
                               key={profile.id}

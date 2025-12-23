@@ -103,12 +103,12 @@ export function SectionRouter({
       return (
         <SettingsSection
           title="Codex 认证"
-          description="配置此项目的 Codex CLI 认证"
+          description="此项目使用全局 Codex 认证（在 设置 → 集成 管理）"
         >
           <InitializationGuard
             initialized={!!project.autoBuildPath}
             title="Codex 认证"
-            description="配置 Codex CLI 认证"
+            description="使用全局 Codex 认证"
             onInitialize={handleInitialize}
             isInitializing={isUpdating}
           >

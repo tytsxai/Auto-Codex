@@ -471,13 +471,13 @@ export function EnvConfigModal({
               </div>
             )}
 
-            {/* 次选：手动输入令牌（可折叠） */}
+            {/* 次选：手动输入 OAuth 令牌（可折叠） */}
             <div className="space-y-3">
               <button
                 onClick={() => setShowManualEntry(!showManualEntry)}
                 className="w-full flex items-center justify-between text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
-                <span>手动输入令牌</span>
+                <span>手动输入 OAuth 令牌</span>
                 {showManualEntry ? (
                   <ChevronDown className="h-4 w-4" />
                 ) : (
@@ -491,7 +491,7 @@ export function EnvConfigModal({
                   <div className="text-xs text-muted-foreground space-y-1">
                     <p className="font-medium text-foreground">步骤：</p>
                     <ol className="list-decimal list-inside space-y-1">
-                      <li>如果尚未安装，请先安装 Codex Code CLI</li>
+                      <li>如果尚未安装，请先安装 Codex CLI</li>
                       <li>
                         运行{' '}
                         <code className="px-1 py-0.5 bg-muted rounded font-mono">
@@ -508,7 +508,11 @@ export function EnvConfigModal({
                       <li>完成登录后，如 CLI 输出 OAuth 令牌，请复制并粘贴到下方</li>
                     </ol>
                     <p className="text-xs text-muted-foreground">
-                      或者直接在 <code className="px-1 py-0.5 bg-muted rounded font-mono">auto-codex/.env</code> 中设置 <code className="px-1 py-0.5 bg-muted rounded font-mono">OPENAI_API_KEY</code>。
+                      API Key 登录：运行{' '}
+                      <code className="px-1 py-0.5 bg-muted rounded font-mono">codex setup-token</code>
+                      （会写入 <code className="px-1 py-0.5 bg-muted rounded font-mono">~/.codex/auth.json</code>，无需粘贴到这里）。
+                      你也可以在 <code className="px-1 py-0.5 bg-muted rounded font-mono">auto-codex/.env</code> 中设置{' '}
+                      <code className="px-1 py-0.5 bg-muted rounded font-mono">OPENAI_API_KEY</code>。
                     </p>
                     <button
                       onClick={handleOpenDocs}
@@ -530,7 +534,7 @@ export function EnvConfigModal({
                         type={showToken ? 'text' : 'password'}
                         value={token}
                         onChange={(e) => setToken(e.target.value)}
-                        placeholder="输入你的令牌..."
+                        placeholder="oat01-...（CODEX_CODE_OAUTH_TOKEN）"
                         className="pr-10 font-mono text-sm"
                         disabled={isSaving || isAuthenticating}
                       />

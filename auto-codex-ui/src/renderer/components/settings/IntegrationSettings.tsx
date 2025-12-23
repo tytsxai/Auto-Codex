@@ -412,7 +412,6 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
                       {editingProfileId !== profile.id && (
                         <div className="flex items-center gap-1">
                           {/* 认证按钮 - 仅在未认证时显示 */}
-                          {/* 配置已认证条件：有 OAuth 令牌或（为默认且有 configDir） */}
                           {!isProfileAuthenticated(profile) ? (
                             <Button
                               variant="outline"
@@ -462,7 +461,7 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
                             size="icon"
                             onClick={() => toggleTokenEntry(profile.id)}
                             className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                            title={expandedTokenProfileId === profile.id ? '隐藏令牌输入' : '手动输入令牌'}
+                            title={expandedTokenProfileId === profile.id ? '隐藏令牌输入' : '手动输入 OAuth 令牌'}
                           >
                             {expandedTokenProfileId === profile.id ? (
                               <ChevronDown className="h-3 w-3" />
@@ -504,11 +503,12 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
                       <div className="px-3 pb-3 pt-0 border-t border-border/50 mt-0">
                         <div className="bg-muted/30 rounded-lg p-3 mt-3 space-y-3">
                           <div className="flex items-center justify-between">
-                            <Label className="text-xs font-medium text-muted-foreground">
-                              手动输入令牌
+                              <Label className="text-xs font-medium text-muted-foreground">
+                              手动输入 OAuth 令牌
                             </Label>
                             <span className="text-xs text-muted-foreground">
-                              运行 <code className="px-1 py-0.5 bg-muted rounded font-mono text-xs">codex login --device-auth</code>（如 CLI 输出令牌）
+                              OAuth：<code className="px-1 py-0.5 bg-muted rounded font-mono text-xs">codex login --device-auth</code>；
+                              API Key：<code className="px-1 py-0.5 bg-muted rounded font-mono text-xs">codex setup-token</code>（写入 `~/.codex`，无需粘贴到这里）
                             </span>
                           </div>
                           
@@ -516,7 +516,7 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
                             <div className="relative">
                               <Input
                                 type={showManualToken ? 'text' : 'password'}
-                                placeholder="sk-ant-oat01-..."
+                                placeholder="oat01-...（CODEX_CODE_OAUTH_TOKEN）"
                                 value={manualToken}
                                 onChange={(e) => setManualToken(e.target.value)}
                                 className="pr-10 font-mono text-xs h-8"

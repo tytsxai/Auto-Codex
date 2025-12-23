@@ -9,6 +9,18 @@ import { spawn } from 'child_process';
 import { projectStore } from '../project-store';
 import { parseEnvFile } from './utils';
 import { loadSettingsWithDecryptedSecrets } from '../utils/secure-settings';
+import { getCodexProfileManager } from '../codex-profile-manager';
+import { buildProviderEnvFromConfig, getProviderEnvInfoFromConfigToml } from '../codex-profile/codex-config';
+import { expandHomePath } from '../codex-profile/profile-utils';
+
+function looksLikeCredential(value: unknown): boolean {
+  if (typeof value !== 'string') return false;
+  const trimmed = value.trim();
+  const normalized = trimmed.toLowerCase().startsWith('bearer ')
+    ? trimmed.slice(7).trim()
+    : trimmed;
+  return normalized.length >= 20 && !/\s/.test(normalized);
+}
 
 
 /**
@@ -418,11 +430,24 @@ ${existingVars['GRAPHITI_DATABASE'] ? `GRAPHITI_DATABASE=${existingVars['GRAPHIT
       }
 
       try {
-        // Check if Codex CLI is available and authenticated
+        // Check if Codex CLI is available and authenticated.
+        // Important: Many third-party gateways/activators (e.g. Yunyi) use API-key auth
+        // stored in `~/.codex/auth.json` + `~/.codex/config.toml` (or env vars),
+        // and `codex login status` may report "not authenticated" even though Codex works.
         const result = await new Promise<CodexAuthResult>((resolve) => {
+          const profileManager = getCodexProfileManager();
+          const activeProfile = profileManager.getActiveProfile();
+          const configDir = expandHomePath((activeProfile?.configDir || '').trim());
+
+          const providerEnv = configDir ? buildProviderEnvFromConfig(configDir, process.env) : {};
+          const profileEnv =
+            activeProfile && !activeProfile.isDefault && configDir
+              ? { CODEX_CONFIG_DIR: configDir }
+              : {};
+
           const proc = spawn('codex', ['--version'], {
             cwd: project.path,
-            env: { ...process.env },
+            env: { ...process.env, ...providerEnv, ...profileEnv },
             shell: true
           });
 
@@ -439,22 +464,38 @@ ${existingVars['GRAPHITI_DATABASE'] ? `GRAPHITI_DATABASE=${existingVars['GRAPHIT
 
           proc.on('close', (code: number | null) => {
             if (code === 0) {
-              // Codex CLI is available, check if authenticated
-              // Check login status (works across recent codex-cli versions).
-              // NOTE: Older Auto-Codex builds used `codex api --help`, but the `api`
-              // subcommand no longer exists in codex-cli >= 0.7x, which caused a
-              // false "未连接" status even when users were authenticated.
+              // Fast path: if profile store / config dir indicates usable auth, treat as authenticated.
+              // This unblocks core features (insights/roadmap/ideation) for API-key based setups.
+              if (profileManager.hasValidAuth(activeProfile?.id)) {
+                resolve({ success: true, authenticated: true });
+                return;
+              }
+
+              // Also accept credentials injected via environment variables (e.g. from a terminal launch).
+              const providerEnvKey = configDir
+                ? getProviderEnvInfoFromConfigToml(configDir).envKey
+                : undefined;
+
+              const envCredsPresent =
+                looksLikeCredential(process.env.CODEX_CODE_OAUTH_TOKEN) ||
+                looksLikeCredential(process.env.OPENAI_API_KEY) ||
+                (providerEnvKey ? looksLikeCredential(process.env[providerEnvKey]) : false);
+
+              if (envCredsPresent) {
+                resolve({ success: true, authenticated: true });
+                return;
+              }
+
+              // Fallback: check CLI-reported login status (OAuth/device auth flows).
+              // NOTE: This may be a false-negative for API-key based configs.
               const authCheck = spawn('codex', ['login', 'status'], {
                 cwd: project.path,
-                env: { ...process.env },
+                env: { ...process.env, ...providerEnv, ...profileEnv },
                 shell: true
               });
 
               authCheck.on('close', (authCode: number | null) => {
-                resolve({
-                  success: true,
-                  authenticated: authCode === 0
-                });
+                resolve({ success: true, authenticated: authCode === 0 });
               });
 
               authCheck.on('error', () => {

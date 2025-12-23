@@ -7,7 +7,12 @@ import { homedir } from 'os';
 import { join } from 'path';
 import { existsSync, readFileSync, readdirSync, mkdirSync } from 'fs';
 import type { CodexProfile } from '../../shared/types';
-import { configDirLooksConfigured, readAuthJson, getApiKeyFromAuthJson } from './codex-config';
+import {
+  configDirLooksConfigured,
+  getCredentialFromAuthJson,
+  getProviderEnvInfoFromConfigToml,
+  readAuthJson
+} from './codex-config';
 
 /**
  * Default Codex config directory
@@ -72,11 +77,35 @@ export function isProfileAuthenticated(profile: CodexProfile): boolean {
     return normalized.length >= 20 && !/\s/.test(normalized);
   };
 
+  const looksLikeUrl = (value: unknown): boolean => {
+    if (typeof value !== 'string') return false;
+    const t = value.trim().toLowerCase();
+    return t.startsWith('http://') || t.startsWith('https://') || t.startsWith('ws://') || t.startsWith('wss://');
+  };
+
   // 1) auth.json (Codex CLI primary credential store for API key / gateway setups)
   const auth = readAuthJson(configDir);
-  const apiKey = getApiKeyFromAuthJson(auth);
+  const providerEnvInfo = getProviderEnvInfoFromConfigToml(configDir);
+  const providerEnvKey = providerEnvInfo.envKey;
+  const apiKey = getCredentialFromAuthJson(auth, providerEnvKey);
   if (apiKey) return true;
   if (auth && (looksLikeToken(auth.access_token) || looksLikeToken(auth.refresh_token))) {
+    return true;
+  }
+  if (auth) {
+    // Some gateways store the API key under a provider-specific key name (e.g. YUNYI_KEY).
+    // Treat any {<*key|token*>: <plausible_credential>} as authenticated.
+    for (const [key, value] of Object.entries(auth)) {
+      if (!/key|token/i.test(key)) continue;
+      if (looksLikeUrl(value)) continue;
+      if (looksLikeToken(value)) return true;
+    }
+  }
+
+  // 1.5) config.toml can declare that this profile authenticates via API key.
+  // We can't reliably detect env-injected keys for GUI apps, so treat a non-trivial
+  // config.toml as "authenticated" to avoid blocking usage.
+  if ((providerEnvInfo.preferredAuthMethod || '').toLowerCase() === 'apikey') {
     return true;
   }
 
@@ -108,25 +137,9 @@ export function isProfileAuthenticated(profile: CodexProfile): boolean {
     }
   }
 
-  // 3) If config dir looks configured, treat it as authenticated if any of the
-  // known config files are non-trivial. This matches Codex CLI behavior and
-  // avoids blocking users who authenticate via API key / gateway without having
-  // any local `projects/` sessions yet.
+  // 3) Also check if there are any session files (indicates authenticated usage)
+  // This avoids false-positives from mere presence of config.toml without creds.
   if (configDirLooksConfigured(configDir)) {
-    for (const fileName of ['config.toml', 'auth.json', 'settings.json']) {
-      const p = join(configDir, fileName);
-      if (!existsSync(p)) continue;
-      try {
-        const content = readFileSync(p, 'utf-8');
-        if (content.trim().length > 10) {
-          return true;
-        }
-      } catch {
-        // Ignore read errors
-      }
-    }
-
-    // Also check if there are any session files (indicates authenticated usage)
     const projectsDir = join(configDir, 'projects');
     if (existsSync(projectsDir)) {
       try {

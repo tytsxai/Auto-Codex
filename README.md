@@ -55,6 +55,8 @@ codex --version
 codex login
 ```
 
+If you use a third-party gateway/activator that authenticates Codex CLI via API key (commonly stored in `~/.codex/auth.json` + `~/.codex/config.toml`), Auto-Codex will treat that as authenticated as long as those files are present and valid. Note: GUI-launched apps often do not inherit `.zshrc` environment variables, so prefer the Codex config files over shell-only exports.
+
 **Headless/CI:** set one of these instead of interactive login.
 
 ```bash
@@ -320,7 +322,7 @@ The Memory Layer is a **hybrid RAG system** combining graph nodes with semantic 
 ```
 your-project/
 ├── .worktrees/               # Created during build (git-ignored)
-│   └── auto-codex/          # Isolated workspace for AI coding
+│   └── <spec-name>/          # Isolated workspace per spec (git worktree)
 ├── .auto-codex/              # Per-project data (specs, plans, QA reports)
 │   ├── specs/                # Task specifications
 │   ├── roadmap/              # Project roadmap
@@ -341,12 +343,12 @@ your-project/
 
 - **`auto-codex/`** - The framework repository itself (clone this once from GitHub)
 - **`.auto-codex/`** - Created automatically in YOUR project when you run Auto-Codex (stores specs, plans, QA reports)
-- **`.worktrees/`** - Temporary isolated workspaces created during builds (git-ignored, deleted after merge)
+- **`.worktrees/`** - Isolated workspaces created during builds (git-ignored; clean up via `--discard` / `--cleanup-worktrees` when you no longer need them)
 
 **When using Auto-Codex on your project:**
 ```bash
 cd your-project/              # Your own project directory
-python /path/to/auto-codex/run.py --spec 001
+python3 /path/to/auto-codex/run.py --spec 001
 # Auto-Codex creates .auto-codex/ automatically in your-project/
 ```
 
@@ -372,8 +374,8 @@ Existing users migrating from Claude SDK should read `MIGRATION.md`.
 | `AUTO_CODEX_DISABLE_DEFAULT_CODEX_CONFIG_DIR` | No | Set to `1` to ignore the default `~/.codex` config directory |
 | `AUTO_CODEX_BYPASS_CODEX_SANDBOX` | No | Set to `0` to keep Codex CLI sandboxing enabled |
 | `AUTO_CODEX_CODEXCLI_LEGACY_SECURITY_FLAGS` | No | Set to `1` to pass legacy allow/block flags to Codex CLI |
-| `AUTO_BUILD_MODEL` | No | Model override (default: gpt-5.2-codex; optional suffix like `-xhigh`) |
-| `AUTO_BUILD_REASONING_EFFORT` | No | Reasoning effort override when model string lacks a suffix (low/medium/high/xhigh) |
+| `AUTO_BUILD_MODEL` | No | Model override (default: gpt-5.2-codex). Note: reasoning is a runtime parameter; legacy suffix input like `-xhigh` is accepted but discouraged (it is not a real model ID). |
+| `AUTO_BUILD_REASONING_EFFORT` | No | Reasoning effort override (low/medium/high/xhigh) |
 | `GRAPHITI_ENABLED` | Recommended | Set to `true` to enable Memory Layer |
 | `GRAPHITI_LLM_PROVIDER` | For Memory | LLM provider: openai, anthropic, azure_openai, ollama, google |
 | `GRAPHITI_EMBEDDER_PROVIDER` | For Memory | Embedder: openai, voyage, azure_openai, ollama, google |

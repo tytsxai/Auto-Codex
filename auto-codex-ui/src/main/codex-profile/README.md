@@ -89,7 +89,8 @@ Helpers for reading Codex CLI config/auth files and deriving provider env settin
 
 **Key Functions:**
 - `readAuthJson(configDir): CodexAuthJson | null` - Reads auth.json safely
-- `getApiKeyFromAuthJson(auth): string | undefined` - Extracts API key values
+- `getCredentialFromAuthJson(auth, envKey?): string | undefined` - Extracts API key/token, optionally preferring a provider-specific env key (e.g. `YUNYI_KEY`)
+- `getApiKeyFromAuthJson(auth): string | undefined` - Backwards-compatible helper for common key names
 - `getProviderEnvInfoFromConfigToml(configDir): CodexProviderEnvInfo` - Reads provider/env_key settings
 - `buildProviderEnvFromConfig(configDir, existingEnv): Record<string, string>` - Builds provider env overrides
 

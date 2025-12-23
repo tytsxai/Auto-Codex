@@ -452,17 +452,17 @@ export function OAuthStep({ onNext, onBack, onSkip }: OAuthStepProps) {
                               </Button>
                             )}
                             {/* Toggle token entry button */}
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => toggleTokenEntry(profile.id)}
-                              className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                              title={expandedTokenProfileId === profile.id ? "隐藏令牌输入" : "手动输入令牌"}
-                            >
-                              {expandedTokenProfileId === profile.id ? (
-                                <ChevronDown className="h-3 w-3" />
-                              ) : (
-                                <ChevronRight className="h-3 w-3" />
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => toggleTokenEntry(profile.id)}
+                                className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                                title={expandedTokenProfileId === profile.id ? "隐藏令牌输入" : "手动输入 OAuth 令牌"}
+                              >
+                                {expandedTokenProfileId === profile.id ? (
+                                  <ChevronDown className="h-3 w-3" />
+                                ) : (
+                                  <ChevronRight className="h-3 w-3" />
                               )}
                             </Button>
                             <Button
@@ -500,10 +500,11 @@ export function OAuthStep({ onNext, onBack, onSkip }: OAuthStepProps) {
                           <div className="bg-muted/30 rounded-lg p-3 mt-3 space-y-3">
                             <div className="flex items-center justify-between">
                               <Label className="text-xs font-medium text-muted-foreground">
-                                手动输入令牌
+                                手动输入 OAuth 令牌
                               </Label>
                               <span className="text-xs text-muted-foreground">
-                                运行 <code className="px-1 py-0.5 bg-muted rounded font-mono text-xs">codex login --device-auth</code>（如 CLI 输出令牌）
+                                OAuth：<code className="px-1 py-0.5 bg-muted rounded font-mono text-xs">codex login --device-auth</code>；
+                                API Key：<code className="px-1 py-0.5 bg-muted rounded font-mono text-xs">codex setup-token</code>（写入 `~/.codex`，无需粘贴到这里）
                               </span>
                             </div>
 
@@ -511,7 +512,7 @@ export function OAuthStep({ onNext, onBack, onSkip }: OAuthStepProps) {
                               <div className="relative">
                                 <Input
                                   type={showManualToken ? 'text' : 'password'}
-                                  placeholder="sk-ant-oat01-..."
+                                  placeholder="oat01-...（CODEX_CODE_OAUTH_TOKEN）"
                                   value={manualToken}
                                   onChange={(e) => setManualToken(e.target.value)}
                                   className="pr-10 font-mono text-xs h-8"

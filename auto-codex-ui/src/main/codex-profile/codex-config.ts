@@ -64,11 +64,27 @@ export function readAuthJson(configDir: string): CodexAuthJson | null {
   }
 }
 
-export function getApiKeyFromAuthJson(auth: CodexAuthJson | null): string | undefined {
+export function getCredentialFromAuthJson(
+  auth: CodexAuthJson | null,
+  envKey?: string
+): string | undefined {
   if (!auth) return undefined;
-  const key = (auth.OPENAI_API_KEY || auth.api_key || auth.apiKey || auth.key || auth.token) as string | undefined;
+  const preferredKey = envKey ? (auth[envKey] as unknown) : undefined;
+  const key = (
+    (typeof preferredKey === 'string' ? preferredKey : undefined) ||
+    auth.OPENAI_API_KEY ||
+    auth.api_key ||
+    auth.apiKey ||
+    (auth.key as string | undefined) ||
+    (auth.token as string | undefined)
+  ) as string | undefined;
+
   const trimmed = (key || '').trim();
   return trimmed ? trimmed : undefined;
+}
+
+export function getApiKeyFromAuthJson(auth: CodexAuthJson | null): string | undefined {
+  return getCredentialFromAuthJson(auth);
 }
 
 /**
@@ -124,7 +140,7 @@ export function buildProviderEnvFromConfig(
   if ((existingEnv[envKey] || '').trim()) return {};
 
   const authJson = readAuthJson(dir);
-  const apiKey = getApiKeyFromAuthJson(authJson);
+  const apiKey = getCredentialFromAuthJson(authJson, envKey);
   if (!apiKey) return {};
 
   return { [envKey]: apiKey };

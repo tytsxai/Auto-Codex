@@ -29,6 +29,9 @@ export function CodexAuthSection({
   onCodexSetup,
   onUpdateConfig,
 }: CodexAuthSectionProps) {
+  const showChecking = isCheckingAuth || authStatus === 'checking';
+  const isAuthenticated = authStatus === 'authenticated';
+
   const badge = authStatus === 'authenticated' ? (
     <StatusBadge status="success" label="Connected" />
   ) : authStatus === 'not_authenticated' ? (
@@ -56,8 +59,8 @@ export function CodexAuthSection({
               <div>
                 <p className="text-sm font-medium text-foreground">Codex CLI</p>
                 <p className="text-xs text-muted-foreground">
-                  {isCheckingAuth ? 'Checking...' :
-                    authStatus === 'authenticated' ? 'Authenticated via OAuth' :
+                  {showChecking ? 'Checking...' :
+                    isAuthenticated ? 'Authenticated (OAuth or API key)' :
                     authStatus === 'not_authenticated' ? 'Not authenticated' :
                     'Status unknown'}
                 </p>
@@ -65,7 +68,13 @@ export function CodexAuthSection({
               <Button
                 size="sm"
                 variant="outline"
-                onClick={onCodexSetup}
+                onClick={() => {
+                  if (isAuthenticated) {
+                    window.dispatchEvent(new CustomEvent('open-app-settings', { detail: 'integrations' }));
+                    return;
+                  }
+                  onCodexSetup();
+                }}
                 disabled={isCheckingAuth}
               >
                 {isCheckingAuth ? (
@@ -73,7 +82,7 @@ export function CodexAuthSection({
                 ) : (
                   <>
                     <ExternalLink className="h-4 w-4 mr-2" />
-                    {authStatus === 'authenticated' ? 'Re-authenticate' : 'Setup OAuth'}
+                    {isAuthenticated ? 'Manage auth' : 'Setup OAuth'}
                   </>
                 )}
               </Button>
@@ -99,7 +108,7 @@ export function CodexAuthSection({
               </p>
             ) : (
               <p className="text-xs text-muted-foreground">
-                Paste a token if you have one (e.g. <code className="px-1 bg-muted rounded">codex login --device-auth</code> or legacy <code className="px-1 bg-muted rounded">codex setup-token</code>)
+                Paste an OAuth token if you have one (e.g. <code className="px-1 bg-muted rounded">codex login --device-auth</code>). For API key login, run <code className="px-1 bg-muted rounded">codex setup-token</code> (writes to <code className="px-1 bg-muted rounded">~/.codex/auth.json</code>).
               </p>
             )}
             <PasswordInput
@@ -107,7 +116,7 @@ export function CodexAuthSection({
               onChange={(value) => onUpdateConfig({
                 codexOAuthToken: value || undefined,
               })}
-              placeholder={envConfig.codexTokenIsGlobal ? 'Enter to override global token...' : 'your-oauth-token-here'}
+              placeholder={envConfig.codexTokenIsGlobal ? 'Enter to override global token...' : 'oat01-... (CODEX_CODE_OAUTH_TOKEN)'}
             />
           </div>
         </>

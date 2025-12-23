@@ -7,7 +7,8 @@ import { getCodexProfileManager } from './codex-profile-manager';
 import {
   buildProviderEnvFromConfig,
   configPrefersApiKey,
-  getApiKeyFromAuthJson,
+  getCredentialFromAuthJson,
+  getProviderEnvInfoFromConfigToml,
   readAuthJson,
 } from './codex-profile/codex-config';
 import { expandHomePath } from './codex-profile/profile-utils';
@@ -292,7 +293,8 @@ export function getProfileEnv(profileId?: string): Record<string, string> {
   // stored in the Desktop profile. This avoids a stale/invalid OAuth token
   // shadowing a working API-key-based setup.
   const authJson = configDir ? readAuthJson(configDir) : null;
-  const hasApiKeyInAuthJson = !!getApiKeyFromAuthJson(authJson);
+  const providerEnvKey = configDir ? getProviderEnvInfoFromConfigToml(configDir).envKey : undefined;
+  const hasApiKeyInAuthJson = !!getCredentialFromAuthJson(authJson, providerEnvKey);
   const prefersApiKey = !!configDir && (hasApiKeyInAuthJson || configPrefersApiKey(configDir));
 
   // Prefer OAuth token (instant switching, no browser auth needed)
