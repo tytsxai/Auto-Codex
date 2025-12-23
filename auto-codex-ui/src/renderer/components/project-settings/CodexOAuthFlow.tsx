@@ -17,7 +17,7 @@ interface CodexOAuthFlowProps {
 
 /**
  * Codex OAuth flow component for setup wizard
- * Guides users through authenticating with Codex using codex setup-token
+ * Guides users through authenticating with Codex using codex login
  */
 export function CodexOAuthFlow({ onSuccess, onCancel }: CodexOAuthFlowProps) {
   const [status, setStatus] = useState<'ready' | 'authenticating' | 'success' | 'error'>('ready');
@@ -91,7 +91,7 @@ export function CodexOAuthFlow({ onSuccess, onCancel }: CodexOAuthFlowProps) {
       const activeProfileId = profilesResult.data.activeProfileId;
       console.warn('[CodexOAuth] Initializing profile:', activeProfileId);
 
-      // Initialize the profile - this opens a terminal and runs 'codex setup-token'
+      // Initialize the profile - this opens a terminal and runs `codex login --device-auth`
       const result = await window.electronAPI.initializeCodexProfile(activeProfileId);
 
       if (!result.success) {
@@ -161,7 +161,7 @@ export function CodexOAuthFlow({ onSuccess, onCancel }: CodexOAuthFlowProps) {
                     Authenticating...
                   </h3>
                   <p className="text-sm text-muted-foreground mt-1">
-                    A terminal window has opened. Please complete the authentication in your browser.
+                    A terminal window has opened. Complete the authentication in your browser (or use the link shown in the terminal).
                   </p>
                 </div>
               </div>
@@ -172,11 +172,11 @@ export function CodexOAuthFlow({ onSuccess, onCancel }: CodexOAuthFlowProps) {
                   <div className="text-xs text-muted-foreground space-y-1">
                     <p className="font-medium">What's happening:</p>
                     <ol className="list-decimal list-inside space-y-1 ml-2">
-                      <li>A terminal opened and ran <code className="px-1 bg-muted rounded">codex setup-token</code></li>
-                      <li>Your browser should open to authenticate with Codex</li>
-                      <li>Complete the OAuth flow in your browser</li>
-                      <li>The terminal will display your token (starts with sk-ant-oat01-...)</li>
-                      <li>Auto Codex will automatically detect and save it</li>
+                      <li>A terminal opened and ran <code className="px-1 bg-muted rounded">codex login --device-auth</code></li>
+                      <li>Your browser should open to authenticate with Codex (or use the link shown in the terminal)</li>
+                      <li>Complete the device auth flow in your browser</li>
+                      <li>Codex CLI stores credentials in your profile config</li>
+                      <li>Auto Codex will automatically detect the login and update the profile</li>
                     </ol>
                   </div>
                 </div>

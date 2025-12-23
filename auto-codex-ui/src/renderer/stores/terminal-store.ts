@@ -36,6 +36,7 @@ interface TerminalState {
 
   // 操作
   addTerminal: (cwd?: string) => Terminal | null;
+  addExternalTerminal: (params: { id: string; title?: string; cwd?: string; isCodexMode?: boolean }) => Terminal | null;
   addRestoredTerminal: (session: TerminalSession) => Terminal;
   removeTerminal: (id: string) => void;
   updateTerminal: (id: string, updates: Partial<Terminal>) => void;
@@ -76,6 +77,35 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
       createdAt: new Date(),
       isCodexMode: false,
       // outputBuffer 已移除 - 由 terminalBufferManager 管理
+    };
+
+    set((state) => ({
+      terminals: [...state.terminals, newTerminal],
+      activeTerminalId: newTerminal.id,
+    }));
+
+    return newTerminal;
+  },
+
+  addExternalTerminal: ({ id, title, cwd, isCodexMode }: { id: string; title?: string; cwd?: string; isCodexMode?: boolean }) => {
+    const state = get();
+    const existingTerminal = state.terminals.find((t) => t.id === id);
+    if (existingTerminal) {
+      set({ activeTerminalId: existingTerminal.id });
+      return existingTerminal;
+    }
+
+    if (state.terminals.length >= state.maxTerminals) {
+      debugLog('[TerminalStore] Max terminals reached, adding external terminal anyway:', id);
+    }
+
+    const newTerminal: Terminal = {
+      id,
+      title: title || `Terminal ${state.terminals.length + 1}`,
+      status: 'idle',
+      cwd: cwd || process.env.HOME || '~',
+      createdAt: new Date(),
+      isCodexMode: isCodexMode ?? false,
     };
 
     set((state) => ({

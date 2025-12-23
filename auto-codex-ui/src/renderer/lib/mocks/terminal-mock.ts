@@ -77,5 +77,6 @@ export const terminalMock = {
   onTerminalTitleChange: () => () => {},
   onTerminalCodexSession: () => () => {},
   onTerminalRateLimit: () => () => {},
-  onTerminalOAuthToken: () => () => {}
+  onTerminalOAuthToken: () => () => {},
+  onCodexProfileLoginTerminal: () => () => {}
 };

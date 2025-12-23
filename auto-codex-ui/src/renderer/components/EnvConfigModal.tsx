@@ -46,7 +46,7 @@ export function EnvConfigModal({
   onOpenChange,
   onConfigured,
   title = '需要 Codex 身份验证',
-  description = '使用构思和路线图生成等 AI 功能需要 Codex Code OAuth 令牌。',
+  description = '使用构思和路线图生成等 AI 功能需要 Codex OAuth 令牌或本地 Codex CLI 配置（~/.codex/auth.json 或 ~/.codex/config.toml）。',
   projectId
 }: EnvConfigModalProps) {
   const [token, setToken] = useState('');
@@ -65,9 +65,15 @@ export function EnvConfigModal({
     oauthToken?: string;
     email?: string;
     isDefault: boolean;
+    isAuthenticated?: boolean;
   }>>([]);
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
   const [isLoadingProfiles, setIsLoadingProfiles] = useState(true);
+
+  const isCodexProfileUsable = (profile: CodexProfile): boolean => {
+    if (typeof profile.isAuthenticated === 'boolean') return profile.isAuthenticated;
+    return Boolean(profile.oauthToken || (profile.isDefault && profile.configDir));
+  };
 
   // 模态框打开时加载 Codex 配置文件并检查令牌状态
   useEffect(() => {
@@ -102,7 +108,7 @@ export function EnvConfigModal({
         // 处理 Codex 配置文件
         if (profilesResult.success && profilesResult.data) {
           const authenticatedProfiles = profilesResult.data.profiles.filter(
-            (p: CodexProfile) => p.oauthToken || (p.isDefault && p.configDir)
+            (p: CodexProfile) => isCodexProfileUsable(p)
           );
           setCodexProfiles(authenticatedProfiles);
 
@@ -152,18 +158,20 @@ export function EnvConfigModal({
     setError(null);
 
     try {
-      // 获取选中配置文件的令牌
       const profile = codexProfiles.find(p => p.id === selectedProfileId);
-      if (!profile?.oauthToken) {
-        setError('选中的账号没有有效令牌');
-        setIsSaving(false);
+      if (!profile) {
+        setError('未找到所选账号');
         return;
       }
 
-      // 将令牌保存到 auto-codex .env
-      const result = await window.electronAPI.updateSourceEnv({
-        codexOAuthToken: profile.oauthToken
-      });
+      if (!isCodexProfileUsable(profile as CodexProfile)) {
+        setError('选中的账号没有有效令牌或可用的 Codex CLI 配置（~/.codex/auth.json 或 ~/.codex/config.toml）。');
+        return;
+      }
+
+      // 切换当前 Codex Profile（主进程会把正确的认证环境注入到后续 AI 子进程中）
+      // 注意：不要把 token 写入 auto-codex/.env（避免泄露且不支持非 OAuth 的 API Key 配置）。
+      const result = await window.electronAPI.setActiveCodexProfile(selectedProfileId);
 
       if (result.success) {
         setSuccess(true);
@@ -175,7 +183,7 @@ export function EnvConfigModal({
           onOpenChange(false);
         }, 1500);
       } else {
-        setError(result.error || '保存令牌失败');
+        setError(result.error || '切换账号失败');
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : '未知错误');
@@ -194,7 +202,7 @@ export function EnvConfigModal({
     setError(null);
 
     try {
-      // 在终端中触发 Codex setup-token 流程
+      // 在终端中触发 Codex login 流程
       const result = await window.electronAPI.invokeCodexSetup(projectId);
 
       if (!result.success) {
@@ -243,7 +251,7 @@ export function EnvConfigModal({
   };
 
   const handleCopyCommand = () => {
-    navigator.clipboard.writeText('codex setup-token');
+    navigator.clipboard.writeText('codex login --device-auth');
   };
 
   const handleOpenDocs = () => {
@@ -285,7 +293,7 @@ export function EnvConfigModal({
               <CheckCircle2 className="h-5 w-5 text-success shrink-0" />
               <div className="flex-1">
                 <p className="text-sm font-medium text-success">
-                  令牌配置成功
+                  认证配置成功
                 </p>
                 <p className="text-xs text-success/80 mt-1">
                   现在可以使用构思和路线图生成等 AI 功能。
@@ -445,7 +453,7 @@ export function EnvConfigModal({
 
                 {isAuthenticating && (
                   <p className="text-xs text-muted-foreground text-center">
-                    应会打开浏览器窗口，请在其中完成认证，然后返回此处。
+                    应会打开浏览器窗口完成认证；若未自动弹出，请在终端打开提示的登录链接。
                   </p>
                 )}
               </div>
@@ -487,7 +495,7 @@ export function EnvConfigModal({
                       <li>
                         运行{' '}
                         <code className="px-1 py-0.5 bg-muted rounded font-mono">
-                          codex setup-token
+                          codex login --device-auth
                         </code>
                         {' '}
                         <button
@@ -497,7 +505,7 @@ export function EnvConfigModal({
                           <Copy className="h-3 w-3 ml-1" />
                         </button>
                       </li>
-                      <li>复制令牌并粘贴到下方</li>
+                      <li>完成登录后，如 CLI 输出 OAuth 令牌，请复制并粘贴到下方</li>
                     </ol>
                     <button
                       onClick={handleOpenDocs}
@@ -557,7 +565,7 @@ export function EnvConfigModal({
             {hasExistingToken && (
               <div className="rounded-lg bg-muted/50 p-3">
                 <p className="text-sm text-muted-foreground">
-                  已配置过令牌。{showManualEntry ? '可在上方输入新令牌替换。' : '重新认证以替换。'}
+                  已配置过认证信息。{showManualEntry ? '可在上方输入新令牌替换。' : '重新认证以替换。'}
                 </p>
               </div>
             )}

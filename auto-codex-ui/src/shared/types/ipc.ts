@@ -184,6 +184,13 @@ export interface ElectronAPI {
     message?: string;
     detectedAt: string
   }) => void) => () => void;
+  /** Listen for login terminals created during Codex profile authentication */
+  onCodexProfileLoginTerminal: (callback: (info: {
+    terminalId: string;
+    profileId: string;
+    profileName: string;
+    cwd?: string;
+  }) => void) => () => void;
 
   // Codex profile management (multi-account support)
   getCodexProfiles: () => Promise<IPCResult<CodexProfileSettings>>;

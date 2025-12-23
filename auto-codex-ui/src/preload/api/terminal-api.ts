@@ -56,6 +56,9 @@ export interface TerminalAPI {
   onTerminalOAuthToken: (
     callback: (info: { terminalId: string; profileId?: string; email?: string; success: boolean; message?: string; detectedAt: string }) => void
   ) => () => void;
+  onCodexProfileLoginTerminal: (
+    callback: (info: { terminalId: string; profileId: string; profileName: string; cwd?: string }) => void
+  ) => () => void;
 
   // Codex Profile Management
   getCodexProfiles: () => Promise<IPCResult<CodexProfileSettings>>;
@@ -225,6 +228,21 @@ export const createTerminalAPI = (): TerminalAPI => ({
     ipcRenderer.on(IPC_CHANNELS.TERMINAL_OAUTH_TOKEN, handler);
     return () => {
       ipcRenderer.removeListener(IPC_CHANNELS.TERMINAL_OAUTH_TOKEN, handler);
+    };
+  },
+
+  onCodexProfileLoginTerminal: (
+    callback: (info: { terminalId: string; profileId: string; profileName: string; cwd?: string }) => void
+  ): (() => void) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      info: { terminalId: string; profileId: string; profileName: string; cwd?: string }
+    ): void => {
+      callback(info);
+    };
+    ipcRenderer.on(IPC_CHANNELS.CODEX_PROFILE_LOGIN_TERMINAL, handler);
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.CODEX_PROFILE_LOGIN_TERMINAL, handler);
     };
   },
 

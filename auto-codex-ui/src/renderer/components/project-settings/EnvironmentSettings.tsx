@@ -70,7 +70,11 @@ export function EnvironmentSettings({
   }, []);
 
   const activeProfile = codexProfiles.find(p => p.id === activeProfileId);
-  const hasAuthenticatedProfiles = codexProfiles.some(p => p.oauthToken);
+  const isProfileAuthenticated = (profile: CodexProfile): boolean => {
+    if (typeof profile.isAuthenticated === 'boolean') return profile.isAuthenticated;
+    return Boolean(profile.oauthToken || (profile.isDefault && profile.configDir));
+  };
+  const hasAuthenticatedProfiles = codexProfiles.some(isProfileAuthenticated);
 
   return (
     <section className="space-y-3">
@@ -167,7 +171,7 @@ export function EnvironmentSettings({
                             <Star className="h-3 w-3" />
                             当前
                           </span>
-                          {(activeProfile.oauthToken || (activeProfile.isDefault && activeProfile.configDir)) ? (
+                          {isProfileAuthenticated(activeProfile) ? (
                             <span className="text-xs bg-success/20 text-success px-1.5 py-0.5 rounded flex items-center gap-1">
                               <Check className="h-3 w-3" />
                               已认证

@@ -4,6 +4,7 @@ import { IPC_CHANNELS } from '../../shared/constants';
 import type { IPCResult, TerminalCreateOptions, CodexProfile, CodexProfileSettings, CodexUsageSnapshot } from '../../shared/types';
 import { getCodexProfileManager } from '../codex-profile-manager';
 import { getUsageMonitor } from '../codex-profile/usage-monitor';
+import { expandHomePath } from '../codex-profile/profile-utils';
 import { TerminalManager } from '../terminal-manager';
 import { projectStore } from '../project-store';
 import { terminalNameGenerator } from '../terminal-name-generator';
@@ -106,6 +107,7 @@ export function registerTerminalHandlers(
 
         // Ensure config directory exists for non-default profiles
         if (!profile.isDefault && profile.configDir) {
+          profile.configDir = expandHomePath(profile.configDir);
           const { mkdirSync, existsSync } = await import('fs');
           if (!existsSync(profile.configDir)) {
             mkdirSync(profile.configDir, { recursive: true });
@@ -301,6 +303,7 @@ export function registerTerminalHandlers(
 
         // Ensure the config directory exists for non-default profiles
         if (!profile.isDefault && profile.configDir) {
+          profile.configDir = expandHomePath(profile.configDir);
           const { mkdirSync, existsSync } = await import('fs');
           if (!existsSync(profile.configDir)) {
             mkdirSync(profile.configDir, { recursive: true });
@@ -308,8 +311,8 @@ export function registerTerminalHandlers(
           }
         }
 
-        // Create a terminal and run codex setup-token there
-        // This is needed because codex setup-token requires TTY/raw mode
+        // Create a terminal and run `codex login --device-auth` there.
+        // This is needed because the login flow requires TTY/raw mode.
         const terminalId = `codex-login-${profileId}-${Date.now()}`;
         const homeDir = process.env.HOME || process.env.USERPROFILE || '/tmp';
 
@@ -323,26 +326,38 @@ export function registerTerminalHandlers(
         // Create a new terminal for the login process
         await terminalManager.create({ id: terminalId, cwd: homeDir });
 
-        // Wait a moment for the terminal to initialize
+        // Notify the renderer immediately so it can mount the terminal and start capturing output
+        const mainWindow = getMainWindow();
+        if (mainWindow) {
+          mainWindow.webContents.send(IPC_CHANNELS.CODEX_PROFILE_LOGIN_TERMINAL, {
+            terminalId,
+            profileId,
+            profileName: profile.name,
+            cwd: homeDir
+          });
+        }
+
+        // Wait a moment for the terminal (and renderer) to initialize before emitting output
         await new Promise(resolve => setTimeout(resolve, 500));
 
         // Build the login command with the profile's config dir
         // Use platform-specific syntax and escaping for environment variables
         let loginCommand: string;
         if (!profile.isDefault && profile.configDir) {
+          const configDir = expandHomePath(profile.configDir);
           if (process.platform === 'win32') {
             // SECURITY: Use Windows-specific escaping for cmd.exe
-            const escapedConfigDir = escapeShellArgWindows(profile.configDir);
+            const escapedConfigDir = escapeShellArgWindows(configDir);
             // Windows cmd.exe syntax: set "VAR=value" with %VAR% for expansion
-            loginCommand = `set "CODEX_CONFIG_DIR=${escapedConfigDir}" && echo Config dir: %CODEX_CONFIG_DIR% && codex setup-token`;
+            loginCommand = `set "CODEX_CONFIG_DIR=${escapedConfigDir}" && echo Config dir: %CODEX_CONFIG_DIR% && codex login --device-auth`;
           } else {
             // SECURITY: Use POSIX escaping for bash/zsh
-            const escapedConfigDir = escapeShellArg(profile.configDir);
+            const escapedConfigDir = escapeShellArg(configDir);
             // Unix/Mac bash/zsh syntax: export VAR=value with $VAR for expansion
-            loginCommand = `export CODEX_CONFIG_DIR=${escapedConfigDir} && echo "Config dir: $CODEX_CONFIG_DIR" && codex setup-token`;
+            loginCommand = `export CODEX_CONFIG_DIR=${escapedConfigDir} && echo "Config dir: $CODEX_CONFIG_DIR" && codex login --device-auth`;
           }
         } else {
-          loginCommand = 'codex setup-token';
+          loginCommand = 'codex login --device-auth';
         }
 
         debugLog('[IPC] Sending login command to terminal:', loginCommand);
@@ -350,21 +365,11 @@ export function registerTerminalHandlers(
         // Write the login command to the terminal
         terminalManager.write(terminalId, `${loginCommand}\r`);
 
-        // Notify the renderer that a login terminal was created
-        const mainWindow = getMainWindow();
-        if (mainWindow) {
-          mainWindow.webContents.send('codex-profile-login-terminal', {
-            terminalId,
-            profileId,
-            profileName: profile.name
-          });
-        }
-
         return {
           success: true,
           data: {
             terminalId,
-            message: `A terminal has been opened to authenticate "${profile.name}". Complete the OAuth flow in your browser, then copy the token shown in the terminal.`
+            message: `A terminal has been opened to authenticate "${profile.name}". Complete the login flow in your browser/terminal, then return to Auto Codex and refresh profiles.`
           }
         };
       } catch (error) {

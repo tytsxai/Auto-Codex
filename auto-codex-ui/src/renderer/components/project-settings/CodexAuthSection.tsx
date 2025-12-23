@@ -99,7 +99,7 @@ export function CodexAuthSection({
               </p>
             ) : (
               <p className="text-xs text-muted-foreground">
-                Paste a token from <code className="px-1 bg-muted rounded">codex setup-token</code>
+                Paste a token if you have one (e.g. <code className="px-1 bg-muted rounded">codex login --device-auth</code> or legacy <code className="px-1 bg-muted rounded">codex setup-token</code>)
               </p>
             )}
             <PasswordInput

@@ -150,7 +150,7 @@ export function SDKRateLimitModal() {
       });
 
       if (result.success && result.data) {
-        // Initialize the profile (creates terminal and runs codex setup-token)
+        // Initialize the profile (creates terminal and runs codex login)
         const initResult = await window.electronAPI.initializeCodexProfile(result.data.id);
         
         if (initResult.success) {

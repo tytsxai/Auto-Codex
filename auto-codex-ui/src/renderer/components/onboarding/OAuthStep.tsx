@@ -58,9 +58,14 @@ export function OAuthStep({ onNext, onBack, onSkip }: OAuthStepProps) {
   // Error state
   const [error, setError] = useState<string | null>(null);
 
+  const isProfileAuthenticated = (profile: CodexProfile): boolean => {
+    if (typeof profile.isAuthenticated === 'boolean') return profile.isAuthenticated;
+    return Boolean(profile.oauthToken || (profile.isDefault && profile.configDir));
+  };
+
   // Derived state: check if at least one profile is authenticated
   const hasAuthenticatedProfile = codexProfiles.some(
-    (profile) => profile.oauthToken || (profile.isDefault && profile.configDir)
+    (profile) => isProfileAuthenticated(profile)
   );
 
   // Reusable function to load Codex profiles
@@ -129,7 +134,8 @@ export function OAuthStep({ onNext, onBack, onSkip }: OAuthStepProps) {
 
           alert(
             `正在认证“${profileName}”...\n\n` +
-            `将打开浏览器窗口，使用你的 Codex 账户登录。\n\n` +
+            `已创建用于认证的终端。\n\n` +
+            `如果浏览器没有自动弹出，请在“终端”中打开提示的登录链接。\n\n` +
             `认证完成后会自动保存。`
           );
         } else {
@@ -208,7 +214,8 @@ export function OAuthStep({ onNext, onBack, onSkip }: OAuthStepProps) {
       if (initResult.success) {
         alert(
           `正在认证配置文件...\n\n` +
-          `将打开浏览器窗口，使用你的 Codex 账户登录。\n\n` +
+          `已创建用于认证的终端。\n\n` +
+          `如果浏览器没有自动弹出，请在“终端”中打开提示的登录链接。\n\n` +
           `认证完成后会自动保存。`
         );
       } else {
@@ -396,7 +403,7 @@ export function OAuthStep({ onNext, onBack, onSkip }: OAuthStepProps) {
                                       当前
                                     </span>
                                   )}
-                                  {(profile.oauthToken || (profile.isDefault && profile.configDir)) ? (
+                                  {isProfileAuthenticated(profile) ? (
                                     <span className="text-xs bg-success/20 text-success px-1.5 py-0.5 rounded flex items-center gap-1">
                                       <Check className="h-3 w-3" />
                                       已认证
@@ -496,7 +503,7 @@ export function OAuthStep({ onNext, onBack, onSkip }: OAuthStepProps) {
                                 手动输入令牌
                               </Label>
                               <span className="text-xs text-muted-foreground">
-                                运行 <code className="px-1 py-0.5 bg-muted rounded font-mono text-xs">codex setup-token</code> 获取令牌
+                                运行 <code className="px-1 py-0.5 bg-muted rounded font-mono text-xs">codex login --device-auth</code>（如 CLI 输出令牌）
                               </span>
                             </div>
 

@@ -104,7 +104,7 @@ export function RateLimitModal() {
       });
 
       if (result.success && result.data) {
-        // 初始化配置文件（创建终端并运行 codex setup-token）
+        // 初始化配置文件（创建终端并运行 codex login）
         const initResult = await window.electronAPI.initializeCodexProfile(result.data.id);
         
         if (initResult.success) {

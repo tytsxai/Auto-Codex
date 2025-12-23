@@ -121,6 +121,23 @@ export function App() {
     };
   }, []);
 
+  // 监听 Codex 登录终端事件（由主进程创建）
+  useEffect(() => {
+    const cleanup = window.electronAPI.onCodexProfileLoginTerminal((info) => {
+      const title = info.profileName ? `Codex Login (${info.profileName})` : 'Codex Login';
+      useTerminalStore.getState().addExternalTerminal({
+        id: info.terminalId,
+        title,
+        cwd: info.cwd
+      });
+      setActiveView('terminals');
+    });
+
+    return () => {
+      cleanup?.();
+    };
+  }, []);
+
   // 监听应用更新 - 更新就绪时自动打开设置的“更新”区域
   useEffect(() => {
     // 当更新已下载并可安装时，打开设置的更新区域
@@ -322,7 +339,7 @@ export function App() {
       // 不是 OpenAI API 令牌。它们是不同的：
       // - GitHub 令牌：用于 GitHub API 访问（仓库操作）
       // - OpenAI API Key：用于 Codex 访问（run.py、roadmap 等）
-      // 用户需要使用 'codex setup-token' 单独完成 Codex 认证
+      // 用户需要使用 'codex login'（例如 `codex login --device-auth`）单独完成 Codex 认证
 
       // 使用 GitHub 设置更新项目环境配置
       await window.electronAPI.updateProjectEnv(gitHubSetupProject.id, {

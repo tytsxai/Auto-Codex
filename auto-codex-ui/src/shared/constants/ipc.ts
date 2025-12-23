@@ -73,7 +73,7 @@ export const IPC_CHANNELS = {
   TERMINAL_TITLE_CHANGE: 'terminal:titleChange',
   TERMINAL_CODEX_SESSION: 'terminal:codexSession',  // 已捕获 Codex 会话 ID
   TERMINAL_RATE_LIMIT: 'terminal:rateLimit',  // 检测到 Codex Code 限流
-  TERMINAL_OAUTH_TOKEN: 'terminal:oauthToken',  // 从 setup-token 输出捕获 OAuth 令牌
+  TERMINAL_OAUTH_TOKEN: 'terminal:oauthToken',  // 从 Codex 认证输出捕获 OAuth 令牌
 
   // Codex 配置管理（多账号支持）
   CODEX_PROFILES_GET: 'codex:profilesGet',
@@ -84,6 +84,7 @@ export const IPC_CHANNELS = {
   CODEX_PROFILE_SWITCH: 'codex:profileSwitch',
   CODEX_PROFILE_INITIALIZE: 'codex:profileInitialize',
   CODEX_PROFILE_SET_TOKEN: 'codex:profileSetToken',  // 为配置设置 OAuth 令牌
+  CODEX_PROFILE_LOGIN_TERMINAL: 'codex:profileLoginTerminal',
   CODEX_PROFILE_AUTO_SWITCH_SETTINGS: 'codex:autoSwitchSettings',
   CODEX_PROFILE_UPDATE_AUTO_SWITCH: 'codex:updateAutoSwitch',
   CODEX_PROFILE_FETCH_USAGE: 'codex:fetchUsage',
