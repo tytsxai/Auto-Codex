@@ -22,7 +22,7 @@ env_file = Path(__file__).parent.parent / ".env"
 if env_file.exists():
     load_dotenv(env_file)
 
-from core.auth import get_auth_token
+from core.auth import get_auth_token, ensure_auth_hydrated
 from core.client import create_client
 from providers.codex_cli import find_codex_path, get_gui_env
 from phase_config import get_thinking_budget, normalize_thinking_level
@@ -347,6 +347,44 @@ def main():
     args = parser.parse_args()
 
     debug_section("insights_runner", "Starting Insights Chat")
+
+    # Ensure authentication is hydrated from ~/.codex/auth.json if needed
+    # This must happen early, before any Codex CLI operations
+    auth_status = ensure_auth_hydrated()
+    if auth_status.is_authenticated:
+        debug(
+            "insights_runner",
+            "Authentication verified",
+            source=auth_status.source,
+            api_key_set=auth_status.api_key_set,
+            base_url_set=auth_status.base_url_set,
+        )
+    else:
+        # Provide actionable error message with checked sources
+        checked_sources = [
+            "OPENAI_API_KEY (environment variable)",
+            "CODEX_CODE_OAUTH_TOKEN (environment variable)",
+            "CODEX_CONFIG_DIR (environment variable)",
+            "~/.codex/auth.json",
+            "~/.codex/config.toml",
+        ]
+        error_msg = f"""No Codex authentication found.
+
+Checked sources:
+{chr(10).join(f'  - {s}' for s in checked_sources)}
+
+Configure one of:
+- Create ~/.codex/auth.json with your API key
+- Set OPENAI_API_KEY environment variable
+- Set CODEX_CODE_OAUTH_TOKEN environment variable
+- Set CODEX_CONFIG_DIR to your Codex config directory
+
+For third-party activation channels (e.g., yunyi):
+Your credentials should be in ~/.codex/auth.json
+"""
+        debug_error("insights_runner", "Authentication failed", errors=auth_status.errors)
+        print(error_msg, file=sys.stderr)
+        sys.exit(1)
 
     project_dir = args.project_dir
     user_message = args.message
