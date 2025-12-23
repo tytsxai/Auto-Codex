@@ -8,6 +8,10 @@ for legacy LLM OAuth tokens, plus SDK environment variable passthrough.
 import os
 import re
 import json
+from dataclasses import dataclass
+from typing import Optional
+
+from .debug import debug, debug_success, debug_warning
 
 # Priority order for auth token resolution.
 #
@@ -41,6 +45,29 @@ SDK_ENV_VARS = [
 _OPENAI_KEY_PATTERN = re.compile(r"^sk-[A-Za-z0-9-]{20,}$")
 _DEFAULT_CODEX_CONFIG_DIR = os.path.expanduser("~/.codex")
 
+
+@dataclass
+class AuthStatus:
+    """Authentication status for health checks and startup verification."""
+    is_authenticated: bool
+    source: Optional[str]  # "auth.json", "env", "config_dir", "default_config_dir"
+    api_key_set: bool
+    base_url_set: bool
+    config_dir: Optional[str]
+    codex_cli_available: bool = False
+    codex_cli_path: Optional[str] = None
+    errors: list[str] = None  # type: ignore[assignment]
+
+    def __post_init__(self) -> None:
+        if self.errors is None:
+            self.errors = []
+
+    def __str__(self) -> str:
+        if self.is_authenticated:
+            return f"Authenticated via {self.source}"
+        return f"Not authenticated: {', '.join(self.errors) if self.errors else 'unknown reason'}"
+
+
 def _read_codex_auth_json(config_dir: str) -> dict[str, object] | None:
     """
     Read a Codex CLI `auth.json` file from a config directory.
@@ -72,12 +99,19 @@ def _hydrate_env_from_codex_auth_json() -> None:
     if (os.environ.get("OPENAI_API_KEY") or "").strip() and (os.environ.get("OPENAI_BASE_URL") or "").strip():
         return
 
-    config_dir = (os.environ.get("CODEX_CONFIG_DIR") or "").strip() or _DEFAULT_CODEX_CONFIG_DIR
+    config_dir = (os.environ.get("CODEX_CONFIG_DIR") or "").strip()
+    if not config_dir:
+        if os.environ.get("AUTO_CODEX_DISABLE_DEFAULT_CODEX_CONFIG_DIR", "").strip():
+            return
+        config_dir = _DEFAULT_CODEX_CONFIG_DIR
     if not os.path.isdir(config_dir):
         return
 
     auth = _read_codex_auth_json(config_dir)
     if not auth:
+        return
+
+    if (os.environ.get("CODEX_CODE_OAUTH_TOKEN") or "").strip():
         return
 
     if not (os.environ.get("OPENAI_API_KEY") or "").strip():
@@ -91,6 +125,167 @@ def _hydrate_env_from_codex_auth_json() -> None:
             os.environ["OPENAI_BASE_URL"] = base_url.strip()
         if not (os.environ.get("OPENAI_API_BASE") or "").strip():
             os.environ["OPENAI_API_BASE"] = base_url.strip()
+
+
+def ensure_auth_hydrated() -> AuthStatus:
+    """
+    Ensure authentication credentials are loaded and return status information.
+
+    This function wraps _hydrate_env_from_codex_auth_json() and provides:
+    - Logging of authentication source for debugging
+    - AuthStatus dataclass with detailed authentication state
+
+    Should be called at the start of any runner (Insights, Roadmap, Ideation)
+    to ensure credentials are loaded regardless of launch method (terminal or GUI).
+
+    Returns:
+        AuthStatus with authentication state and source information
+    """
+    errors: list[str] = []
+    checked_sources: list[str] = []
+
+    # Track state before hydration
+    had_api_key_before = bool((os.environ.get("OPENAI_API_KEY") or "").strip())
+    had_base_url_before = bool((os.environ.get("OPENAI_BASE_URL") or "").strip())
+
+    # Perform hydration
+    _hydrate_env_from_codex_auth_json()
+
+    # Check authentication state after hydration
+    api_key = (os.environ.get("OPENAI_API_KEY") or "").strip()
+    base_url = (os.environ.get("OPENAI_BASE_URL") or "").strip()
+    oauth_token = (os.environ.get("CODEX_CODE_OAUTH_TOKEN") or "").strip()
+    config_dir_env = (os.environ.get("CODEX_CONFIG_DIR") or "").strip()
+
+    # Determine authentication source
+    source: Optional[str] = None
+    config_dir_used: Optional[str] = None
+
+    if api_key and is_valid_openai_api_key(api_key):
+        if had_api_key_before:
+            source = "env"
+            debug("auth", "Using OPENAI_API_KEY from environment variable")
+        else:
+            # Key was loaded from auth.json
+            config_dir_used = config_dir_env if config_dir_env else _DEFAULT_CODEX_CONFIG_DIR
+            source = "auth.json"
+            debug_success("auth", f"Loaded credentials from {config_dir_used}/auth.json")
+        checked_sources.append("OPENAI_API_KEY")
+    elif oauth_token and is_valid_codex_oauth_token(oauth_token):
+        source = "env"
+        debug("auth", "Using CODEX_CODE_OAUTH_TOKEN from environment variable")
+        checked_sources.append("CODEX_CODE_OAUTH_TOKEN")
+    elif config_dir_env and is_valid_codex_config_dir(config_dir_env):
+        source = "config_dir"
+        config_dir_used = config_dir_env
+        debug("auth", f"Using CODEX_CONFIG_DIR: {config_dir_env}")
+        checked_sources.append("CODEX_CONFIG_DIR")
+    elif has_default_codex_config_dir():
+        source = "default_config_dir"
+        config_dir_used = _DEFAULT_CODEX_CONFIG_DIR
+        debug("auth", f"Using default Codex config directory: {_DEFAULT_CODEX_CONFIG_DIR}")
+        checked_sources.append("~/.codex")
+    else:
+        # No authentication found
+        checked_sources.extend([
+            "OPENAI_API_KEY (env)",
+            "CODEX_CODE_OAUTH_TOKEN (env)",
+            "CODEX_CONFIG_DIR (env)",
+            f"~/.codex/auth.json",
+            f"~/.codex/config.toml",
+        ])
+        errors.append("No valid authentication credentials found")
+        debug_warning("auth", "No authentication credentials found", checked_sources=checked_sources)
+
+    is_authenticated = source is not None
+
+    status = AuthStatus(
+        is_authenticated=is_authenticated,
+        source=source,
+        api_key_set=bool(api_key),
+        base_url_set=bool(base_url),
+        config_dir=config_dir_used,
+        errors=errors,
+    )
+
+    if is_authenticated:
+        debug("auth", f"Authentication status: {status}", source=source, api_key_set=status.api_key_set, base_url_set=status.base_url_set)
+
+    return status
+
+
+def _find_codex_cli_path() -> str | None:
+    """
+    Find the codex CLI executable path.
+
+    First tries shutil.which (works in terminal), then falls back to
+    common installation paths (needed for GUI apps launched from Finder).
+    """
+    import shutil
+
+    # Common codex installation paths (for GUI apps that don't inherit shell PATH)
+    codex_search_paths = [
+        "/opt/homebrew/bin/codex",  # macOS ARM (Homebrew)
+        "/usr/local/bin/codex",     # macOS Intel (Homebrew) / Linux
+        "/usr/bin/codex",           # System-wide Linux
+        os.path.expanduser("~/.local/bin/codex"),  # User-local
+        os.path.expanduser("~/.npm-global/bin/codex"),  # npm global
+    ]
+
+    # Try PATH first (works in terminal)
+    codex_path = shutil.which("codex")
+    if codex_path:
+        return codex_path
+
+    # Fallback: check common installation paths
+    for path in codex_search_paths:
+        if os.path.isfile(path) and os.access(path, os.X_OK):
+            return path
+
+    return None
+
+
+def check_auth_health() -> AuthStatus:
+    """
+    Perform a comprehensive health check of authentication status.
+
+    This function:
+    1. Ensures credentials are loaded via _hydrate_env_from_codex_auth_json()
+    2. Checks authentication status and source
+    3. Checks Codex CLI availability and path
+
+    Returns:
+        AuthStatus with complete authentication and CLI status information
+
+    Example:
+        >>> status = check_auth_health()
+        >>> if status.is_authenticated and status.codex_cli_available:
+        ...     print(f"Ready to use Codex via {status.source}")
+        ... else:
+        ...     print(f"Issues: {status.errors}")
+    """
+    # Get base authentication status
+    status = ensure_auth_hydrated()
+
+    # Check Codex CLI availability
+    codex_path = _find_codex_cli_path()
+    status.codex_cli_available = codex_path is not None
+    status.codex_cli_path = codex_path
+
+    if not status.codex_cli_available:
+        status.errors.append("Codex CLI not found in PATH or common installation locations")
+        debug_warning("auth", "Codex CLI not found", searched_paths=[
+            "PATH",
+            "/opt/homebrew/bin/codex",
+            "/usr/local/bin/codex",
+            "/usr/bin/codex",
+            "~/.local/bin/codex",
+            "~/.npm-global/bin/codex",
+        ])
+    else:
+        debug_success("auth", f"Codex CLI found at {codex_path}")
+
+    return status
 
 
 def _looks_like_api_key(token: str) -> bool:

@@ -221,3 +221,118 @@ class TestHydrateEnvFromCodexAuthJson:
         (tmp_path / "auth.json").write_text('["array", "not", "dict"]')
         result = auth._read_codex_auth_json(str(tmp_path))
         assert result is None
+
+
+class TestCheckAuthHealth:
+    """Tests for check_auth_health function."""
+
+    def test_check_auth_health_with_api_key(self, monkeypatch, tmp_path):
+        """Test health check with valid API key."""
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-test-1234567890abcdef1234")
+        monkeypatch.delenv("CODEX_CODE_OAUTH_TOKEN", raising=False)
+        monkeypatch.delenv("CODEX_CONFIG_DIR", raising=False)
+        monkeypatch.setenv("AUTO_CODEX_DISABLE_DEFAULT_CODEX_CONFIG_DIR", "1")
+
+        from core.auth import check_auth_health
+
+        status = check_auth_health()
+
+        assert status.is_authenticated is True
+        assert status.source == "env"
+        assert status.api_key_set is True
+
+    def test_check_auth_health_with_auth_json(self, monkeypatch, tmp_path):
+        """Test health check with auth.json credentials."""
+        import json
+
+        codex_dir = tmp_path / ".codex"
+        codex_dir.mkdir()
+        auth_data = {"OPENAI_API_KEY": "test-key-12345678901234567890"}
+        (codex_dir / "auth.json").write_text(json.dumps(auth_data))
+
+        monkeypatch.setattr(auth, "_DEFAULT_CODEX_CONFIG_DIR", str(codex_dir))
+        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+        monkeypatch.delenv("OPENAI_BASE_URL", raising=False)
+        monkeypatch.delenv("CODEX_CODE_OAUTH_TOKEN", raising=False)
+        monkeypatch.delenv("CODEX_CONFIG_DIR", raising=False)
+        monkeypatch.delenv("AUTO_CODEX_DISABLE_DEFAULT_CODEX_CONFIG_DIR", raising=False)
+
+        from core.auth import check_auth_health
+
+        status = check_auth_health()
+
+        assert status.is_authenticated is True
+        assert status.source == "auth.json"
+        assert status.api_key_set is True
+        assert status.config_dir == str(codex_dir)
+
+    def test_check_auth_health_no_auth(self, monkeypatch, tmp_path):
+        """Test health check with no authentication configured."""
+        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+        monkeypatch.delenv("OPENAI_BASE_URL", raising=False)
+        monkeypatch.delenv("CODEX_CODE_OAUTH_TOKEN", raising=False)
+        monkeypatch.delenv("CODEX_CONFIG_DIR", raising=False)
+        monkeypatch.setenv("AUTO_CODEX_DISABLE_DEFAULT_CODEX_CONFIG_DIR", "1")
+        monkeypatch.setattr(auth, "_DEFAULT_CODEX_CONFIG_DIR", str(tmp_path / "nonexistent"))
+
+        from core.auth import check_auth_health
+
+        status = check_auth_health()
+
+        assert status.is_authenticated is False
+        assert status.source is None
+        assert len(status.errors) > 0
+        assert "No valid authentication credentials found" in status.errors
+
+    def test_check_auth_health_includes_cli_status(self, monkeypatch, tmp_path):
+        """Test that health check includes Codex CLI status."""
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-test-1234567890abcdef1234")
+        monkeypatch.setenv("AUTO_CODEX_DISABLE_DEFAULT_CODEX_CONFIG_DIR", "1")
+
+        from core.auth import check_auth_health
+
+        status = check_auth_health()
+
+        # codex_cli_available should be a boolean
+        assert isinstance(status.codex_cli_available, bool)
+        # codex_cli_path should be None or a string
+        assert status.codex_cli_path is None or isinstance(status.codex_cli_path, str)
+
+    def test_check_auth_health_str_representation(self, monkeypatch):
+        """Test AuthStatus string representation."""
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-test-1234567890abcdef1234")
+        monkeypatch.setenv("AUTO_CODEX_DISABLE_DEFAULT_CODEX_CONFIG_DIR", "1")
+
+        from core.auth import check_auth_health
+
+        status = check_auth_health()
+
+        status_str = str(status)
+        assert "Authenticated via" in status_str or "Not authenticated" in status_str
+
+    def test_check_auth_health_with_base_url(self, monkeypatch, tmp_path):
+        """Test health check with API key and base URL."""
+        import json
+
+        codex_dir = tmp_path / ".codex"
+        codex_dir.mkdir()
+        auth_data = {
+            "OPENAI_API_KEY": "test-key-12345678901234567890",
+            "api_base_url": "https://example.com/api",
+        }
+        (codex_dir / "auth.json").write_text(json.dumps(auth_data))
+
+        monkeypatch.setattr(auth, "_DEFAULT_CODEX_CONFIG_DIR", str(codex_dir))
+        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+        monkeypatch.delenv("OPENAI_BASE_URL", raising=False)
+        monkeypatch.delenv("CODEX_CODE_OAUTH_TOKEN", raising=False)
+        monkeypatch.delenv("CODEX_CONFIG_DIR", raising=False)
+        monkeypatch.delenv("AUTO_CODEX_DISABLE_DEFAULT_CODEX_CONFIG_DIR", raising=False)
+
+        from core.auth import check_auth_health
+
+        status = check_auth_health()
+
+        assert status.is_authenticated is True
+        assert status.api_key_set is True
+        assert status.base_url_set is True
