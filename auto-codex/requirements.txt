@@ -5,7 +5,8 @@ python-dotenv>=1.0.0
 tomli>=2.0.0; python_version < "3.11"
 
 # Memory Integration (highly recommended) but can be disabled by commenting out the line below
-graphiti-core[falkordb]>=0.5.0
+# NOTE: graphiti-core requires Python 3.10+; keep core features working on older Python 3 by gating it.
+graphiti-core[falkordb]>=0.5.0; python_version >= "3.10"
 
 # Google AI (optional - for Gemini LLM and embeddings)
 google-generativeai>=0.8.0
