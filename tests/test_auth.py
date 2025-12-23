@@ -29,7 +29,11 @@ def test_get_auth_token_uses_openai_key(monkeypatch):
 
 def test_get_auth_token_uses_oauth_token(monkeypatch):
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("OPENAI_BASE_URL", raising=False)
     monkeypatch.setenv("CODEX_CODE_OAUTH_TOKEN", "codex-token-1234567890abcdef")
+    # Disable default config dir to prevent hydration from ~/.codex/auth.json
+    monkeypatch.setenv("AUTO_CODEX_DISABLE_DEFAULT_CODEX_CONFIG_DIR", "1")
+    monkeypatch.setattr(auth, "_DEFAULT_CODEX_CONFIG_DIR", "/nonexistent/path")
 
     assert get_auth_token() == "codex-token-1234567890abcdef"
     assert get_auth_token_source() == "CODEX_CODE_OAUTH_TOKEN"
@@ -73,7 +77,9 @@ def test_require_auth_token_invalid_format(monkeypatch):
 
 def test_require_auth_token_deprecated_oauth(monkeypatch):
     monkeypatch.setenv("AUTO_CODEX_DISABLE_DEFAULT_CODEX_CONFIG_DIR", "1")
+    monkeypatch.setattr(auth, "_DEFAULT_CODEX_CONFIG_DIR", "/nonexistent/path")
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("OPENAI_BASE_URL", raising=False)
     monkeypatch.delenv("CODEX_CODE_OAUTH_TOKEN", raising=False)
     monkeypatch.delenv("CODEX_CONFIG_DIR", raising=False)
     monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "legacy-token")
@@ -108,3 +114,110 @@ def test_is_valid_codex_oauth_token():
 def test_is_valid_codex_config_dir(tmp_path):
     assert is_valid_codex_config_dir(str(tmp_path)) is True
     assert is_valid_codex_config_dir(str(tmp_path / "missing")) is False
+
+
+class TestHydrateEnvFromCodexAuthJson:
+    """Tests for _hydrate_env_from_codex_auth_json and _read_codex_auth_json."""
+
+    def test_hydrate_env_from_auth_json(self, monkeypatch, tmp_path):
+        """Test that auth.json credentials are loaded into env vars."""
+        import json
+
+        codex_dir = tmp_path / ".codex"
+        codex_dir.mkdir()
+        auth_data = {
+            "OPENAI_API_KEY": "test-key-12345678901234567890",
+            "api_base_url": "https://example.com/api",
+        }
+        (codex_dir / "auth.json").write_text(json.dumps(auth_data))
+
+        monkeypatch.setattr(auth, "_DEFAULT_CODEX_CONFIG_DIR", str(codex_dir))
+        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+        monkeypatch.delenv("OPENAI_BASE_URL", raising=False)
+        monkeypatch.delenv("OPENAI_API_BASE", raising=False)
+        monkeypatch.delenv("CODEX_CONFIG_DIR", raising=False)
+
+        auth._hydrate_env_from_codex_auth_json()
+
+        import os
+        assert os.environ.get("OPENAI_API_KEY") == "test-key-12345678901234567890"
+        assert os.environ.get("OPENAI_BASE_URL") == "https://example.com/api"
+        assert os.environ.get("OPENAI_API_BASE") == "https://example.com/api"
+
+    def test_hydrate_env_respects_existing_env(self, monkeypatch, tmp_path):
+        """Test that existing env vars are not overwritten."""
+        import json
+
+        codex_dir = tmp_path / ".codex"
+        codex_dir.mkdir()
+        auth_data = {
+            "OPENAI_API_KEY": "auth-json-key-1234567890",
+            "api_base_url": "https://auth-json.example.com",
+        }
+        (codex_dir / "auth.json").write_text(json.dumps(auth_data))
+
+        monkeypatch.setattr(auth, "_DEFAULT_CODEX_CONFIG_DIR", str(codex_dir))
+        monkeypatch.setenv("OPENAI_API_KEY", "existing-key-1234567890")
+        monkeypatch.setenv("OPENAI_BASE_URL", "https://existing.example.com")
+        monkeypatch.delenv("CODEX_CONFIG_DIR", raising=False)
+
+        auth._hydrate_env_from_codex_auth_json()
+
+        import os
+        # Should not be overwritten
+        assert os.environ.get("OPENAI_API_KEY") == "existing-key-1234567890"
+        assert os.environ.get("OPENAI_BASE_URL") == "https://existing.example.com"
+
+    def test_hydrate_env_uses_codex_config_dir(self, monkeypatch, tmp_path):
+        """Test that CODEX_CONFIG_DIR takes precedence over default."""
+        import json
+
+        custom_dir = tmp_path / "custom-codex"
+        custom_dir.mkdir()
+        auth_data = {"OPENAI_API_KEY": "custom-key-12345678901234567890"}
+        (custom_dir / "auth.json").write_text(json.dumps(auth_data))
+
+        monkeypatch.setenv("CODEX_CONFIG_DIR", str(custom_dir))
+        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+        monkeypatch.delenv("OPENAI_BASE_URL", raising=False)
+
+        auth._hydrate_env_from_codex_auth_json()
+
+        import os
+        assert os.environ.get("OPENAI_API_KEY") == "custom-key-12345678901234567890"
+
+    def test_hydrate_env_handles_alternative_key_names(self, monkeypatch, tmp_path):
+        """Test that alternative key names in auth.json are supported."""
+        import json
+
+        codex_dir = tmp_path / ".codex"
+        codex_dir.mkdir()
+        # Use alternative key name
+        auth_data = {"api_key": "alt-key-12345678901234567890"}
+        (codex_dir / "auth.json").write_text(json.dumps(auth_data))
+
+        monkeypatch.setattr(auth, "_DEFAULT_CODEX_CONFIG_DIR", str(codex_dir))
+        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+        monkeypatch.delenv("CODEX_CONFIG_DIR", raising=False)
+
+        auth._hydrate_env_from_codex_auth_json()
+
+        import os
+        assert os.environ.get("OPENAI_API_KEY") == "alt-key-12345678901234567890"
+
+    def test_read_codex_auth_json_missing_file(self, tmp_path):
+        """Test that missing auth.json returns None."""
+        result = auth._read_codex_auth_json(str(tmp_path))
+        assert result is None
+
+    def test_read_codex_auth_json_invalid_json(self, tmp_path):
+        """Test that invalid JSON returns None."""
+        (tmp_path / "auth.json").write_text("not valid json")
+        result = auth._read_codex_auth_json(str(tmp_path))
+        assert result is None
+
+    def test_read_codex_auth_json_non_dict(self, tmp_path):
+        """Test that non-dict JSON returns None."""
+        (tmp_path / "auth.json").write_text('["array", "not", "dict"]')
+        result = auth._read_codex_auth_json(str(tmp_path))
+        assert result is None

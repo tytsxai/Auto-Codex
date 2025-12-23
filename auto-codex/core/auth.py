@@ -7,6 +7,7 @@ for legacy LLM OAuth tokens, plus SDK environment variable passthrough.
 
 import os
 import re
+import json
 
 # Priority order for auth token resolution.
 #
@@ -29,6 +30,8 @@ SDK_ENV_VARS = [
     "OPENAI_API_KEY",
     "CODEX_CODE_OAUTH_TOKEN",
     "CODEX_CONFIG_DIR",
+    "OPENAI_BASE_URL",
+    "OPENAI_API_BASE",
     "NO_PROXY",
     "DISABLE_TELEMETRY",
     "DISABLE_COST_WARNINGS",
@@ -37,6 +40,57 @@ SDK_ENV_VARS = [
 
 _OPENAI_KEY_PATTERN = re.compile(r"^sk-[A-Za-z0-9-]{20,}$")
 _DEFAULT_CODEX_CONFIG_DIR = os.path.expanduser("~/.codex")
+
+def _read_codex_auth_json(config_dir: str) -> dict[str, object] | None:
+    """
+    Read a Codex CLI `auth.json` file from a config directory.
+
+    Third-party activators/gateways commonly store OpenAI-compatible API keys and
+    base URLs here (e.g. `OPENAI_API_KEY`, `api_base_url`).
+    """
+    try:
+        auth_path = os.path.join(config_dir, "auth.json")
+        if not os.path.isfile(auth_path):
+            return None
+        with open(auth_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return data if isinstance(data, dict) else None
+    except Exception:
+        return None
+
+
+def _hydrate_env_from_codex_auth_json() -> None:
+    """
+    Populate process env from Codex CLI config when GUI apps don't inherit shell env.
+
+    - If OPENAI_API_KEY is missing, try to load it from `CODEX_CONFIG_DIR/auth.json`
+      (or the default `~/.codex/auth.json`).
+    - If a gateway base URL is present (`api_base_url`), map it to OPENAI_BASE_URL /
+      OPENAI_API_BASE for OpenAI-compatible SDKs.
+    """
+    # Never override explicit env vars.
+    if (os.environ.get("OPENAI_API_KEY") or "").strip() and (os.environ.get("OPENAI_BASE_URL") or "").strip():
+        return
+
+    config_dir = (os.environ.get("CODEX_CONFIG_DIR") or "").strip() or _DEFAULT_CODEX_CONFIG_DIR
+    if not os.path.isdir(config_dir):
+        return
+
+    auth = _read_codex_auth_json(config_dir)
+    if not auth:
+        return
+
+    if not (os.environ.get("OPENAI_API_KEY") or "").strip():
+        key = auth.get("OPENAI_API_KEY") or auth.get("api_key") or auth.get("apiKey") or auth.get("key") or auth.get("token")
+        if isinstance(key, str) and key.strip():
+            os.environ["OPENAI_API_KEY"] = key.strip()
+
+    base_url = auth.get("api_base_url")
+    if isinstance(base_url, str) and base_url.strip():
+        if not (os.environ.get("OPENAI_BASE_URL") or "").strip():
+            os.environ["OPENAI_BASE_URL"] = base_url.strip()
+        if not (os.environ.get("OPENAI_API_BASE") or "").strip():
+            os.environ["OPENAI_API_BASE"] = base_url.strip()
 
 
 def _looks_like_api_key(token: str) -> bool:
@@ -116,6 +170,8 @@ def get_auth_token() -> str | None:
     Returns:
         Token string if found, None otherwise
     """
+    _hydrate_env_from_codex_auth_json()
+
     openai_token = os.environ.get("OPENAI_API_KEY", "")
     if openai_token and is_valid_openai_api_key(openai_token):
         return openai_token.strip()
@@ -136,6 +192,8 @@ def get_auth_token() -> str | None:
 
 def get_auth_token_source() -> str | None:
     """Get the name of the source that provided the auth token."""
+    _hydrate_env_from_codex_auth_json()
+
     openai_token = os.environ.get("OPENAI_API_KEY", "")
     if openai_token and is_valid_openai_api_key(openai_token):
         return "OPENAI_API_KEY"
@@ -161,6 +219,8 @@ def require_auth_token() -> str:
     Raises:
         ValueError: If no auth token is found in any supported source
     """
+    _hydrate_env_from_codex_auth_json()
+
     token = get_auth_token()
     if token:
         return token
