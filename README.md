@@ -39,7 +39,7 @@ The Desktop UI is the recommended way to use Auto-Codex. It provides visual task
 ### Prerequisites
 
 1. **Node.js 18+** - [Download Node.js](https://nodejs.org/)
-2. **Python 3.10+** - [Download Python](https://www.python.org/downloads/)
+2. **Python 3.12+** - [Download Python](https://www.python.org/downloads/)
 3. **Docker Desktop** - Required for the Memory Layer
 4. **Codex CLI** - `npm install -g @openai/codex`
 5. **OpenAI Account** - Required for Codex CLI access (API key or OAuth token for non-interactive use)
@@ -126,6 +126,14 @@ uv venv && uv pip install -r requirements.txt
 
 # Or using standard Python
 python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
+```
+
+**Production (deterministic installs):** use the lock file that matches your Python version.
+
+```bash
+# Example for Python 3.12/3.13
+PY_VER_NODOT=$(python3 -c 'import sys; print(f"{sys.version_info[0]}{sys.version_info[1]}")')
+uv pip install -r requirements-py${PY_VER_NODOT}.lock
 ```
 
 ### Step 2: Start the Memory Layer
@@ -319,7 +327,7 @@ your-project/
 │   └── ideation/             # Ideas and planning
 ├── auto-codex/              # Python backend (framework code)
 │   ├── run.py                # Build entry point
-│   ├── spec_runner.py        # Spec creation orchestrator
+│   ├── runners/spec_runner.py # Spec creation orchestrator
 │   ├── prompts/              # Agent prompt templates
 │   └── ...
 ├── auto-codex-ui/           # Electron desktop application

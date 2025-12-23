@@ -33,13 +33,15 @@ OPENAI_API_KEY=sk-...
 3. (Optional) Set a Codex model override:
 
 ```bash
-AUTO_BUILD_MODEL=gpt-5.2-codex-xhigh
+AUTO_BUILD_MODEL=gpt-5.2-codex
+# Optional reasoning effort override (recommended over model suffixes)
+AUTO_BUILD_REASONING_EFFORT=xhigh
 ```
 
 ## 3) Verify Codex CLI Works
 
 ```bash
-printf "Hello from Codex\n" | codex exec --json -m gpt-5.2-codex-xhigh -
+printf "Hello from Codex\n" | codex exec --json -m gpt-5.2-codex -c model_reasoning_effort=xhigh -
 ```
 
 You should see JSON output with a message event.
@@ -56,14 +58,15 @@ python auto-codex/run.py --spec 001
 - `OPENAI_API_KEY` → supported for Codex CLI
 - `CODEX_CODE_OAUTH_TOKEN` → supported (OAuth token)
 - `CODEX_CONFIG_DIR` → supported (Codex CLI config directory)
-- `AUTO_BUILD_MODEL` → optional model override (default: `gpt-5.2-codex-xhigh`)
+- `AUTO_BUILD_MODEL` → optional model override (default: `gpt-5.2-codex`)
+- `AUTO_BUILD_REASONING_EFFORT` → optional reasoning effort override (default: `medium`)
 
 ## API/Behavior Differences
 
 - **Provider**: Claude SDK calls are replaced with Codex CLI subprocess calls.
 - **Auth**: Use `OPENAI_API_KEY`, `CODEX_CODE_OAUTH_TOKEN`, or `CODEX_CONFIG_DIR`.
 - **Execution**: Codex CLI runs as a local process (`codex exec --json`) with streamed JSON events.
-- **Models**: Model IDs now use Codex-compatible names (default `gpt-5.2-codex-xhigh`).
+- **Models**: Model IDs use the base model name (default `gpt-5.2-codex`); set reasoning via `model_reasoning_effort`.
 
 ## FAQ
 

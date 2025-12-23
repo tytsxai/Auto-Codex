@@ -23,7 +23,7 @@ Thank you for your interest in contributing to Auto-Codex! This document provide
 
 Before contributing, ensure you have the following installed:
 
-- **Python 3.8+** - For the backend framework
+- **Python 3.12+** - For the backend framework
 - **Node.js 18+** - For the Electron frontend
 - **pnpm** - Package manager for the frontend (`npm install -g pnpm`)
 - **uv** (recommended) or **pip** - Python package manager
@@ -266,7 +266,7 @@ All pull requests and pushes to `main` trigger automated CI checks via GitHub Ac
 
 | Workflow | Trigger | What it checks |
 |----------|---------|----------------|
-| **CI** | Push to `main`, PRs | Python tests (3.11 & 3.12), Frontend tests |
+| **CI** | Push to `main`, PRs | Python tests (3.12 & 3.13), Frontend tests |
 | **Lint** | Push to `main`, PRs | Ruff (Python), ESLint + TypeScript (Frontend) |
 | **Test on Tag** | Version tags (`v*`) | Full test suite before release |
 
@@ -275,7 +275,7 @@ All pull requests and pushes to `main` trigger automated CI checks via GitHub Ac
 Before a PR can be merged:
 
 1. All CI checks must pass (green checkmarks)
-2. Python tests pass on both Python 3.11 and 3.12
+2. Python tests pass on both Python 3.12 and 3.13
 3. Frontend tests pass
 4. Linting passes (no ruff or eslint errors)
 5. TypeScript type checking passes
@@ -415,7 +415,7 @@ Auto-Codex consists of two main parts:
 
 The core autonomous coding framework:
 
-- **Entry Points**: `run.py` (build runner), `spec_runner.py` (spec creator)
+- **Entry Points**: `run.py` (build runner), `runners/spec_runner.py` (spec creator)
 - **Agent System**: `agent.py`, `client.py`, `prompts/`
 - **Execution**: `coordinator.py` (parallel), `worktree.py` (isolation)
 - **Memory**: `memory.py` (file-based), `graphiti_memory.py` (graph-based)

@@ -27,7 +27,7 @@ pnpm run package:linux  # Linux
 
 - Node.js 18+
 - npm 或 pnpm
-- Python 3.10+（用于 auto-codex 后端）
+- Python 3.12+（用于 auto-codex 后端）
 - **仅 Windows**：Visual Studio Build Tools 2022，需安装"使用 C++ 的桌面开发"工作负载
 - **仅 Windows**：启用开发者模式（设置 → 系统 → 开发者选项）
 

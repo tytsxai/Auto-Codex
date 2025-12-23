@@ -10,7 +10,7 @@ This document covers terminal-only usage of Auto-Codex. **For most users, we rec
 
 ## Prerequisites
 
-- Python 3.9+
+- Python 3.12+
 - Codex CLI (`npm install -g @openai/codex`)
 
 ## Setup
@@ -44,21 +44,23 @@ cp .env.example .env
 
 ## Creating Specs
 
+Run these commands from your **project root** and point to the Auto-Codex scripts:
+
 ```bash
-# Activate the virtual environment
+# Activate the virtual environment (from auto-codex/)
 source .venv/bin/activate
 
 # Create a spec interactively
-python spec_runner.py --interactive
+python /path/to/auto-codex/runners/spec_runner.py --interactive
 
 # Or with a task description
-python spec_runner.py --task "Add user authentication with OAuth"
+python /path/to/auto-codex/runners/spec_runner.py --task "Add user authentication with OAuth"
 
 # Force a specific complexity level
-python spec_runner.py --task "Fix button color" --complexity simple
+python /path/to/auto-codex/runners/spec_runner.py --task "Fix button color" --complexity simple
 
 # Continue an interrupted spec
-python spec_runner.py --continue 001-feature
+python /path/to/auto-codex/runners/spec_runner.py --continue 001-feature
 ```
 
 ### Complexity Tiers
@@ -75,14 +77,14 @@ The spec runner automatically assesses task complexity:
 
 ```bash
 # List all specs and their status
-python run.py --list
+python /path/to/auto-codex/run.py --list
 
 # Run a specific spec
-python run.py --spec 001
-python run.py --spec 001-feature-name
+python /path/to/auto-codex/run.py --spec 001
+python /path/to/auto-codex/run.py --spec 001-feature-name
 
 # Limit iterations for testing
-python run.py --spec 001 --max-iterations 5
+python /path/to/auto-codex/run.py --spec 001 --max-iterations 5
 ```
 
 ## QA Validation
@@ -91,13 +93,13 @@ After all chunks are complete, QA validation runs automatically:
 
 ```bash
 # Skip automatic QA
-python run.py --spec 001 --skip-qa
+python /path/to/auto-codex/run.py --spec 001 --skip-qa
 
 # Run QA validation manually
-python run.py --spec 001 --qa
+python /path/to/auto-codex/run.py --spec 001 --qa
 
 # Check QA status
-python run.py --spec 001 --qa-status
+python /path/to/auto-codex/run.py --spec 001 --qa-status
 ```
 
 The QA validation loop:
@@ -116,13 +118,13 @@ cd .worktrees/auto-codex/
 npm run dev  # or your project's run command
 
 # See what was changed
-python run.py --spec 001 --review
+python /path/to/auto-codex/run.py --spec 001 --review
 
 # Merge changes into your project
-python run.py --spec 001 --merge
+python /path/to/auto-codex/run.py --spec 001 --merge
 
 # Discard if you don't like it
-python run.py --spec 001 --discard
+python /path/to/auto-codex/run.py --spec 001 --discard
 ```
 
 ## Interactive Controls
@@ -149,7 +151,7 @@ echo "Focus on fixing the login bug first" > specs/001-name/HUMAN_INPUT.md
 ## Spec Validation
 
 ```bash
-python validate_spec.py --spec-dir specs/001-feature --checkpoint all
+python /path/to/auto-codex/spec/validate_spec.py --spec-dir .auto-codex/specs/001-feature --checkpoint all
 ```
 
 ## Environment Variables
@@ -159,7 +161,8 @@ python validate_spec.py --spec-dir specs/001-feature --checkpoint all
 | `OPENAI_API_KEY` | One of | OpenAI API key for Codex CLI |
 | `CODEX_CODE_OAUTH_TOKEN` | One of | OAuth token from Codex CLI login (e.g. `codex login --device-auth`) |
 | `CODEX_CONFIG_DIR` | One of | Path to Codex CLI config directory |
-| `AUTO_BUILD_MODEL` | No | Model override (default: gpt-5.2-codex-xhigh) |
+| `AUTO_BUILD_MODEL` | No | Model override (default: gpt-5.2-codex) |
+| `AUTO_BUILD_REASONING_EFFORT` | No | Reasoning effort override (low/medium/high/xhigh; default: medium) |
 
 ## Auto-Codex Memory Layer (Optional)
 
@@ -168,7 +171,7 @@ For cross-session context retention, see the main README for Memory Layer setup 
 ### Verifying Memory Layer
 
 ```bash
-cd auto-codex
+cd /path/to/auto-codex
 source .venv/bin/activate
-python test_graphiti_memory.py
+python integrations/graphiti/test_graphiti_memory.py
 ```
