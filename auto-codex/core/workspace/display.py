@@ -6,8 +6,101 @@ Workspace Display
 Functions for displaying workspace information and build summaries.
 """
 
-from ui import bold, error, info, print_status, python_cmd, success
+import subprocess
+from datetime import datetime, timezone
+from pathlib import Path
+
+from ui import bold, error, info, print_status, python_cmd, success, warning
 from worktree import WorktreeManager
+
+
+def get_worktree_last_activity(worktree_path: Path) -> tuple[datetime | None, int | None]:
+    """
+    Get the last commit date and days since last activity for a worktree.
+
+    Args:
+        worktree_path: Path to the worktree
+
+    Returns:
+        Tuple of (last_commit_date, days_since_last_activity)
+    """
+    try:
+        result = subprocess.run(
+            ["git", "log", "-1", "--format=%cI"],
+            cwd=worktree_path,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            last_commit_str = result.stdout.strip()
+            last_commit = datetime.fromisoformat(last_commit_str.replace("Z", "+00:00"))
+            now = datetime.now(timezone.utc)
+            days_since = (now - last_commit).days
+            return last_commit, days_since
+    except Exception:
+        pass
+    return None, None
+
+
+def check_stale_worktrees(
+    project_dir: Path, stale_days: int = 7
+) -> list[dict]:
+    """
+    Check for stale worktrees that haven't been modified in X days.
+
+    Args:
+        project_dir: Project root directory
+        stale_days: Number of days after which a worktree is considered stale
+
+    Returns:
+        List of stale worktree info dicts
+    """
+    manager = WorktreeManager(project_dir)
+    worktrees = manager.list_all_worktrees()
+    stale = []
+
+    for wt in worktrees:
+        last_commit, days_since = get_worktree_last_activity(wt.path)
+        if days_since is not None and days_since >= stale_days:
+            stale.append({
+                "spec_name": wt.spec_name,
+                "path": str(wt.path),
+                "branch": wt.branch,
+                "days_since_activity": days_since,
+                "last_commit": last_commit.isoformat() if last_commit else None,
+            })
+
+    return stale
+
+
+def show_stale_worktree_warning(project_dir: Path, stale_days: int = 7) -> bool:
+    """
+    Show a warning if there are stale worktrees.
+
+    Args:
+        project_dir: Project root directory
+        stale_days: Number of days after which a worktree is considered stale
+
+    Returns:
+        True if there are stale worktrees
+    """
+    stale = check_stale_worktrees(project_dir, stale_days)
+    if not stale:
+        return False
+
+    print()
+    print(warning(f"⚠️  Found {len(stale)} stale worktree(s) (no activity for {stale_days}+ days):"))
+    for wt in stale[:5]:  # Show max 5
+        print(f"  • {wt['spec_name']} ({wt['days_since_activity']} days)")
+    if len(stale) > 5:
+        print(f"  ... and {len(stale) - 5} more")
+    print()
+    print(f"  To clean up: {python_cmd()} auto-codex/run.py --cleanup-worktrees")
+    print(f"  Or discard individually: {python_cmd()} auto-codex/run.py --spec <name> --discard")
+    print()
+    return True
 
 
 def show_build_summary(manager: WorktreeManager, spec_name: str) -> None:

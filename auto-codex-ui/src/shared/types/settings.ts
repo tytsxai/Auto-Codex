@@ -109,6 +109,14 @@ export interface AppSettings {
   changelogEmojiLevel?: ChangelogEmojiLevel;
   // Migration flags (internal use)
   _migratedAgentProfileToAuto?: boolean;
+
+  // Worktree management settings
+  /** Auto-cleanup worktree after successful merge and commit (default: false) */
+  autoCleanupWorktreeAfterMerge?: boolean;
+  /** Days after which a worktree is considered stale (default: 7) */
+  staleWorktreeDays?: number;
+  /** Show warning for stale worktrees on startup (default: true) */
+  showStaleWorktreeWarning?: boolean;
 }
 
 // Auto-Codex Source Environment Configuration (for auto-codex repo .env)

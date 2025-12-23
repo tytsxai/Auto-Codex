@@ -395,6 +395,12 @@ export interface WorktreeListItem {
   filesChanged: number;
   additions: number;
   deletions: number;
+  /** ISO timestamp of the last commit in the worktree */
+  lastCommitDate?: string;
+  /** Number of days since last activity */
+  daysSinceLastActivity?: number;
+  /** Whether this worktree is considered stale (no activity for X days) */
+  isStale?: boolean;
 }
 
 /**
@@ -402,6 +408,35 @@ export interface WorktreeListItem {
  */
 export interface WorktreeListResult {
   worktrees: WorktreeListItem[];
+  /** Worktrees that are considered stale (for warning display) */
+  staleWorktrees?: WorktreeListItem[];
+  /** Total count of stale worktrees */
+  staleCount?: number;
+}
+
+/**
+ * Health check result for worktree system
+ */
+export interface WorktreeHealthCheck {
+  /** Total number of worktrees */
+  totalWorktrees: number;
+  /** Number of stale worktrees */
+  staleWorktrees: number;
+  /** Number of orphaned worktrees (no matching task) */
+  orphanedWorktrees: number;
+  /** Total disk space used by worktrees (in bytes) */
+  diskSpaceUsed?: number;
+  /** List of issues found */
+  issues: WorktreeHealthIssue[];
+}
+
+export interface WorktreeHealthIssue {
+  type: 'stale' | 'orphaned' | 'corrupted' | 'large';
+  specName: string;
+  message: string;
+  severity: 'warning' | 'error';
+  /** Suggested action */
+  suggestion: string;
 }
 
 // Stuck task recovery types

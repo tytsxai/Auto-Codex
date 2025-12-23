@@ -12,7 +12,9 @@ import {
   Minus,
   ChevronRight,
   Check,
-  X
+  X,
+  Clock,
+  AlertTriangle
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -50,6 +52,7 @@ export function Worktrees({ projectId }: WorktreesProps) {
   const tasks = useTaskStore((state) => state.tasks);
 
   const [worktrees, setWorktrees] = useState<WorktreeListItem[]>([]);
+  const [staleCount, setStaleCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -75,6 +78,7 @@ export function Worktrees({ projectId }: WorktreesProps) {
       const result = await window.electronAPI.listWorktrees(projectId);
       if (result.success && result.data) {
         setWorktrees(result.data.worktrees);
+        setStaleCount(result.data.staleCount || 0);
       } else {
         setError(result.error || '加载工作树失败');
       }
@@ -216,6 +220,21 @@ export function Worktrees({ projectId }: WorktreesProps) {
         </div>
       )}
 
+      {/* Stale worktrees warning */}
+      {staleCount > 0 && (
+        <div className="mb-4 rounded-lg border border-warning/50 bg-warning/10 p-4 text-sm">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="h-4 w-4 text-warning mt-0.5 shrink-0" />
+            <div className="flex-1">
+              <p className="font-medium text-warning">发现 {staleCount} 个过期工作树</p>
+              <p className="text-muted-foreground mt-1">
+                这些工作树已超过 7 天没有活动。考虑清理未使用的工作树以节省磁盘空间。
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Loading state */}
       {isLoading && worktrees.length === 0 && (
         <div className="flex h-full items-center justify-center">
@@ -251,6 +270,12 @@ export function Worktrees({ projectId }: WorktreesProps) {
                         <CardTitle className="text-base flex items-center gap-2">
                           <GitBranch className="h-4 w-4 text-info shrink-0" />
                           <span className="truncate">{worktree.branch}</span>
+                          {worktree.isStale && (
+                            <Badge variant="outline" className="shrink-0 text-warning border-warning/50 bg-warning/10">
+                              <Clock className="h-3 w-3 mr-1" />
+                              过期
+                            </Badge>
+                          )}
                         </CardTitle>
                         {task && (
                           <CardDescription className="mt-1 truncate">
@@ -282,6 +307,12 @@ export function Worktrees({ projectId }: WorktreesProps) {
                         <Minus className="h-3.5 w-3.5" />
                         <span>{worktree.deletions}</span>
                       </div>
+                      {worktree.daysSinceLastActivity !== undefined && (
+                        <div className={`flex items-center gap-1.5 ${worktree.isStale ? 'text-warning' : 'text-muted-foreground'}`}>
+                          <Clock className="h-3.5 w-3.5" />
+                          <span>{worktree.daysSinceLastActivity} 天前活动</span>
+                        </div>
+                      )}
                     </div>
 
                     {/* Branch info */}

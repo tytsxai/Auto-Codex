@@ -35,10 +35,13 @@ from .display import (
     _print_conflict_info,
     # Export private names for backward compatibility
     _print_merge_success,
+    check_stale_worktrees,
+    get_worktree_last_activity,
     print_conflict_info,
     print_merge_success,
     show_build_summary,
     show_changed_files,
+    show_stale_worktree_warning,
 )
 
 # Finalization Functions
@@ -133,6 +136,9 @@ __all__ = [
     "show_changed_files",
     "print_merge_success",
     "print_conflict_info",
+    "get_worktree_last_activity",
+    "check_stale_worktrees",
+    "show_stale_worktree_warning",
     # Finalization
     "finalize_workspace",
     "handle_workspace_choice",

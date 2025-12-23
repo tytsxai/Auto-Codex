@@ -298,6 +298,8 @@ def handle_list_worktrees_command(project_dir: Path) -> None:
     Args:
         project_dir: Project root directory
     """
+    from core.workspace.display import check_stale_worktrees
+
     print_banner()
     print("\n" + "=" * 70)
     print("  SPEC WORKTREES")
@@ -310,11 +312,30 @@ def handle_list_worktrees_command(project_dir: Path) -> None:
         print()
         print("  Worktrees are created when you run a build in isolated mode.")
     else:
+        # Check for stale worktrees
+        stale_worktrees = check_stale_worktrees(project_dir, stale_days=7)
+        stale_spec_names = {wt["spec_name"] for wt in stale_worktrees}
+
         for wt in worktrees:
-            print(f"  {icon(Icons.FOLDER)} {wt.spec_name}")
+            is_stale = wt.spec_name in stale_spec_names
+            stale_indicator = " ⚠️ STALE" if is_stale else ""
+            print(f"  {icon(Icons.FOLDER)} {wt.spec_name}{stale_indicator}")
             print(f"       Branch: {wt.branch}")
             print(f"       Path: {wt.path}")
             print(f"       Commits: {wt.commit_count}, Files: {wt.files_changed}")
+            if is_stale:
+                stale_info = next((s for s in stale_worktrees if s["spec_name"] == wt.spec_name), None)
+                if stale_info:
+                    print(f"       ⚠️  No activity for {stale_info['days_since_activity']} days")
+            print()
+
+        # Show stale worktree warning if any
+        if stale_worktrees:
+            print("-" * 70)
+            print()
+            from ui import warning
+            print(warning(f"  ⚠️  {len(stale_worktrees)} stale worktree(s) found (no activity for 7+ days)"))
+            print("  Consider cleaning up unused worktrees to save disk space.")
             print()
 
         print("-" * 70)

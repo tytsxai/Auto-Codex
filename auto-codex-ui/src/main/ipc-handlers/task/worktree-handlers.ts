@@ -948,7 +948,20 @@ export function registerWorktreeHandlers(
               // Ignore diff errors
             }
 
-            worktrees.push({
+            // Get last commit date for stale detection
+            let lastCommitDate: string | undefined;
+            let daysSinceLastActivity: number | undefined;
+            try {
+              const lastCommitOutput = runGit(entryPath, ['log', '-1', '--format=%cI']).trim();
+              if (lastCommitOutput) {
+                lastCommitDate = lastCommitOutput;
+                const lastCommitTime = new Date(lastCommitOutput).getTime();
+                const now = Date.now();
+                daysSinceLastActivity = Math.floor((now - lastCommitTime) / (1000 * 60 * 60 * 24));
+              }
+            } catch {
+              // Ignore date errors - worktree may have no commits
+            }            worktrees.push({
               specName: entry,
               path: entryPath,
               branch,
@@ -956,7 +969,10 @@ export function registerWorktreeHandlers(
               commitCount,
               filesChanged,
               additions,
-              deletions
+              deletions,
+              lastCommitDate,
+              daysSinceLastActivity,
+              isStale: daysSinceLastActivity !== undefined && daysSinceLastActivity > 7
             });
           } catch (gitError) {
             console.error(`Error getting info for worktree ${entry}:`, gitError);
@@ -964,7 +980,17 @@ export function registerWorktreeHandlers(
           }
         }
 
-        return { success: true, data: { worktrees } };
+        // Identify stale worktrees (older than 7 days by default)
+        const staleWorktrees = worktrees.filter(w => w.isStale);
+
+        return {
+          success: true,
+          data: {
+            worktrees,
+            staleWorktrees: staleWorktrees.length > 0 ? staleWorktrees : undefined,
+            staleCount: staleWorktrees.length
+          }
+        };
       } catch (error) {
         console.error('Failed to list worktrees:', error);
         return {
