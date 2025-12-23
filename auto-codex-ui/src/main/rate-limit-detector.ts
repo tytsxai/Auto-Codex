@@ -5,7 +5,7 @@
 
 import { getCodexProfileManager } from './codex-profile-manager';
 import {
-  buildProviderEnvFromConfig,
+  buildAuthEnvFromConfig,
   configPrefersApiKey,
   getCredentialFromAuthJson,
   getProviderEnvInfoFromConfigToml,
@@ -283,10 +283,10 @@ export function getProfileEnv(profileId?: string): Record<string, string> {
 
   const configDir = expandHomePath((profile.configDir || '').trim());
 
-  // Some Codex providers require a specific env var (env_key) for API key auth
-  // (e.g. YUNYI_KEY). GUI-launched processes often don't inherit shell env,
-  // so we opportunistically source it from the Codex config dir auth.json.
-  const providerEnv = buildProviderEnvFromConfig(configDir, process.env);
+  // For third-party providers/gateways, GUI-launched processes often don't inherit
+  // shell-loaded env vars. Source provider env_key + OPENAI_API_KEY/base_url from
+  // the Codex config dir (auth.json/config.toml) when missing.
+  const providerEnv = buildAuthEnvFromConfig(configDir, process.env);
 
   // If the Codex config is explicitly set up for API-key auth (common for
   // third-party gateways/activators), prefer config-dir auth over an OAuth token
@@ -323,6 +323,12 @@ export function getProfileEnv(profileId?: string): Record<string, string> {
 
   // Fallback: If default profile, no env vars needed
   if (profile.isDefault) {
+    // Still set CODEX_CONFIG_DIR to make auth robust in non-shell environments
+    // where HOME may be missing/mismatched.
+    if (configDir) {
+      console.warn('[getProfileEnv] Using default profile (provider env + CODEX_CONFIG_DIR)');
+      return { ...providerEnv, CODEX_CONFIG_DIR: configDir };
+    }
     console.warn('[getProfileEnv] Using default profile (provider env only)');
     return providerEnv;
   }

@@ -10,7 +10,7 @@ import { projectStore } from '../project-store';
 import { parseEnvFile } from './utils';
 import { loadSettingsWithDecryptedSecrets } from '../utils/secure-settings';
 import { getCodexProfileManager } from '../codex-profile-manager';
-import { buildProviderEnvFromConfig, getProviderEnvInfoFromConfigToml } from '../codex-profile/codex-config';
+import { buildAuthEnvFromConfig, getProviderEnvInfoFromConfigToml } from '../codex-profile/codex-config';
 import { expandHomePath } from '../codex-profile/profile-utils';
 
 function looksLikeCredential(value: unknown): boolean {
@@ -439,11 +439,8 @@ ${existingVars['GRAPHITI_DATABASE'] ? `GRAPHITI_DATABASE=${existingVars['GRAPHIT
           const activeProfile = profileManager.getActiveProfile();
           const configDir = expandHomePath((activeProfile?.configDir || '').trim());
 
-          const providerEnv = configDir ? buildProviderEnvFromConfig(configDir, process.env) : {};
-          const profileEnv =
-            activeProfile && !activeProfile.isDefault && configDir
-              ? { CODEX_CONFIG_DIR: configDir }
-              : {};
+          const providerEnv = configDir ? buildAuthEnvFromConfig(configDir, process.env) : {};
+          const profileEnv = configDir ? { CODEX_CONFIG_DIR: configDir } : {};
 
           const proc = spawn('codex', ['--version'], {
             cwd: project.path,
