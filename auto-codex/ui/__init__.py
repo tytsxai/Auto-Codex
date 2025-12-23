@@ -14,6 +14,9 @@ Terminal UI utilities organized into logical modules:
 - spinner: Spinner for long operations
 """
 
+import sys
+from pathlib import Path
+
 # Re-export everything from submodules
 from .boxes import box, divider
 from .capabilities import (
@@ -49,6 +52,14 @@ from .menu import MenuOption, select_menu
 from .progress import progress_bar
 from .spinner import Spinner
 from .status import BuildState, BuildStatus, StatusManager
+
+
+def python_cmd() -> str:
+    exe_name = Path(sys.executable).name
+    if exe_name.startswith("python"):
+        return exe_name
+    return "python3"
+
 
 # For backward compatibility
 _FANCY_UI = FANCY_UI
@@ -103,4 +114,6 @@ __all__ = [
     "print_phase_status",
     # Spinner
     "Spinner",
+    # Python
+    "python_cmd",
 ]

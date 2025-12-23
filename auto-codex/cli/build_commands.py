@@ -29,6 +29,7 @@ from ui import (
     icon,
     muted,
     print_status,
+    python_cmd,
     select_menu,
     success,
     warning,
@@ -274,7 +275,7 @@ def handle_build_command(
                     print(f"See: {spec_dir / 'qa_report.md'}")
                     print(f"Or:  {spec_dir / 'QA_FIX_REQUEST.md'}")
                     print(
-                        f"\nResume QA: python auto-codex/run.py --spec {spec_dir.name} --qa\n"
+                        f"\nResume QA: {python_cmd()} auto-codex/run.py --spec {spec_dir.name} --qa\n"
                     )
 
                 # Sync implementation plan to main project after QA
@@ -285,7 +286,7 @@ def handle_build_command(
                     )
             except KeyboardInterrupt:
                 print("\n\nQA validation paused.")
-                print(f"Resume: python auto-codex/run.py --spec {spec_dir.name} --qa")
+                print(f"Resume: {python_cmd()} auto-codex/run.py --spec {spec_dir.name} --qa")
                 qa_approved = False
 
         # Post-build finalization (only for isolated sequential mode)
@@ -467,7 +468,7 @@ def _handle_build_interrupt(
     content = [
         bold(f"{icon(Icons.PLAY)} TO RESUME"),
         "",
-        f"Run: {highlight(f'python auto-codex/run.py --spec {spec_dir.name}')}",
+        f"Run: {highlight(f'{python_cmd()} auto-codex/run.py --spec {spec_dir.name}')}",
     ]
     if worktree_manager:
         content.append("")

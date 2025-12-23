@@ -6,13 +6,7 @@ Workspace Display
 Functions for displaying workspace information and build summaries.
 """
 
-from ui import (
-    bold,
-    error,
-    info,
-    print_status,
-    success,
-)
+from ui import bold, error, info, print_status, python_cmd, success
 from worktree import WorktreeManager
 
 
@@ -97,7 +91,7 @@ def print_merge_success(
         if keep_worktree and spec_name:
             lines.append("")
             lines.append("Worktree kept for testing. Delete when satisfied:")
-            lines.append(f"  python auto-codex/run.py --spec {spec_name} --discard")
+            lines.append(f"  {python_cmd()} auto-codex/run.py --spec {spec_name} --discard")
 
         content = lines
     else:
@@ -132,7 +126,7 @@ def print_merge_success(
             )
             if spec_name:
                 lines.append(
-                    f"  python auto-codex/run.py --spec {spec_name} --discard"
+                    f"  {python_cmd()} auto-codex/run.py --spec {spec_name} --discard"
                 )
         else:
             lines.extend(

@@ -23,6 +23,7 @@ from ui import (
     highlight,
     icon,
     muted,
+    python_cmd,
     print_status,
 )
 
@@ -147,7 +148,7 @@ async def run_followup_planner(
                     f"Total subtasks: {len(all_subtasks)}",
                     "",
                     muted("Next steps:"),
-                    f"  Run: {highlight(f'python auto-codex/run.py --spec {spec_dir.name}')}",
+                    f"  Run: {highlight(f'{python_cmd()} auto-codex/run.py --spec {spec_dir.name}')}",
                 ]
                 print(box(content, width=70, style="heavy"))
                 print()

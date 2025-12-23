@@ -19,6 +19,7 @@ from debug import debug_warning
 from ui import (
     Icons,
     icon,
+    python_cmd,
 )
 from workspace import (
     cleanup_all_worktrees,
@@ -318,13 +319,12 @@ def handle_list_worktrees_command(project_dir: Path) -> None:
 
         print("-" * 70)
         print()
-        print("  To merge:   python auto-codex/run.py --spec <name> --merge")
-        print("  To review:  python auto-codex/run.py --spec <name> --review")
-        print("  To discard: python auto-codex/run.py --spec <name> --discard")
+        py = python_cmd()
+        print(f"  To merge:   {py} auto-codex/run.py --spec <name> --merge")
+        print(f"  To review:  {py} auto-codex/run.py --spec <name> --review")
+        print(f"  To discard: {py} auto-codex/run.py --spec <name> --discard")
         print()
-        print(
-            "  To cleanup all worktrees: python auto-codex/run.py --cleanup-worktrees"
-        )
+        print(f"  To cleanup all worktrees: {py} auto-codex/run.py --cleanup-worktrees")
     print()
 
 

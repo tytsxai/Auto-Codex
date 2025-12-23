@@ -501,7 +501,7 @@ For high or critical risk, add security steps:
   "verification_steps": [
     {
       "name": "Secrets Scan",
-      "command": "python auto-codex/scan_secrets.py --all-files --json",
+      "command": "python3 auto-codex/scan_secrets.py --all-files --json",
       "expected_outcome": "No secrets detected",
       "type": "security",
       "required": true,
@@ -573,7 +573,7 @@ Include parallelism analysis, verification strategy, and QA configuration in the
       "recommended_workers": 2,
       "speedup_estimate": "1.5x faster than sequential"
     },
-    "startup_command": "source auto-codex/.venv/bin/activate && python auto-codex/run.py --spec 001 --parallel 2"
+    "startup_command": "source auto-codex/.venv/bin/activate && python3 auto-codex/run.py --spec 001 --parallel 2"
   },
   "verification_strategy": {
     "risk_level": "medium",
@@ -800,10 +800,10 @@ Parallelism Analysis:
 
 To continue building this spec, run:
 
-  source auto-codex/.venv/bin/activate && python auto-codex/run.py --spec [SPEC_NUMBER] --parallel [RECOMMENDED_WORKERS]
+  source auto-codex/.venv/bin/activate && python3 auto-codex/run.py --spec [SPEC_NUMBER] --parallel [RECOMMENDED_WORKERS]
 
 Example:
-  source auto-codex/.venv/bin/activate && python auto-codex/run.py --spec 001 --parallel 2
+  source auto-codex/.venv/bin/activate && python3 auto-codex/run.py --spec 001 --parallel 2
 
 === END SESSION 1 ===
 ```

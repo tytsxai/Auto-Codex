@@ -29,6 +29,7 @@ from ui import (
     icon,
     muted,
     print_status,
+    python_cmd,
     success,
     warning,
 )
@@ -138,7 +139,7 @@ def merge_existing_build(
     """
     Merge an existing build into the project using intent-aware merge.
 
-    Called when user runs: python auto-codex/run.py --spec X --merge
+    Called when user runs: python3 auto-codex/run.py --spec X --merge
 
     This uses the MergeOrchestrator to:
     1. Analyze semantic changes from the task
@@ -163,7 +164,7 @@ def merge_existing_build(
         print_status(f"No existing build found for '{spec_name}'.", "warning")
         print()
         print("To start a new build:")
-        print(highlight(f"  python auto-codex/run.py --spec {spec_name}"))
+        print(highlight(f"  {python_cmd()} auto-codex/run.py --spec {spec_name}"))
         return False
 
     # Detect current branch - this is where user wants changes merged
@@ -204,7 +205,7 @@ def merge_existing_build(
         print()
         print("Example:")
         print(highlight("  git checkout main  # or your feature branch"))
-        print(highlight(f"  python auto-codex/run.py --spec {spec_name} --merge"))
+        print(highlight(f"  {python_cmd()} auto-codex/run.py --spec {spec_name} --merge"))
         return False
 
     if no_commit:
@@ -246,7 +247,7 @@ def merge_existing_build(
                     )
 
                     # Don't auto-delete worktree - let user test and manually cleanup
-                    # User can delete with: python auto-codex/run.py --spec <name> --discard
+                    # User can delete with: python3 auto-codex/run.py --spec <name> --discard
                     # Or via UI "Delete Worktree" button
 
                     return True
@@ -305,12 +306,12 @@ def merge_existing_build(
             print(highlight("  git commit -m 'your commit message'"))
             print()
             print("When satisfied, delete the worktree:")
-            print(muted(f"  python auto-codex/run.py --spec {spec_name} --discard"))
+            print(muted(f"  {python_cmd()} auto-codex/run.py --spec {spec_name} --discard"))
         else:
             print_status("Your feature has been added to your project.", "success")
             print()
             print("When satisfied, delete the worktree:")
-            print(muted(f"  python auto-codex/run.py --spec {spec_name} --discard"))
+            print(muted(f"  {python_cmd()} auto-codex/run.py --spec {spec_name} --discard"))
         return True
     else:
         print()

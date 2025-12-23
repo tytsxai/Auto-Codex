@@ -18,6 +18,7 @@ if str(_PARENT_DIR) not in sys.path:
 from ui import (
     Icons,
     icon,
+    python_cmd,
 )
 
 from .build_commands import handle_build_command
@@ -46,33 +47,37 @@ from .workspace_commands import (
 
 def parse_args() -> argparse.Namespace:
     """Parse command line arguments."""
+    py = python_cmd()
     parser = argparse.ArgumentParser(
         description="Auto-Codex Framework - Autonomous multi-session coding agent",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
+        epilog=f"""
 Examples:
   # List all specs
-  python auto-codex/run.py --list
+  {py} auto-codex/run.py --list
 
   # Run a specific spec (by number or full name)
-  python auto-codex/run.py --spec 001
-  python auto-codex/run.py --spec 001-initial-app
+  {py} auto-codex/run.py --spec 001
+  {py} auto-codex/run.py --spec 001-initial-app
 
   # Workspace management (after build completes)
-  python auto-codex/run.py --spec 001 --merge     # Add build to your project
-  python auto-codex/run.py --spec 001 --review    # See what was built
-  python auto-codex/run.py --spec 001 --discard   # Delete build (with confirmation)
+  {py} auto-codex/run.py --spec 001 --merge     # Add build to your project
+  {py} auto-codex/run.py --spec 001 --review    # See what was built
+  {py} auto-codex/run.py --spec 001 --discard   # Delete build (with confirmation)
 
   # Advanced options
-  python auto-codex/run.py --spec 001 --direct       # Skip workspace isolation
-  python auto-codex/run.py --spec 001 --isolated     # Force workspace isolation
+  {py} auto-codex/run.py --spec 001 --direct       # Skip workspace isolation
+  {py} auto-codex/run.py --spec 001 --isolated     # Force workspace isolation
 
   # Status checks
-  python auto-codex/run.py --spec 001 --review-status  # Check human review status
-  python auto-codex/run.py --spec 001 --qa-status      # Check QA validation status
+  {py} auto-codex/run.py --spec 001 --review-status  # Check human review status
+  {py} auto-codex/run.py --spec 001 --qa-status      # Check QA validation status
 
 Prerequisites:
-  1. Create a spec first: codex /spec
+  1. Create a spec first:
+       {py} auto-codex/runners/spec_runner.py --interactive
+     Or:
+       {py} auto-codex/runners/spec_runner.py --task "Describe what to build"
   2. Configure Codex auth (OPENAI_API_KEY, CODEX_CODE_OAUTH_TOKEN, or CODEX_CONFIG_DIR)
 
 Environment Variables:
@@ -287,12 +292,13 @@ def main() -> None:
     # Require --spec if not listing
     if not args.spec:
         print_banner()
+        py = python_cmd()
         print("\nError: --spec is required")
         print("\nUsage:")
-        print("  python auto-codex/run.py --list           # See all specs")
-        print("  python auto-codex/run.py --spec 001       # Run a spec")
+        print(f"  {py} auto-codex/run.py --list           # See all specs")
+        print(f"  {py} auto-codex/run.py --spec 001       # Run a spec")
         print("\nCreate a new spec with:")
-        print("  claude /spec")
+        print(f"  {py} auto-codex/runners/spec_runner.py --interactive")
         sys.exit(1)
 
     # Find the spec

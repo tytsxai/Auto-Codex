@@ -26,6 +26,7 @@ from ui import (
     Icons,
     icon,
     info,
+    python_cmd,
     success,
     warning,
 )
@@ -124,4 +125,4 @@ def handle_qa_command(
             sys.exit(1)
     except KeyboardInterrupt:
         print("\n\nQA validation paused.")
-        print(f"Resume with: python auto-codex/run.py --spec {spec_dir.name} --qa")
+        print(f"Resume with: {python_cmd()} auto-codex/run.py --spec {spec_dir.name} --qa")

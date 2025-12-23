@@ -1055,7 +1055,7 @@ class ValidationStrategyBuilder:
         security_steps.append(
             ValidationStep(
                 name="Secrets Scan",
-                command="python auto-codex/scan_secrets.py --all-files --json",
+                command="python3 auto-codex/scan_secrets.py --all-files --json",
                 expected_outcome="No secrets detected",
                 step_type="security",
                 required=True,

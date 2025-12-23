@@ -13,18 +13,18 @@ Key Features:
 - Linear integration for project management
 
 Usage:
-    python auto-codex/run.py --spec 001-initial-app
-    python auto-codex/run.py --spec 001
-    python auto-codex/run.py --list
+    python3 auto-codex/run.py --spec 001-initial-app
+    python3 auto-codex/run.py --spec 001
+    python3 auto-codex/run.py --list
 
     # Workspace management
-    python auto-codex/run.py --spec 001 --merge     # Add completed build to project
-    python auto-codex/run.py --spec 001 --review    # See what was built
-    python auto-codex/run.py --spec 001 --discard   # Delete build (requires confirmation)
+    python3 auto-codex/run.py --spec 001 --merge     # Add completed build to project
+    python3 auto-codex/run.py --spec 001 --review    # See what was built
+    python3 auto-codex/run.py --spec 001 --discard   # Delete build (requires confirmation)
 
 Prerequisites:
     - Codex authentication configured (OPENAI_API_KEY, CODEX_CODE_OAUTH_TOKEN, or CODEX_CONFIG_DIR)
-    - Spec created via: python auto-codex/runners/spec_runner.py (writes to .auto-codex/specs/)
+    - Spec created via: python3 auto-codex/runners/spec_runner.py (writes to .auto-codex/specs/)
     - Codex CLI installed (`codex` available on PATH)
 """
 

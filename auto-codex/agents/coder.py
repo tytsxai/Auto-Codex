@@ -49,6 +49,7 @@ from ui import (
     highlight,
     icon,
     muted,
+    python_cmd,
     print_key_value,
     print_status,
 )
@@ -203,7 +204,7 @@ async def run_autonomous_agent(
             print("\nTo resume, delete the PAUSE file:")
             print(f"  rm {pause_file}")
             print("\nThen run again:")
-            print(f"  python auto-codex/run.py --spec {spec_dir.name}")
+            print(f"  {python_cmd()} auto-codex/run.py --spec {spec_dir.name}")
             return
 
         # Check max iterations
@@ -469,7 +470,7 @@ async def run_autonomous_agent(
             bold(f"{icon(Icons.PLAY)} NEXT STEPS"),
             "",
             f"{total - completed} subtasks remaining.",
-            f"Run again: {highlight(f'python auto-codex/run.py --spec {spec_dir.name}')}",
+            f"Run again: {highlight(f'{python_cmd()} auto-codex/run.py --spec {spec_dir.name}')}",
         ]
     else:
         content = [

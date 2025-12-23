@@ -15,6 +15,7 @@ if str(_PARENT_DIR) not in sys.path:
 
 from progress import count_subtasks
 from workspace import get_existing_build_worktree
+from ui import python_cmd
 
 from .utils import get_specs_dir
 
@@ -100,7 +101,8 @@ def print_specs_list(project_dir: Path, dev_mode: bool = False) -> None:
     if not specs:
         print("\nNo specs found.")
         print("\nCreate your first spec:")
-        print("  claude /spec")
+        py = python_cmd()
+        print(f"  {py} auto-codex/runners/spec_runner.py --interactive")
         return
 
     print("\n" + "=" * 70)
@@ -128,6 +130,7 @@ def print_specs_list(project_dir: Path, dev_mode: bool = False) -> None:
 
     print("-" * 70)
     print("\nTo run a spec:")
-    print("  python auto-codex/run.py --spec 001")
-    print("  python auto-codex/run.py --spec 001-feature-name")
+    py = python_cmd()
+    print(f"  {py} auto-codex/run.py --spec 001")
+    print(f"  {py} auto-codex/run.py --spec 001-feature-name")
     print()
