@@ -51,7 +51,7 @@ import {
 } from './codex-profile/profile-utils';
 
 /**
- * Manages Codex Code profiles for multi-account support.
+ * Manages Codex profiles for multi-account support.
  * Profiles are stored in the app's userData directory.
  * Each profile points to a separate Codex config directory.
  */

@@ -25,7 +25,7 @@ export interface TerminalSession {
   cwd: string;
   projectPath: string;
   isCodexMode: boolean;
-  codexSessionId?: string;  // Codex Code session ID for --resume
+  codexSessionId?: string;  // Codex session ID for --resume
   outputBuffer: string;
   createdAt: string;
   lastActiveAt: string;
@@ -62,7 +62,7 @@ export interface SessionDateRestoreResult {
 }
 
 /**
- * Rate limit information when Codex Code hits subscription limits
+ * Rate limit information when Codex hits subscription limits
  */
 export interface RateLimitInfo {
   terminalId: string;

@@ -40,7 +40,7 @@ export function WelcomeStep({ onGetStarted, onSkip }: WelcomeStepProps) {
     {
       icon: <Sparkles className="h-5 w-5" />,
       title: 'AI 驱动开发',
-      description: '使用 Codex Code 智能体生成代码并构建功能'
+      description: '使用 Codex 智能体生成代码并构建功能'
     },
     {
       icon: <FileCode className="h-5 w-5" />,

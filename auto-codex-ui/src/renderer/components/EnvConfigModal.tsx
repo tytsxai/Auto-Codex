@@ -255,7 +255,7 @@ export function EnvConfigModal({
   };
 
   const handleOpenDocs = () => {
-    // 打开 Codex Code 文档以获取令牌
+    // 打开 Codex 文档以获取令牌
     window.open('https://docs.anthropic.com/en/docs/codex-code', '_blank');
   };
 
@@ -531,7 +531,7 @@ export function EnvConfigModal({
                   {/* 令牌输入 */}
                   <div className="space-y-2">
                     <Label htmlFor="token" className="text-sm font-medium text-foreground">
-                      Codex Code OAuth 令牌
+                      Codex OAuth 令牌
                     </Label>
                     <div className="relative">
                       <Input

@@ -65,7 +65,7 @@ hooks/
 - Handle initialization and updates
 
 #### CodexAuthSection.tsx
-**Purpose**: Manages Codex Code authentication configuration.
+**Purpose**: Manages Codex authentication configuration.
 **Props**:
 - `isExpanded`: Section expand/collapse state
 - `onToggle`: Toggle handler

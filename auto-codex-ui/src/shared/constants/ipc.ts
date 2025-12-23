@@ -72,7 +72,7 @@ export const IPC_CHANNELS = {
   TERMINAL_EXIT: 'terminal:exit',
   TERMINAL_TITLE_CHANGE: 'terminal:titleChange',
   TERMINAL_CODEX_SESSION: 'terminal:codexSession',  // 已捕获 Codex 会话 ID
-  TERMINAL_RATE_LIMIT: 'terminal:rateLimit',  // 检测到 Codex Code 限流
+  TERMINAL_RATE_LIMIT: 'terminal:rateLimit',  // 检测到 Codex 限流
   TERMINAL_OAUTH_TOKEN: 'terminal:oauthToken',  // 从 Codex 认证输出捕获 OAuth 令牌
 
   // Codex 配置管理（多账号支持）

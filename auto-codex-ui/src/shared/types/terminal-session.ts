@@ -20,7 +20,7 @@ export interface TerminalSessionState {
   rows: number;
   cols: number;
 
-  // Codex Code specific
+  // Codex-specific
   isCodexMode: boolean;
   codexSessionId?: string;  // For potential /resume
 

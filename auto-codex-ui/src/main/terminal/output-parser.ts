@@ -14,7 +14,7 @@ const CODEX_SESSION_PATTERNS = [
 ];
 
 /**
- * Regex pattern to detect Codex Code rate limit messages
+ * Regex pattern to detect Codex CLI rate limit messages
  * Matches: "Limit reached · resets Dec 17 at 6am (Europe/Oslo)"
  */
 const RATE_LIMIT_PATTERN = /Limit reached\s*[·•]\s*resets\s+(.+?)$/m;

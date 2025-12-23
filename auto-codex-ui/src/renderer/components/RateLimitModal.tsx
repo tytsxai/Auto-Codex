@@ -168,10 +168,10 @@ export function RateLimitModal() {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-warning">
             <AlertCircle className="h-5 w-5" />
-            已达到 Codex Code 使用上限
+            已达到 Codex 使用上限
           </DialogTitle>
           <DialogDescription>
-            您已达到本周期的 Codex Code 使用上限。
+            您已达到本周期的 Codex 使用上限。
             {currentProfile && !currentProfile.isDefault && (
               <span className="text-muted-foreground">（账号：{currentProfile.name}）</span>
             )}

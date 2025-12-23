@@ -236,7 +236,7 @@ export function SDKRateLimitModal() {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-warning">
             <AlertCircle className="h-5 w-5" />
-            Codex Code 速率限制
+            Codex 速率限制
           </DialogTitle>
           <DialogDescription className="flex items-center gap-2">
             <SourceIcon className="h-4 w-4" />

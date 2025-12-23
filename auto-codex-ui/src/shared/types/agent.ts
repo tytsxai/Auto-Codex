@@ -7,7 +7,7 @@
 // ============================================
 
 /**
- * Usage data parsed from Codex Code's /usage command
+ * Usage data parsed from Codex's /usage command
  */
 export interface CodexUsageData {
   /** Session usage percentage (0-100) */
@@ -62,7 +62,7 @@ export interface CodexRateLimitEvent {
 }
 
 /**
- * A Codex Code subscription profile for multi-account support.
+ * A Codex subscription profile for multi-account support.
  * Profiles store OAuth tokens for instant switching without browser re-auth.
  */
 export interface CodexProfile {
