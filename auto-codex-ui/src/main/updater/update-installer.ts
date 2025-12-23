@@ -53,7 +53,7 @@ export async function downloadAndApplyUpdate(
     }
 
     // Use explicit tag reference URL to avoid HTTP 300 when branch/tag names collide
-    // See: https://github.com/AndyMik90/Auto-Codex/issues/78
+    // See: https://github.com/tytsxai/Auto-Codex/issues/78
     const tarballUrl = `https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/tarball/refs/tags/${release.tag_name}`;
     const releaseVersion = parseVersionFromTag(release.tag_name);
     debugLog('[Update] Release version:', releaseVersion);

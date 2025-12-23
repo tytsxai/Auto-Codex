@@ -58,7 +58,7 @@ Handlers for retrieving and searching memories (both file-based and FalkorDB).
 Handlers for project context and index operations.
 
 **Exports:**
-- `registerProjectContextHandlers(getMainWindow)` - Register IPC handlers
+- `registerProjectContextHandlers(getMainWindow, pythonEnvManager)` - Register IPC handlers
 
 **IPC Channels:**
 - `CONTEXT_GET` - Get full project context (index, memory status, recent memories)
@@ -74,7 +74,7 @@ Handlers for project context and index operations.
 Main entry point that aggregates all context handlers.
 
 **Exports:**
-- `registerContextHandlers(getMainWindow)` - Register all context-related handlers
+- `registerContextHandlers(getMainWindow, pythonEnvManager)` - Register all context-related handlers
 - Re-exports all utility functions and handler functions
 
 ## Refactoring Benefits
@@ -111,10 +111,11 @@ context/index.ts (aggregator)
 
 ```typescript
 import { registerContextHandlers } from './ipc-handlers/context-handlers';
+import { pythonEnvManager } from './python-env-manager';
 
 // In main process setup
 const getMainWindow = () => mainWindow;
-registerContextHandlers(getMainWindow);
+registerContextHandlers(getMainWindow, pythonEnvManager);
 ```
 
 ## Testing Strategy

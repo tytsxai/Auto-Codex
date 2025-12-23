@@ -6,12 +6,14 @@
 import * as os from 'os';
 import * as fs from 'fs';
 import * as path from 'path';
+import { app } from 'electron';
 import { IPC_CHANNELS } from '../../shared/constants';
 import { getCodexProfileManager } from '../codex-profile-manager';
 import * as OutputParser from './output-parser';
 import * as SessionHandler from './session-handler';
 import { debugLog, debugError } from '../../shared/utils/debug-logger';
 import { escapeShellArg, buildCdCommand } from '../../shared/utils/shell-escape';
+import { DEFAULT_AGENT_PROFILES, MODEL_ID_MAP } from '../../shared/constants/models';
 import type {
   TerminalProcess,
   WindowGetter,
@@ -19,8 +21,66 @@ import type {
   OAuthTokenEvent
 } from './types';
 
-const CODEX_TERMINAL_COMMAND =
-  'codex --dangerously-bypass-approvals-and-sandbox -m gpt-5.2-codex-xhigh -c enable_compaction=true';
+function getSettingsPath(): string | null {
+  try {
+    if (!app.isReady()) {
+      return null;
+    }
+    return path.join(app.getPath('userData'), 'settings.json');
+  } catch {
+    return null;
+  }
+}
+
+function thinkingLevelToReasoningEffort(thinkingLevel: unknown): string | null {
+  const level = typeof thinkingLevel === 'string' ? thinkingLevel.toLowerCase() : '';
+  if (level === 'none' || !level) return null;
+  if (level === 'ultrathink') return 'xhigh';
+  if (level === 'low' || level === 'medium' || level === 'high') return level;
+  return null;
+}
+
+function loadTerminalModelConfig(): { modelId: string; reasoningEffort: string | null } {
+  try {
+    const settingsPath = getSettingsPath();
+    if (settingsPath && fs.existsSync(settingsPath)) {
+      const raw = fs.readFileSync(settingsPath, 'utf-8');
+      const settings = JSON.parse(raw) as {
+        defaultModel?: string;
+        selectedAgentProfile?: string;
+      };
+
+      const modelKey = settings.defaultModel && MODEL_ID_MAP[settings.defaultModel]
+        ? settings.defaultModel
+        : 'codex';
+      const modelId = MODEL_ID_MAP[modelKey] ?? 'gpt-5.2-codex';
+
+      const profileId = settings.selectedAgentProfile ?? 'auto';
+      const profile = DEFAULT_AGENT_PROFILES.find(p => p.id === profileId);
+      const reasoningEffort = thinkingLevelToReasoningEffort(profile?.thinkingLevel ?? 'medium');
+
+      return { modelId, reasoningEffort };
+    }
+  } catch {
+    // Fall back to defaults
+  }
+
+  return { modelId: 'gpt-5.2-codex', reasoningEffort: 'medium' };
+}
+
+function buildCodexTerminalCommand(): string {
+  const { modelId, reasoningEffort } = loadTerminalModelConfig();
+  const parts = [
+    'codex',
+    '--dangerously-bypass-approvals-and-sandbox',
+    '-m', escapeShellArg(modelId)
+  ];
+  if (reasoningEffort) {
+    parts.push('-c', escapeShellArg(`model_reasoning_effort=${reasoningEffort}`));
+  }
+  parts.push('-c', escapeShellArg('enable_compaction=true'));
+  return parts.join(' ');
+}
 
 /**
  * Handle rate limit detection and profile switching
@@ -255,6 +315,7 @@ export function invokeCodex(
   // Use safe shell escaping to prevent command injection
   const cwdCommand = buildCdCommand(cwd);
   const needsEnvOverride = profileId && profileId !== previousProfileId;
+  const codexTerminalCommand = buildCodexTerminalCommand();
 
   debugLog('[CodexIntegration:invokeCodex] Environment override check:', {
     profileIdProvided: !!profileId,
@@ -280,7 +341,8 @@ export function invokeCodex(
       // - Leading space ensures the command is ignored even if HISTCONTROL was already set
       // - Uses subshell (...) to isolate environment changes
       // This prevents temp file paths from appearing in shell history
-      const command = `clear && ${cwdCommand} HISTFILE= HISTCONTROL=ignorespace bash -c 'source "${tempFile}" && rm -f "${tempFile}" && exec ${CODEX_TERMINAL_COMMAND}'\r`;
+      const commandScript = `source "${tempFile}" && rm -f "${tempFile}" && exec ${codexTerminalCommand}`;
+      const command = `clear && ${cwdCommand} HISTFILE= HISTCONTROL=ignorespace bash -c ${escapeShellArg(commandScript)}\r`;
       debugLog('[CodexIntegration:invokeCodex] Executing command (temp file method, history-safe)');
       terminal.pty.write(command);
       debugLog('[CodexIntegration:invokeCodex] ========== INVOKE CODEX COMPLETE (temp file) ==========');
@@ -291,7 +353,8 @@ export function invokeCodex(
       // SECURITY: Use escapeShellArg for configDir to prevent command injection
       // Set CODEX_CONFIG_DIR as env var before bash -c to avoid embedding user input in the command string
       const escapedConfigDir = escapeShellArg(activeProfile.configDir);
-      const command = `clear && ${cwdCommand}HISTFILE= HISTCONTROL=ignorespace CODEX_CONFIG_DIR=${escapedConfigDir} bash -c 'exec ${CODEX_TERMINAL_COMMAND}'\r`;
+      const commandScript = `exec ${codexTerminalCommand}`;
+      const command = `clear && ${cwdCommand}HISTFILE= HISTCONTROL=ignorespace CODEX_CONFIG_DIR=${escapedConfigDir} bash -c ${escapeShellArg(commandScript)}\r`;
       debugLog('[CodexIntegration:invokeCodex] Executing command (configDir method, history-safe)');
       terminal.pty.write(command);
       debugLog('[CodexIntegration:invokeCodex] ========== INVOKE CODEX COMPLETE (configDir) ==========');
@@ -305,7 +368,7 @@ export function invokeCodex(
     debugLog('[CodexIntegration:invokeCodex] Using terminal environment for non-default profile:', activeProfile.name);
   }
 
-  const command = `${cwdCommand}${CODEX_TERMINAL_COMMAND}\r`;
+  const command = `${cwdCommand}${codexTerminalCommand}\r`;
   debugLog('[CodexIntegration:invokeCodex] Executing command (default method):', command);
   terminal.pty.write(command);
 
@@ -343,12 +406,13 @@ export function resumeCodex(
   terminal.isCodexMode = true;
 
   let command: string;
+  const baseCommand = buildCodexTerminalCommand();
   if (sessionId) {
     // SECURITY: Escape sessionId to prevent command injection
-    command = `${CODEX_TERMINAL_COMMAND} --resume ${escapeShellArg(sessionId)}`;
+    command = `${baseCommand} --resume ${escapeShellArg(sessionId)}`;
     terminal.codexSessionId = sessionId;
   } else {
-    command = `${CODEX_TERMINAL_COMMAND} --continue`;
+    command = `${baseCommand} --continue`;
   }
 
   terminal.pty.write(`${command}\r`);

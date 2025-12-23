@@ -143,7 +143,7 @@ prompt = "${escapedPrompt}"
 
 try:
     result = subprocess.run(
-        ["${this.codexPath}", "chat", "--model", "gpt-5.2-codex-xhigh", "--prompt", prompt],
+        ["${this.codexPath}", "chat", "--model", "gpt-5.2-codex", "--prompt", prompt],
         capture_output=True,
         text=True,
         check=True

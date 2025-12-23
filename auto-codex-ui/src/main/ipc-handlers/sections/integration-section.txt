@@ -98,7 +98,10 @@
 CODEX_CODE_OAUTH_TOKEN=${existingVars['CODEX_CODE_OAUTH_TOKEN'] || ''}
 
 # Model override (OPTIONAL)
-${existingVars['AUTO_BUILD_MODEL'] ? `AUTO_BUILD_MODEL=${existingVars['AUTO_BUILD_MODEL']}` : '# AUTO_BUILD_MODEL=gpt-5.2-codex-xhigh'}
+${existingVars['AUTO_BUILD_MODEL'] ? `AUTO_BUILD_MODEL=${existingVars['AUTO_BUILD_MODEL']}` : '# AUTO_BUILD_MODEL=gpt-5.2-codex'}
+
+# Reasoning effort override (OPTIONAL) - low/medium/high/xhigh
+${existingVars['AUTO_BUILD_REASONING_EFFORT'] ? `AUTO_BUILD_REASONING_EFFORT=${existingVars['AUTO_BUILD_REASONING_EFFORT']}` : '# AUTO_BUILD_REASONING_EFFORT=medium'}
 
 # =============================================================================
 # LINEAR INTEGRATION (OPTIONAL)
@@ -324,8 +327,8 @@ ${existingVars['GRAPHITI_DATABASE'] ? `GRAPHITI_DATABASE=${existingVars['GRAPHIT
           proc.on('close', (code: number | null) => {
             if (code === 0) {
               // Codex CLI is available, check if authenticated
-              // Run a simple command that requires auth
-              const authCheck = spawn('codex', ['api', '--help'], {
+              // Check login status (works across recent codex-cli versions).
+              const authCheck = spawn('codex', ['login', 'status'], {
                 cwd: project.path,
                 env: { ...process.env },
                 shell: true

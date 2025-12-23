@@ -12,6 +12,8 @@ import type {
 } from '../../../shared/types';
 import { projectStore } from '../../project-store';
 import { getFalkorDBService } from '../../falkordb-service';
+import type { PythonEnvManager } from '../../python-env-manager';
+import { findPythonCommand, parsePythonCommand } from '../../python-detector';
 import {
   getAutoBuildSourcePath
 } from './utils';
@@ -80,7 +82,8 @@ async function loadRecentMemories(
  * Register project context handlers
  */
 export function registerProjectContextHandlers(
-  _getMainWindow: () => BrowserWindow | null
+  _getMainWindow: () => BrowserWindow | null,
+  pythonEnvManager: PythonEnvManager
 ): void {
   // Get full project context
   ipcMain.handle(
@@ -153,29 +156,61 @@ export function registerProjectContextHandlers(
           };
         }
 
+        // Ensure the managed Python environment is ready (installs deps in venv if needed)
+        if (!pythonEnvManager.isEnvReady()) {
+          const status = await pythonEnvManager.initialize(autoBuildSource);
+          if (!status.ready) {
+            return {
+              success: false,
+              error: status.error || 'Python environment is not ready'
+            };
+          }
+        }
+
         const analyzerPath = path.join(autoBuildSource, 'analyzer.py');
         const indexOutputPath = path.join(project.path, AUTO_BUILD_PATHS.PROJECT_INDEX);
 
+        const pythonPath = pythonEnvManager.getPythonPath() || findPythonCommand() || 'python3';
+        const [pythonCommand, pythonBaseArgs] = parsePythonCommand(pythonPath);
+
         // Run analyzer
         await new Promise<void>((resolve, reject) => {
-          const proc = spawn('python', [
+          const args = [
+            ...pythonBaseArgs,
             analyzerPath,
-            '--project-dir', project.path,
-            '--output', indexOutputPath
-          ], {
+            '--project-dir',
+            project.path,
+            '--output',
+            indexOutputPath
+          ];
+
+          const proc = spawn(pythonCommand, args, {
             cwd: project.path,
             env: { ...process.env }
+          });
+
+          let stderr = '';
+          proc.stderr?.on('data', (chunk) => {
+            stderr += chunk.toString();
           });
 
           proc.on('close', (code: number) => {
             if (code === 0) {
               resolve();
             } else {
-              reject(new Error(`Analyzer exited with code ${code}`));
+              const trimmed = stderr.trim();
+              reject(new Error(trimmed ? `Analyzer exited with code ${code}: ${trimmed}` : `Analyzer exited with code ${code}`));
             }
           });
 
-          proc.on('error', reject);
+          proc.on('error', (error) => {
+            const maybeErrno = (error as NodeJS.ErrnoException).code;
+            if (maybeErrno === 'ENOENT') {
+              reject(new Error(`Python not found (tried "${pythonCommand}"). Install Python 3.12+ or configure the Python environment, then retry.`));
+              return;
+            }
+            reject(error);
+          });
         });
 
         // Read the new index

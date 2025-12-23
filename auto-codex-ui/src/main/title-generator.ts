@@ -234,7 +234,7 @@ async def generate_title():
         # Create a minimal client for simple text generation (no tools needed)
         client = CodexSDKClient(
             options=CodexAgentOptions(
-                model="gpt-5.2-codex-xhigh",
+                model="gpt-5.2-codex",
                 system_prompt="You generate short, concise task titles (3-7 words). Output ONLY the title, nothing else. No quotes, no explanation, no preamble.",
                 max_turns=1,
             )

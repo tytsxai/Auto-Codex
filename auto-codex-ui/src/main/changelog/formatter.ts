@@ -338,7 +338,7 @@ try:
     # Use Codex Code CLI to generate
     # stdin=DEVNULL prevents hanging when codex checks for interactive input
     result = subprocess.run(
-        ['${escapedCodexPath}', '-p', prompt, '--output-format', 'text', '--model', 'gpt-5.2-codex-xhigh'],
+        ['${escapedCodexPath}', '-p', prompt, '--output-format', 'text', '--model', 'gpt-5.2-codex'],
         capture_output=True,
         text=True,
         stdin=subprocess.DEVNULL,

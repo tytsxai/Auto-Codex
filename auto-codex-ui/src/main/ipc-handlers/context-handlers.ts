@@ -14,6 +14,7 @@
 
 import type { BrowserWindow } from 'electron';
 import { registerContextHandlers } from './context';
+import type { PythonEnvManager } from '../python-env-manager';
 
 export { registerContextHandlers };
 
@@ -23,7 +24,8 @@ export { registerContextHandlers };
  * @param getMainWindow - Function that returns the main BrowserWindow instance
  */
 export function setupContextHandlers(
-  getMainWindow: () => BrowserWindow | null
+  getMainWindow: () => BrowserWindow | null,
+  pythonEnvManager: PythonEnvManager
 ): void {
-  registerContextHandlers(getMainWindow);
+  registerContextHandlers(getMainWindow, pythonEnvManager);
 }

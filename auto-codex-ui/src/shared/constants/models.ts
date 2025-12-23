@@ -10,12 +10,12 @@ import type { AgentProfile, PhaseModelConfig, FeatureModelConfig, FeatureThinkin
 // ============================================
 
 export const AVAILABLE_MODELS = [
-  { value: 'codex', label: 'gpt-5.2-codex-xhigh' }
+  { value: 'codex', label: 'gpt-5.2-codex' }
 ] as const;
 
 // 将模型简称映射到实际 Codex 模型 ID
 export const MODEL_ID_MAP: Record<string, string> = {
-  codex: 'gpt-5.2-codex-xhigh'
+  codex: 'gpt-5.2-codex'
 } as const;
 
 // 将思考级别映射到预算 token（null 表示不启用扩展思考）
@@ -55,10 +55,10 @@ export const DEFAULT_PHASE_MODELS: PhaseModelConfig = {
 
 // Auto 配置的默认阶段思考设置
 export const DEFAULT_PHASE_THINKING: import('../types/settings').PhaseThinkingConfig = {
-  spec: 'ultrathink',   // 深度思考以创建全面的规范
-  planning: 'high',     // 规划复杂功能所需的高强度思考
+  spec: 'ultrathink',   // 关键路径：用 xhigh 映射深度推理
+  planning: 'medium',   // 默认优先 medium / xhigh（避免 high）
   coding: 'low',        // 更快的编码迭代
-  qa: 'low'             // 高效 QA 审核
+  qa: 'medium'          // 默认优先 medium / xhigh（避免 high）
 };
 
 // ============================================
@@ -93,7 +93,7 @@ export const DEFAULT_AGENT_PROFILES: AgentProfile[] = [
     name: 'Auto (Optimized)',
     description: 'Uses Codex across all phases with optimized thinking levels',
     model: 'codex',  // 回退/默认模型
-    thinkingLevel: 'high',
+    thinkingLevel: 'medium',
     icon: 'Sparkles',
     isAutoProfile: true,
     phaseModels: DEFAULT_PHASE_MODELS,

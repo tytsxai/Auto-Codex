@@ -179,7 +179,7 @@ export class PythonEnvManager extends EventEmitter {
 
     const systemPython = this.findSystemPython();
     if (!systemPython) {
-      this.emit('error', 'Python 3 not found. Please install Python 3.9+');
+      this.emit('error', 'Python 3 not found. Please install Python 3.12+');
       return false;
     }
 

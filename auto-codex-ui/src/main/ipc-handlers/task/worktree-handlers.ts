@@ -18,6 +18,28 @@ export function registerWorktreeHandlers(
   pythonEnvManager: PythonEnvManager,
   getMainWindow: () => BrowserWindow | null
 ): void {
+  const runGit = (cwd: string, args: string[]): string => {
+    const result = spawnSync('git', args, {
+      cwd,
+      encoding: 'utf-8',
+      windowsHide: true,
+      shell: false
+    });
+
+    if (result.error) {
+      throw result.error;
+    }
+    if (typeof result.status === 'number' && result.status !== 0) {
+      const stderr = (result.stderr || '').toString().trim();
+      const stdout = (result.stdout || '').toString().trim();
+      throw new Error(stderr || stdout || `git ${args.join(' ')} failed`);
+    }
+
+    return (result.stdout || '').toString();
+  };
+
+  const getCurrentBranch = (cwd: string): string => runGit(cwd, ['rev-parse', '--abbrev-ref', 'HEAD']).trim();
+
   /**
    * Get the worktree status for a task
    * Per-spec architecture: Each spec has its own worktree at .worktrees/{spec-name}/
@@ -44,19 +66,13 @@ export function registerWorktreeHandlers(
         // Get branch info from git
         try {
           // Get current branch in worktree
-          const branch = execSync('git rev-parse --abbrev-ref HEAD', {
-            cwd: worktreePath,
-            encoding: 'utf-8'
-          }).trim();
+          const branch = getCurrentBranch(worktreePath);
 
           // Get base branch - the current branch in the main project (where changes will be merged)
           // This matches the Python merge logic which merges into the user's current branch
           let baseBranch = 'main';
           try {
-            baseBranch = execSync('git rev-parse --abbrev-ref HEAD', {
-              cwd: project.path,
-              encoding: 'utf-8'
-            }).trim();
+            baseBranch = getCurrentBranch(project.path);
           } catch {
             baseBranch = 'main';
           }
@@ -64,10 +80,7 @@ export function registerWorktreeHandlers(
           // Get commit count
           let commitCount = 0;
           try {
-            const countOutput = execSync(`git rev-list --count ${baseBranch}..HEAD 2>/dev/null || echo 0`, {
-              cwd: worktreePath,
-              encoding: 'utf-8'
-            }).trim();
+            const countOutput = runGit(worktreePath, ['rev-list', '--count', `${baseBranch}..HEAD`]).trim();
             commitCount = parseInt(countOutput, 10) || 0;
           } catch {
             commitCount = 0;
@@ -79,10 +92,7 @@ export function registerWorktreeHandlers(
           let deletions = 0;
 
           try {
-            const diffStat = execSync(`git diff --stat ${baseBranch}...HEAD 2>/dev/null || echo ""`, {
-              cwd: worktreePath,
-              encoding: 'utf-8'
-            }).trim();
+            const diffStat = runGit(worktreePath, ['diff', '--stat', `${baseBranch}...HEAD`]).trim();
 
             // Parse the summary line (e.g., "3 files changed, 50 insertions(+), 10 deletions(-)")
             const summaryMatch = diffStat.match(/(\d+) files? changed(?:, (\d+) insertions?\(\+\))?(?:, (\d+) deletions?\(-\))?/);
@@ -148,10 +158,7 @@ export function registerWorktreeHandlers(
         // Get base branch - the current branch in the main project (where changes will be merged)
         let baseBranch = 'main';
         try {
-          baseBranch = execSync('git rev-parse --abbrev-ref HEAD', {
-            cwd: project.path,
-            encoding: 'utf-8'
-          }).trim();
+          baseBranch = getCurrentBranch(project.path);
         } catch {
           baseBranch = 'main';
         }
@@ -161,16 +168,10 @@ export function registerWorktreeHandlers(
 
         try {
           // Get numstat for additions/deletions per file
-          const numstat = execSync(`git diff --numstat ${baseBranch}...HEAD 2>/dev/null || echo ""`, {
-            cwd: worktreePath,
-            encoding: 'utf-8'
-          }).trim();
+          const numstat = runGit(worktreePath, ['diff', '--numstat', `${baseBranch}...HEAD`]).trim();
 
           // Get name-status for file status
-          const nameStatus = execSync(`git diff --name-status ${baseBranch}...HEAD 2>/dev/null || echo ""`, {
-            cwd: worktreePath,
-            encoding: 'utf-8'
-          }).trim();
+          const nameStatus = runGit(worktreePath, ['diff', '--name-status', `${baseBranch}...HEAD`]).trim();
 
           // Parse name-status to get file statuses
           const statusMap: Record<string, 'added' | 'modified' | 'deleted' | 'renamed'> = {};
@@ -445,12 +446,16 @@ export function registerWorktreeHandlers(
                     // Check if worktree branch was already merged (merge commit exists)
                     const specBranch = `auto-codex/${task.specId}`;
                     try {
-                      // Check if current branch contains all commits from spec branch
-                      const mergeBaseResult = execSync(
-                        `git merge-base --is-ancestor ${specBranch} HEAD 2>/dev/null && echo "merged" || echo "not-merged"`,
-                        { cwd: project.path, encoding: 'utf-8' }
-                      ).trim();
-                      mergeAlreadyCommitted = mergeBaseResult === 'merged';
+                      const mergeCheck = spawnSync('git', ['merge-base', '--is-ancestor', specBranch, 'HEAD'], {
+                        cwd: project.path,
+                        encoding: 'utf-8',
+                        windowsHide: true,
+                        shell: false
+                      });
+
+                      // Exit code semantics:
+                      // 0 => is ancestor (already merged), 1 => not ancestor, 128 => error (e.g., missing ref)
+                      mergeAlreadyCommitted = mergeCheck.status === 0;
                       debug('Merge already committed check:', mergeAlreadyCommitted);
                     } catch {
                       // Branch may not exist or other error - assume not merged
@@ -793,23 +798,30 @@ export function registerWorktreeHandlers(
 
         try {
           // Get the branch name before removing
-          const branch = execSync('git rev-parse --abbrev-ref HEAD', {
-            cwd: worktreePath,
-            encoding: 'utf-8'
-          }).trim();
+          const branch = getCurrentBranch(worktreePath);
 
           // Remove the worktree
-          execSync(`git worktree remove --force "${worktreePath}"`, {
+          const removeResult = spawnSync('git', ['worktree', 'remove', '--force', worktreePath], {
             cwd: project.path,
-            encoding: 'utf-8'
+            encoding: 'utf-8',
+            windowsHide: true,
+            shell: false
           });
+          if (removeResult.status !== 0) {
+            throw new Error((removeResult.stderr || removeResult.stdout || 'Failed to remove worktree').toString());
+          }
 
           // Delete the branch
           try {
-            execSync(`git branch -D "${branch}"`, {
+            const deleteBranchResult = spawnSync('git', ['branch', '-D', branch], {
               cwd: project.path,
-              encoding: 'utf-8'
+              encoding: 'utf-8',
+              windowsHide: true,
+              shell: false
             });
+            if (deleteBranchResult.status !== 0) {
+              throw new Error((deleteBranchResult.stderr || deleteBranchResult.stdout || 'Failed to delete branch').toString());
+            }
           } catch {
             // Branch might already be deleted or not exist
           }
@@ -867,7 +879,13 @@ export function registerWorktreeHandlers(
         const entries = readdirSync(worktreesDir);
         for (const entry of entries) {
           const entryPath = path.join(worktreesDir, entry);
-          const stat = statSync(entryPath);
+          let stat;
+          try {
+            stat = statSync(entryPath);
+          } catch {
+            // Entry may have been removed between readdir and stat
+            continue;
+          }
 
           // Skip worker directories and non-directories
           if (!stat.isDirectory() || entry.startsWith('worker-')) {
@@ -876,18 +894,12 @@ export function registerWorktreeHandlers(
 
           try {
             // Get branch info
-            const branch = execSync('git rev-parse --abbrev-ref HEAD', {
-              cwd: entryPath,
-              encoding: 'utf-8'
-            }).trim();
+            const branch = getCurrentBranch(entryPath);
 
             // Get base branch - the current branch in the main project (where changes will be merged)
             let baseBranch = 'main';
             try {
-              baseBranch = execSync('git rev-parse --abbrev-ref HEAD', {
-                cwd: project.path,
-                encoding: 'utf-8'
-              }).trim();
+              baseBranch = getCurrentBranch(project.path);
             } catch {
               baseBranch = 'main';
             }
@@ -895,10 +907,7 @@ export function registerWorktreeHandlers(
             // Get commit count
             let commitCount = 0;
             try {
-              const countOutput = execSync(`git rev-list --count ${baseBranch}..HEAD 2>/dev/null || echo 0`, {
-                cwd: entryPath,
-                encoding: 'utf-8'
-              }).trim();
+              const countOutput = runGit(entryPath, ['rev-list', '--count', `${baseBranch}..HEAD`]).trim();
               commitCount = parseInt(countOutput, 10) || 0;
             } catch {
               commitCount = 0;
@@ -910,10 +919,7 @@ export function registerWorktreeHandlers(
             let deletions = 0;
 
             try {
-              const diffStat = execSync(`git diff --shortstat ${baseBranch}...HEAD 2>/dev/null || echo ""`, {
-                cwd: entryPath,
-                encoding: 'utf-8'
-              }).trim();
+              const diffStat = runGit(entryPath, ['diff', '--shortstat', `${baseBranch}...HEAD`]).trim();
 
               const filesMatch = diffStat.match(/(\d+) files? changed/);
               const addMatch = diffStat.match(/(\d+) insertions?/);
