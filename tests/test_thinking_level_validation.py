@@ -22,7 +22,7 @@ class TestThinkingLevelValidation:
 
     def test_valid_thinking_levels(self):
         """Test that all valid thinking levels return correct budgets."""
-        valid_levels = ["none", "low", "medium", "high", "ultrathink"]
+        valid_levels = ["none", "low", "medium", "high", "xhigh", "ultrathink"]
 
         for level in valid_levels:
             budget = get_thinking_budget(level)
@@ -57,7 +57,7 @@ class TestThinkingLevelValidation:
             get_thinking_budget("bad_value")
 
             # Check all valid levels are mentioned
-            for level in ["none", "low", "medium", "high", "ultrathink"]:
+            for level in ["none", "low", "medium", "high", "xhigh"]:
                 assert level in caplog.text
 
     def test_empty_string_level(self, caplog):
@@ -68,12 +68,11 @@ class TestThinkingLevelValidation:
             assert "Invalid thinking_level" in caplog.text
 
     def test_case_sensitive(self, caplog):
-        """Test that thinking level is case-sensitive."""
+        """Test that thinking level normalization is case-insensitive."""
         with caplog.at_level(logging.WARNING):
-            # "MEDIUM" should be invalid (not "medium")
             budget = get_thinking_budget("MEDIUM")
             assert budget == THINKING_BUDGET_MAP["medium"]
-            assert "Invalid thinking_level 'MEDIUM'" in caplog.text
+            assert caplog.text == ""
 
     def test_multiple_invalid_calls(self, caplog):
         """Test that each invalid call produces a warning."""
@@ -91,4 +90,5 @@ class TestThinkingLevelValidation:
         assert get_thinking_budget("low") == 1024
         assert get_thinking_budget("medium") == 4096
         assert get_thinking_budget("high") == 16384
+        assert get_thinking_budget("xhigh") == 65536
         assert get_thinking_budget("ultrathink") == 65536
