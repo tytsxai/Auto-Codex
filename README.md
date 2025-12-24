@@ -373,7 +373,7 @@ Existing users migrating from Claude SDK should read `MIGRATION.md`.
 | `CODEX_CONFIG_DIR` | One of | Path to Codex CLI config directory for profile-based auth |
 | `AUTO_CODEX_DISABLE_DEFAULT_CODEX_CONFIG_DIR` | No | Set to `1` to ignore the default `~/.codex` config directory |
 | `AUTO_CODEX_BYPASS_CODEX_SANDBOX` | No | Set to `0` to keep Codex CLI sandboxing enabled |
-| `AUTO_CODEX_CODEXCLI_LEGACY_SECURITY_FLAGS` | No | Set to `1` to pass legacy allow/block flags to Codex CLI |
+| `AUTO_CODEX_LEGACY_SECURITY` | No | Set to `true` to disable security flag enforcement (backwards compat) |
 | `AUTO_BUILD_MODEL` | No | Model override (default: gpt-5.2-codex). Note: reasoning is a runtime parameter; legacy suffix input like `-xhigh` is accepted but discouraged (it is not a real model ID). |
 | `AUTO_BUILD_REASONING_EFFORT` | No | Reasoning effort override (low/medium/high/xhigh) |
 | `GRAPHITI_ENABLED` | Recommended | Set to `true` to enable Memory Layer |

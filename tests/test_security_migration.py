@@ -42,7 +42,8 @@ def test_from_security_profile_maps_allowed_commands() -> None:
 
 
 def test_to_codex_args_includes_bypass_and_lists(monkeypatch) -> None:
-    monkeypatch.setenv("AUTO_CODEX_CODEXCLI_LEGACY_SECURITY_FLAGS", "1")
+    # Default behavior now sends flags (no env var needed)
+    monkeypatch.delenv("AUTO_CODEX_LEGACY_SECURITY", raising=False)
     config = CodexSecurityConfig(
         bypass_sandbox=True,
         allowed_commands=["git", "pytest"],
