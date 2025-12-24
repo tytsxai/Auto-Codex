@@ -110,7 +110,7 @@ async def test_process_crash_emits_error(monkeypatch: pytest.MonkeyPatch) -> Non
 
 @pytest.mark.asyncio
 async def test_timeout_emits_error(monkeypatch: pytest.MonkeyPatch) -> None:
-    client = CodexCliClient(timeout=0.1)
+    client = CodexCliClient(timeout=0.1, idle_timeout=0.1)
 
     def fake_build_command(prompt: str, **kwargs) -> list[str]:
         script = "import time; time.sleep(1)"

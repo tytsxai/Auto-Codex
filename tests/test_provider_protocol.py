@@ -1,12 +1,30 @@
 import pytest
 
-from core.protocols import EventType, LLMClientProtocol, LLMEvent
+from core.protocols import (
+    ConversationalClientProtocol,
+    EventType,
+    LLMClientProtocol,
+    LLMEvent,
+    LLMQueryClientProtocol,
+)
 from tests.fixtures.codex_mocks import MockCodexClient
 
 
 def test_protocol_defines_required_methods() -> None:
-    required = {"start_session", "send", "stream_events", "close", "is_available"}
-    assert required.issubset(set(dir(LLMClientProtocol)))
+    base_required = {
+        "start_session",
+        "stream_events",
+        "close",
+        "is_available",
+        "supports_multi_turn",
+    }
+    assert base_required.issubset(set(dir(LLMClientProtocol)))
+
+    conversational_required = {"send"}
+    assert conversational_required.issubset(set(dir(ConversationalClientProtocol)))
+
+    query_required = {"query", "receive_response", "is_available"}
+    assert query_required.issubset(set(dir(LLMQueryClientProtocol)))
 
 
 @pytest.mark.asyncio
@@ -14,6 +32,10 @@ async def test_mock_client_works() -> None:
     class MockClient:
         def __init__(self) -> None:
             self.sessions: dict[str, list[str]] = {}
+
+        @property
+        def supports_multi_turn(self) -> bool:
+            return True
 
         async def start_session(self, prompt: str, **kwargs) -> str:
             session_id = f"session-{len(self.sessions) + 1}"
