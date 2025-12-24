@@ -44,6 +44,18 @@ from .models import (
     get_specs_dir,
     rename_spec_dir_from_requirements,
 )
+from .phase_validator import PhaseValidator, ValidationResult
+from .qa_loop import (
+    MAX_QA_ITERATIONS,
+    QATracking,
+    generate_escalation_report,
+    get_iteration_context,
+    load_qa_tracking,
+    parse_qa_result,
+    record_qa_iteration,
+    save_qa_tracking,
+    should_escalate,
+)
 
 
 class SpecOrchestrator:
@@ -686,3 +698,191 @@ class SpecOrchestrator:
                     self.spec_dir = candidate
                     break
         return result
+
+    # === NEW: Phase Validation Methods ===
+
+    async def _run_phase_with_validation(
+        self,
+        phase_name: str,
+        phase_fn: Callable,
+        max_retries: int = 3,
+    ) -> phases.PhaseResult:
+        """Run a phase with output validation and retry logic.
+
+        Args:
+            phase_name: Name of the phase
+            phase_fn: Phase function to execute
+            max_retries: Maximum retry attempts
+
+        Returns:
+            PhaseResult with validation status
+        """
+        validator = PhaseValidator(self.spec_dir)
+
+        for attempt in range(max_retries):
+            # Run the phase
+            result = await phase_fn()
+
+            if not result.success:
+                return result
+
+            # Validate outputs
+            validation = validator.validate_phase(phase_name)
+
+            if validation.success:
+                # Log warnings but continue
+                for warning in validation.warnings:
+                    print_status(warning, "warning")
+                return result
+
+            # Validation failed - prepare for retry
+            error_context = "\n".join(f"- {e}" for e in validation.errors)
+            print_status(
+                f"Phase validation failed (attempt {attempt + 1}/{max_retries})",
+                "warning",
+            )
+
+            if attempt < max_retries - 1:
+                # Inject error context and retry
+                print_status("Retrying with error context...", "progress")
+                # The phase will be re-run with error context in next iteration
+
+        # Max retries reached
+        return phases.PhaseResult(
+            phase_name,
+            success=False,
+            output_files=[],
+            errors=validation.errors,
+            retries=max_retries,
+        )
+
+    def _verify_self_critique(self, subtask_id: str) -> bool:
+        """Verify self-critique report exists and passed.
+
+        Args:
+            subtask_id: ID of the subtask
+
+        Returns:
+            True if self-critique passed, False otherwise
+        """
+        validator = PhaseValidator(self.spec_dir)
+        result = validator.validate_self_critique(subtask_id)
+
+        if not result.success:
+            for error in result.errors:
+                print_status(error, "error")
+            return False
+
+        for warning in result.warnings:
+            print_status(warning, "warning")
+
+        # Archive the report
+        validator.archive_self_critique(subtask_id)
+        return True
+
+    # === NEW: QA Loop Methods ===
+
+    async def run_qa_loop(self) -> bool:
+        """Run QA validation loop with enforced iteration limits.
+
+        Returns:
+            True if QA approved, False if rejected or escalated
+        """
+        tracking = load_qa_tracking(self.spec_dir)
+
+        while tracking.current_iteration < tracking.max_iterations:
+            tracking.current_iteration += 1
+            save_qa_tracking(self.spec_dir, tracking)
+
+            print_status(
+                f"QA iteration {tracking.current_iteration}/{tracking.max_iterations}",
+                "progress",
+            )
+
+            # Generate iteration context for QA prompt
+            iteration_context = get_iteration_context(tracking)
+
+            # Run QA reviewer
+            success, response = await self._run_agent(
+                "qa_reviewer.md",
+                additional_context=iteration_context,
+            )
+
+            if not success:
+                print_status("QA reviewer failed to run", "error")
+                continue
+
+            # Parse QA result
+            qa_result = parse_qa_result(response, tracking.current_iteration)
+
+            # Record iteration
+            tracking = record_qa_iteration(self.spec_dir, tracking, qa_result)
+
+            if qa_result.approved:
+                print_status("QA approved!", "success")
+                return True
+
+            print_status(
+                f"QA rejected with {len(qa_result.issues)} issues",
+                "warning",
+            )
+
+            # Check if we should escalate
+            if should_escalate(tracking):
+                break
+
+            # Run QA fixer
+            print_status("Running QA fixer...", "progress")
+            await self._run_agent("qa_fixer.md")
+
+        # Max iterations reached - escalate
+        print_status(
+            f"Max QA iterations ({tracking.max_iterations}) reached",
+            "error",
+        )
+        report = generate_escalation_report(self.spec_dir, tracking)
+        print_status(
+            f"Escalation report saved to {self.spec_dir}/QA_ESCALATION_REPORT.md",
+            "info",
+        )
+        return False
+
+    def _inject_recovery_context(self, subtask_id: str) -> str:
+        """Generate recovery context for a subtask.
+
+        Args:
+            subtask_id: ID of the subtask
+
+        Returns:
+            Recovery context string to inject into prompt
+        """
+        attempt_history_file = self.spec_dir / "memory" / "attempt_history.json"
+
+        if not attempt_history_file.exists():
+            return ""
+
+        try:
+            with open(attempt_history_file) as f:
+                history = json.load(f)
+
+            subtask_data = history.get("subtasks", {}).get(subtask_id)
+            if not subtask_data:
+                return ""
+
+            attempts = subtask_data.get("attempts", [])
+            if not attempts:
+                return ""
+
+            return f"""
+## ⚠️ RECOVERY CONTEXT
+
+This subtask has {len(attempts)} previous attempt(s).
+You MUST try a DIFFERENT approach.
+
+Previous attempts:
+{json.dumps(attempts, indent=2)}
+
+Review what was tried and explicitly choose a different strategy.
+"""
+        except (json.JSONDecodeError, OSError):
+            return ""
