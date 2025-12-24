@@ -98,6 +98,22 @@ else
 fi
 
 echo "=== END SESSION MEMORY ==="
+
+# 12. CHECK RECOVERY CONTEXT (for retry awareness)
+echo "=== RECOVERY CONTEXT ==="
+if [ -f "$SPEC_DIR/memory/attempt_history.json" ]; then
+  echo "Attempt History:"
+  cat "$SPEC_DIR/memory/attempt_history.json"
+
+  # Show stuck subtasks if any
+  stuck_count=$(cat "$SPEC_DIR/memory/attempt_history.json" | grep -c '"status": "stuck"' 2>/dev/null || echo 0)
+  if [ "$stuck_count" -gt 0 ]; then
+    echo -e "\n⚠️  WARNING: Some subtasks are stuck and need different approaches!"
+  fi
+else
+  echo "No attempt history yet (all subtasks are first attempts)"
+fi
+echo "=== END RECOVERY CONTEXT ==="
 ```
 
 ---
@@ -183,6 +199,26 @@ curl -s -o /dev/null -w "%{http_code}" http://localhost:[PORT]
 ## STEP 5: READ SUBTASK CONTEXT
 
 For your selected subtask, read the relevant files.
+
+### 5.0: Check Recovery History (CRITICAL - DO THIS FIRST)
+
+Before implementing, check if this subtask was attempted before:
+
+```bash
+SUBTASK_ID="your-subtask-id"  # Replace with actual subtask ID
+
+if [ -f "$SPEC_DIR/memory/attempt_history.json" ]; then
+  if grep -q "\"$SUBTASK_ID\"" "$SPEC_DIR/memory/attempt_history.json"; then
+    echo "⚠️ THIS SUBTASK HAS BEEN ATTEMPTED BEFORE!"
+    echo "Previous attempts - review and try a DIFFERENT approach:"
+    cat "$SPEC_DIR/memory/attempt_history.json" | grep -A 20 "\"$SUBTASK_ID\""
+  else
+    echo "✓ First attempt at this subtask"
+  fi
+fi
+```
+
+**If previous attempts exist**: You MUST try a different approach. Repeating the same approach will fail again.
 
 ### 5.1: Read Files to Modify
 
@@ -287,15 +323,36 @@ for phase in plan.get("phases", []):
     if current_subtask:
         break
 
-# Generate checklist
+# Generate checklist (with fallback if prediction module unavailable)
 if current_subtask:
-    import sys
-    sys.path.insert(0, str(Path.cwd().parent))
-    from prediction import generate_subtask_checklist
+    try:
+        import sys
+        sys.path.insert(0, str(Path.cwd().parent))
+        from prediction import generate_subtask_checklist
+        spec_dir = Path.cwd()
+        checklist = generate_subtask_checklist(spec_dir, current_subtask)
+        print(checklist)
+    except ImportError:
+        # Fallback: Generate basic checklist from memory files
+        print("=== PRE-IMPLEMENTATION CHECKLIST (Basic) ===")
+        print(f"Subtask: {current_subtask.get('id')}")
+        print(f"Description: {current_subtask.get('description')}")
+        print("\nFiles to modify:", current_subtask.get('files_to_modify', []))
+        print("Patterns from:", current_subtask.get('patterns_from', []))
 
-    spec_dir = Path.cwd()  # You're in the spec directory
-    checklist = generate_subtask_checklist(spec_dir, current_subtask)
-    print(checklist)
+        # Check for gotchas
+        gotchas_file = Path("memory/gotchas.md")
+        if gotchas_file.exists():
+            print("\n--- Known Gotchas ---")
+            print(gotchas_file.read_text()[:500])
+
+        # Check for patterns
+        patterns_file = Path("memory/patterns.md")
+        if patterns_file.exists():
+            print("\n--- Patterns to Follow ---")
+            print(patterns_file.read_text()[:500])
+
+        print("\n=== END CHECKLIST ===")
 ```
 
 The checklist will show:
@@ -597,6 +654,48 @@ curl -X [method] [url] -H "Content-Type: application/json" -d '[body]'
 **If verification fails: FIX IT NOW.**
 
 The next session has no memory. You are the only one who can fix it efficiently.
+
+### Record Failed Attempts (If Verification Fails Multiple Times)
+
+If you cannot fix the issue after 2-3 attempts, record it for recovery:
+
+```bash
+# Create attempt history if it doesn't exist
+mkdir -p "$SPEC_DIR/memory"
+
+# Record the failed attempt (use Python for JSON handling)
+python3 << 'PYEOF'
+import json
+from pathlib import Path
+from datetime import datetime
+
+spec_dir = Path("$SPEC_DIR".replace("$SPEC_DIR", "."))  # Adjust path
+history_file = spec_dir / "memory" / "attempt_history.json"
+
+# Load or create history
+if history_file.exists():
+    history = json.loads(history_file.read_text())
+else:
+    history = {"subtasks": {}}
+
+subtask_id = "YOUR_SUBTASK_ID"  # Replace with actual ID
+approach = "YOUR_APPROACH"  # Describe what you tried
+error = "THE_ERROR"  # What went wrong
+
+if subtask_id not in history["subtasks"]:
+    history["subtasks"][subtask_id] = {"attempts": [], "status": "pending"}
+
+history["subtasks"][subtask_id]["attempts"].append({
+    "timestamp": datetime.now().isoformat(),
+    "approach": approach,
+    "error": error,
+    "success": False
+})
+
+history_file.write_text(json.dumps(history, indent=2))
+print(f"Recorded failed attempt for {subtask_id}")
+PYEOF
+```
 
 ---
 
