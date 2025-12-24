@@ -299,6 +299,7 @@ export function Sidebar({
   const renderNavItem = (item: NavItem) => {
     const isActive = activeView === item.id;
     const Icon = item.icon;
+    const showStagedBadge = item.id === 'staged-changes' && stagedChangesCount > 0;
 
     return (
       <button
@@ -314,6 +315,11 @@ export function Sidebar({
       >
         <Icon className="h-4 w-4 shrink-0" />
         <span className="flex-1 text-left">{item.label}</span>
+        {showStagedBadge && (
+          <span className="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-info/15 px-1 text-[10px] font-medium text-info">
+            {stagedChangesCount}
+          </span>
+        )}
         {item.shortcut && (
           <kbd className="pointer-events-none hidden h-5 select-none items-center gap-1 rounded-md border border-border bg-secondary px-1.5 font-mono text-[10px] font-medium text-muted-foreground sm:flex">
             {item.shortcut}

@@ -58,7 +58,7 @@ interface StagedChangesProps {
   projectId: string;
 }
 
-export function StagedChanges({ projectId: _projectId }: StagedChangesProps) {
+export function StagedChanges({ projectId }: StagedChangesProps) {
   const [stagedChanges, setStagedChanges] = useState<StagedChange[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -84,6 +84,11 @@ export function StagedChanges({ projectId: _projectId }: StagedChangesProps) {
 
   // Load staged changes
   const loadStagedChanges = useCallback(async () => {
+    if (!projectId) {
+      setStagedChanges([]);
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
 
@@ -99,7 +104,7 @@ export function StagedChanges({ projectId: _projectId }: StagedChangesProps) {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [projectId]);
 
   // Load on mount
   useEffect(() => {
