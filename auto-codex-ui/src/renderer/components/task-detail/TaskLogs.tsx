@@ -22,7 +22,7 @@ import { Badge } from '../ui/badge';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '../ui/collapsible';
 import { cn } from '../../lib/utils';
 import type { Task, TaskLogs, TaskLogPhase, TaskPhaseLog, TaskLogEntry, TaskMetadata } from '../../../shared/types';
-import type { PhaseModelConfig, ThinkingLevel, ModelTypeShort } from '../../../shared/types/settings';
+import type { PhaseModelConfig, ModelTypeShort } from '../../../shared/types/settings';
 
 interface TaskLogsProps {
   task: Task;
@@ -64,7 +64,8 @@ const LOG_PHASE_TO_CONFIG_PHASE: Record<TaskLogPhase, keyof PhaseModelConfig> = 
 
 // Short labels for models
 const MODEL_SHORT_LABELS: Record<ModelTypeShort, string> = {
-  codex: 'Codex'
+  codex: 'Codex',
+  'gpt-5.2': 'GPT-5.2'
 };
 
 // Short labels for thinking levels

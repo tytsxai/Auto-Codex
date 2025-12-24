@@ -10,12 +10,16 @@ import type { AgentProfile, PhaseModelConfig, FeatureModelConfig, FeatureThinkin
 // ============================================
 
 export const AVAILABLE_MODELS = [
-  { value: 'codex', label: 'gpt-5.2-codex' }
+  // 编程/工程优先：更适合代理式开发与严谨代码修改
+  { value: 'codex', label: 'gpt-5.2-codex' },
+  // 通用模型：更偏文本与多功能（有时更快/更广）
+  { value: 'gpt-5.2', label: 'gpt-5.2' }
 ] as const;
 
 // 将模型简称映射到实际 Codex 模型 ID
-export const MODEL_ID_MAP: Record<string, string> = {
-  codex: 'gpt-5.2-codex'
+export const MODEL_ID_MAP: Record<(typeof AVAILABLE_MODELS)[number]['value'], string> = {
+  codex: 'gpt-5.2-codex',
+  'gpt-5.2': 'gpt-5.2'
 } as const;
 
 // 将思考级别映射到预算 token（null 表示不启用扩展思考）

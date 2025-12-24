@@ -2,7 +2,7 @@
  * Task-related types
  */
 
-import type { ThinkingLevel, PhaseModelConfig, PhaseThinkingConfig } from './settings';
+import type { ThinkingLevel, PhaseModelConfig, PhaseThinkingConfig, ModelTypeShort } from './settings';
 
 export type TaskStatus = 'backlog' | 'in_progress' | 'ai_review' | 'human_review' | 'done';
 
@@ -154,7 +154,7 @@ export type TaskImpact = 'low' | 'medium' | 'high' | 'critical';
 export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
 // Re-export ThinkingLevel (defined in settings.ts) for convenience
 export type { ThinkingLevel };
-export type ModelType = 'codex';
+export type ModelType = ModelTypeShort;
 export type TaskCategory =
   | 'feature'
   | 'bug_fix'

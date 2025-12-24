@@ -52,8 +52,9 @@ function loadTerminalModelConfig(): { modelId: string; reasoningEffort: string |
         selectedAgentProfile?: string;
       };
 
-      const modelKey = settings.defaultModel && MODEL_ID_MAP[settings.defaultModel]
-        ? settings.defaultModel
+      const maybeModelKey = settings.defaultModel;
+      const modelKey = maybeModelKey && maybeModelKey in MODEL_ID_MAP
+        ? (maybeModelKey as keyof typeof MODEL_ID_MAP)
         : 'codex';
       const modelId = MODEL_ID_MAP[modelKey] ?? 'gpt-5.2-codex';
 

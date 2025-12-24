@@ -1,4 +1,5 @@
 import { ChildProcess } from 'child_process';
+import type { ModelTypeShort, ThinkingLevel, PhaseModelConfig, PhaseThinkingConfig } from '../../shared/types/settings';
 
 /**
  * Agent-specific types for process and state management
@@ -33,8 +34,8 @@ export interface AgentManagerEvents {
 }
 
 export interface RoadmapConfig {
-  model?: string;          // Model shorthand (codex)
-  thinkingLevel?: string;  // Thinking level (none, low, medium, high, xhigh)
+  model?: ModelTypeShort;
+  thinkingLevel?: ThinkingLevel;
 }
 
 export interface TaskExecutionOptions {
@@ -47,21 +48,11 @@ export interface SpecCreationMetadata {
   requireReviewBeforeCoding?: boolean;
   // Auto profile - phase-based model and thinking configuration
   isAutoProfile?: boolean;
-  phaseModels?: {
-    spec: 'codex';
-    planning: 'codex';
-    coding: 'codex';
-    qa: 'codex';
-  };
-  phaseThinking?: {
-    spec: 'none' | 'low' | 'medium' | 'high' | 'xhigh';
-    planning: 'none' | 'low' | 'medium' | 'high' | 'xhigh';
-    coding: 'none' | 'low' | 'medium' | 'high' | 'xhigh';
-    qa: 'none' | 'low' | 'medium' | 'high' | 'xhigh';
-  };
+  phaseModels?: PhaseModelConfig;
+  phaseThinking?: PhaseThinkingConfig;
   // Non-auto profile - single model and thinking level
-  model?: 'codex';
-  thinkingLevel?: 'none' | 'low' | 'medium' | 'high' | 'xhigh';
+  model?: ModelTypeShort;
+  thinkingLevel?: ThinkingLevel;
 }
 
 export interface IdeationProgressData {

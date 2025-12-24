@@ -91,7 +91,10 @@ export class AgentQueueManager {
 
     // Add model and thinking level from config
     if (config?.model) {
-      const modelId = MODEL_ID_MAP[config.model] || MODEL_ID_MAP['codex'];
+      const modelKey = config.model;
+      const modelId = modelKey in MODEL_ID_MAP
+        ? MODEL_ID_MAP[modelKey as keyof typeof MODEL_ID_MAP]
+        : MODEL_ID_MAP.codex;
       args.push('--model', modelId);
     }
     if (config?.thinkingLevel) {
@@ -167,7 +170,10 @@ export class AgentQueueManager {
 
     // Add model and thinking level from config
     if (config.model) {
-      const modelId = MODEL_ID_MAP[config.model] || MODEL_ID_MAP['codex'];
+      const modelKey = config.model;
+      const modelId = modelKey in MODEL_ID_MAP
+        ? MODEL_ID_MAP[modelKey as keyof typeof MODEL_ID_MAP]
+        : MODEL_ID_MAP.codex;
       args.push('--model', modelId);
     }
     if (config.thinkingLevel) {

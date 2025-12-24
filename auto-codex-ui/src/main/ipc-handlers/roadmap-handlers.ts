@@ -10,11 +10,12 @@ import { AgentManager } from '../agent';
 import { debugLog, debugError } from '../../shared/utils/debug-logger';
 import type { PythonEnvManager } from '../python-env-manager';
 import { getAutoBuildSourcePath } from './context/utils';
+import type { ModelTypeShort, ThinkingLevel } from '../../shared/types/settings';
 
 /**
  * Read feature settings from the settings file
  */
-function getFeatureSettings(): { model?: string; thinkingLevel?: string } {
+function getFeatureSettings(): { model?: ModelTypeShort; thinkingLevel?: ThinkingLevel } {
   const settingsPath = path.join(app.getPath('userData'), 'settings.json');
 
   try {

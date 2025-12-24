@@ -27,7 +27,7 @@ export interface ColorThemeDefinition {
 export type ThinkingLevel = 'none' | 'low' | 'medium' | 'high' | 'xhigh';
 
 // Model type shorthand
-export type ModelTypeShort = 'codex';
+export type ModelTypeShort = 'codex' | 'gpt-5.2';
 
 // Phase-based model configuration for Auto profile
 // Each phase can use a different model optimized for that task type
