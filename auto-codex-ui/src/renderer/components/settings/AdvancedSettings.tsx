@@ -469,6 +469,21 @@ export function AdvancedSettings({ settings, onSettingsChange, section, version 
       description="配置工作树管理与合并行为"
     >
       <div className="space-y-4">
+        <div className="flex items-center justify-between p-4 rounded-lg border border-destructive/40 bg-destructive/5">
+          <div className="space-y-1">
+            <Label className="font-medium text-foreground">终端绕过审批与沙盒（危险）</Label>
+            <p className="text-sm text-muted-foreground">
+              仅影响集成终端里启动的 Codex CLI；启用后将附加 <code>--dangerously-bypass-approvals-and-sandbox</code>
+            </p>
+          </div>
+          <Switch
+            checked={settings.codexTerminalBypassApprovalsAndSandbox ?? false}
+            onCheckedChange={(checked) =>
+              onSettingsChange({ ...settings, codexTerminalBypassApprovalsAndSandbox: checked })
+            }
+          />
+        </div>
+
         <div className="flex items-center justify-between p-4 rounded-lg border border-border">
           <div className="space-y-1">
             <Label className="font-medium text-foreground">合并后自动清理</Label>

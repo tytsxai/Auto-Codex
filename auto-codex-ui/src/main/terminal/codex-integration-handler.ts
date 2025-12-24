@@ -42,7 +42,11 @@ function thinkingLevelToReasoningEffort(thinkingLevel: unknown): string | null {
   return null;
 }
 
-function loadTerminalModelConfig(): { modelId: string; reasoningEffort: string | null } {
+function loadTerminalModelConfig(): {
+  modelId: string;
+  reasoningEffort: string | null;
+  bypassApprovalsAndSandbox: boolean;
+} {
   try {
     const settingsPath = getSettingsPath();
     if (settingsPath && fs.existsSync(settingsPath)) {
@@ -50,6 +54,7 @@ function loadTerminalModelConfig(): { modelId: string; reasoningEffort: string |
       const settings = JSON.parse(raw) as {
         defaultModel?: string;
         selectedAgentProfile?: string;
+        codexTerminalBypassApprovalsAndSandbox?: boolean;
       };
 
       const maybeModelKey = settings.defaultModel;
@@ -62,22 +67,28 @@ function loadTerminalModelConfig(): { modelId: string; reasoningEffort: string |
       const profile = DEFAULT_AGENT_PROFILES.find(p => p.id === profileId);
       const reasoningEffort = thinkingLevelToReasoningEffort(profile?.thinkingLevel ?? 'medium');
 
-      return { modelId, reasoningEffort };
+      return {
+        modelId,
+        reasoningEffort,
+        bypassApprovalsAndSandbox: Boolean(settings.codexTerminalBypassApprovalsAndSandbox)
+      };
     }
   } catch {
     // Fall back to defaults
   }
 
-  return { modelId: 'gpt-5.2-codex', reasoningEffort: 'medium' };
+  return { modelId: 'gpt-5.2-codex', reasoningEffort: 'medium', bypassApprovalsAndSandbox: false };
 }
 
 function buildCodexTerminalCommand(): string {
-  const { modelId, reasoningEffort } = loadTerminalModelConfig();
+  const { modelId, reasoningEffort, bypassApprovalsAndSandbox } = loadTerminalModelConfig();
   const parts = [
     'codex',
-    '--dangerously-bypass-approvals-and-sandbox',
     '-m', escapeShellArg(modelId)
   ];
+  if (bypassApprovalsAndSandbox) {
+    parts.splice(1, 0, '--dangerously-bypass-approvals-and-sandbox');
+  }
   if (reasoningEffort) {
     parts.push('-c', escapeShellArg(`model_reasoning_effort=${reasoningEffort}`));
   }

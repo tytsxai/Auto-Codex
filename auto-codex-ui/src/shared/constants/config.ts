@@ -31,7 +31,9 @@ export const DEFAULT_APP_SETTINGS = {
   // 变更日志偏好（会在会话间持久化）
   changelogFormat: 'keep-a-changelog' as const,
   changelogAudience: 'user-facing' as const,
-  changelogEmojiLevel: 'none' as const
+  changelogEmojiLevel: 'none' as const,
+  // 安全默认：不绕过 Codex CLI 审批与沙盒（终端集成可单独开启）
+  codexTerminalBypassApprovalsAndSandbox: false
 };
 
 // ============================================

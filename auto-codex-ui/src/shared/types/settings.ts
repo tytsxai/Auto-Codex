@@ -117,6 +117,13 @@ export interface AppSettings {
   staleWorktreeDays?: number;
   /** Show warning for stale worktrees on startup (default: true) */
   showStaleWorktreeWarning?: boolean;
+
+  /**
+   * DANGEROUS: When enabled, the integrated terminal launches Codex CLI with
+   * `--dangerously-bypass-approvals-and-sandbox`. This only affects the UI
+   * terminal integration, not the Python agent runner.
+   */
+  codexTerminalBypassApprovalsAndSandbox?: boolean;
 }
 
 // Auto-Codex Source Environment Configuration (for auto-codex repo .env)
