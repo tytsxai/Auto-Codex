@@ -61,6 +61,21 @@ const initialConfig: IdeationConfig = {
   maxIdeasPerType: DEFAULT_IDEATION_CONFIG.maxIdeasPerType
 };
 
+/**
+ * 检查所有启用的创意类型是否都已完成（completed 或 failed）
+ * @param typeStates 当前所有类型的状态
+ * @param enabledTypes 启用的类型列表
+ * @returns 如果所有启用的类型都已完成则返回 true
+ */
+export function areAllTypesComplete(
+  typeStates: Record<IdeationType, IdeationTypeState>,
+  enabledTypes: IdeationType[]
+): boolean {
+  return enabledTypes.every(
+    (type) => typeStates[type] === 'completed' || typeStates[type] === 'failed'
+  );
+}
+
 // 初始化所有类型状态为 'pending'（生成开始时会设置）
 // 注意：high_value_features 已移除，low_hanging_fruit 更名为 code_improvements
 const initialTypeStates: Record<IdeationType, IdeationTypeState> = {
@@ -277,9 +292,21 @@ export const useIdeationStore = create<IdeationState>((set) => ({
 
   // 更新单个类型状态
   setTypeState: (type, state) =>
-    set((prevState) => ({
-      typeStates: { ...prevState.typeStates, [type]: state }
-    })),
+    set((prevState) => {
+      const newTypeStates = { ...prevState.typeStates, [type]: state };
+      
+      // 检查是否所有启用的类型都已完成，如果是则自动更新生成状态
+      const config = prevState.config;
+      const allComplete = areAllTypesComplete(newTypeStates, config.enabledTypes);
+      const newGenerationStatus = allComplete
+        ? { phase: 'complete' as const, progress: 100, message: 'Ideation complete' }
+        : prevState.generationStatus;
+      
+      return {
+        typeStates: newTypeStates,
+        generationStatus: newGenerationStatus
+      };
+    }),
 
   // 为特定类型添加想法（流式更新）
   addIdeasForType: (ideationType, ideas) =>
@@ -288,11 +315,19 @@ export const useIdeationStore = create<IdeationState>((set) => ({
       const newTypeStates = { ...state.typeStates };
       newTypeStates[ideationType as IdeationType] = 'completed';
 
+      const config = state.config;
+      
+      // 检查是否所有启用的类型都已完成，如果是则自动更新生成状态
+      const allComplete = areAllTypesComplete(newTypeStates, config.enabledTypes);
+      const newGenerationStatus = allComplete
+        ? { phase: 'complete' as const, progress: 100, message: 'Ideation complete' }
+        : state.generationStatus;
+
       // 如果尚无会话，则创建一个部分会话
       if (!state.session) {
-        const config = state.config;
         return {
           typeStates: newTypeStates,
+          generationStatus: newGenerationStatus,
           session: {
             id: `session-${Date.now()}`,
             projectId: '', // 将在最终会话中设置
@@ -315,6 +350,7 @@ export const useIdeationStore = create<IdeationState>((set) => ({
 
       return {
         typeStates: newTypeStates,
+        generationStatus: newGenerationStatus,
         session: {
           ...state.session,
           ideas: [...state.session.ideas, ...newIdeas],
@@ -592,7 +628,7 @@ export function setupIdeationListeners(): () => void {
       store().addIdeasForType(ideationType, ideas);
       store().addLog(`✓ ${ideationType} completed with ${ideas.length} ideas`);
 
-      // 根据已完成的类型更新进度
+      // 根据实际的 typeStates 计算进度，使用 areAllTypesComplete 统一判断逻辑
       const typeStates = store().typeStates;
       const config = store().config;
       const completedCount = Object.entries(typeStates).filter(
@@ -603,11 +639,23 @@ export function setupIdeationListeners(): () => void {
       const totalTypes = config.enabledTypes.length;
       const progress = Math.round((completedCount / totalTypes) * 100);
 
-      store().setGenerationStatus({
-        phase: 'generating',
-        progress,
-        message: `${completedCount}/${totalTypes} ideation types complete`
-      });
+      // 使用 areAllTypesComplete 统一判断是否所有类型都已完成
+      // 如果所有类型都已完成，设置 phase 为 'complete'，否则保持 'generating'
+      const allComplete = areAllTypesComplete(typeStates, config.enabledTypes);
+      
+      if (allComplete) {
+        store().setGenerationStatus({
+          phase: 'complete',
+          progress: 100,
+          message: 'Ideation complete'
+        });
+      } else {
+        store().setGenerationStatus({
+          phase: 'generating',
+          progress,
+          message: `${completedCount}/${totalTypes} ideation types complete`
+        });
+      }
     }
   );
 
@@ -621,6 +669,34 @@ export function setupIdeationListeners(): () => void {
 
       store().setTypeState(ideationType as IdeationType, 'failed');
       store().addLog(`✗ ${ideationType} failed`);
+
+      // 根据实际的 typeStates 计算进度，与 onIdeationTypeComplete 保持一致
+      const typeStates = store().typeStates;
+      const config = store().config;
+      const completedCount = Object.entries(typeStates).filter(
+        ([type, state]) =>
+          config.enabledTypes.includes(type as IdeationType) &&
+          (state === 'completed' || state === 'failed')
+      ).length;
+      const totalTypes = config.enabledTypes.length;
+      const progress = Math.round((completedCount / totalTypes) * 100);
+
+      // 使用 areAllTypesComplete 统一判断是否所有类型都已完成
+      const allComplete = areAllTypesComplete(typeStates, config.enabledTypes);
+
+      if (allComplete) {
+        store().setGenerationStatus({
+          phase: 'complete',
+          progress: 100,
+          message: 'Ideation complete'
+        });
+      } else {
+        store().setGenerationStatus({
+          phase: 'generating',
+          progress,
+          message: `${completedCount}/${totalTypes} ideation types complete`
+        });
+      }
     }
   );
 
@@ -658,7 +734,7 @@ export function setupIdeationListeners(): () => void {
     store().setGenerationStatus({
       phase: 'error',
       progress: 0,
-      message: '',
+      message: 'Generation failed',
       error
     });
     store().addLog(`Error: ${error}`);

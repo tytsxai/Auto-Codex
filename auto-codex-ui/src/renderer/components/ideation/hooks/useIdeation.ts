@@ -12,7 +12,8 @@ import {
   getActiveIdeas,
   getArchivedIdeas,
   getIdeationSummary,
-  setupIdeationListeners
+  setupIdeationListeners,
+  areAllTypesComplete
 } from '../../../stores/ideation-store';
 import { loadTasks } from '../../../stores/task-store';
 // Token check disabled - backend handles authentication via .env
@@ -57,6 +58,51 @@ export function useIdeation(projectId: string, options: UseIdeationOptions = {})
     const cleanup = setupIdeationListeners();
     loadIdeation(projectId);
     return cleanup;
+  }, [projectId]);
+
+  // State recovery: Check for orphaned generation states on mount
+  // This handles cases where the backend process crashed or the user navigated away
+  // Requirements: 5.2, 5.3
+  useEffect(() => {
+    const { generationStatus, typeStates, config } = useIdeationStore.getState();
+    
+    // If status is 'generating' but all types are complete, we have an orphaned state
+    if (generationStatus.phase === 'generating') {
+      const allComplete = areAllTypesComplete(typeStates, config.enabledTypes);
+      
+      if (allComplete) {
+        // All types finished but phase wasn't updated - recover to 'complete'
+        if (window.DEBUG) {
+          console.warn('[Ideation] Recovering orphaned state: all types complete but phase was generating');
+        }
+        useIdeationStore.getState().setGenerationStatus({
+          phase: 'complete',
+          progress: 100,
+          message: 'Ideation complete'
+        });
+      } else {
+        // Check if there are any ideas in the session - if so, some work was done
+        // but the process may have crashed. Check if any types are still 'generating'
+        const hasGeneratingTypes = config.enabledTypes.some(
+          type => typeStates[type] === 'generating'
+        );
+        
+        if (!hasGeneratingTypes) {
+          // No types are actively generating, but not all are complete
+          // This means the process likely crashed - reset to idle
+          if (window.DEBUG) {
+            console.warn('[Ideation] Recovering orphaned state: no active generation, resetting to idle');
+          }
+          useIdeationStore.getState().setGenerationStatus({
+            phase: 'idle',
+            progress: 0,
+            message: 'Generation was interrupted'
+          });
+        }
+        // If there are still generating types, leave the state as-is
+        // The backend might still be running
+      }
+    }
   }, [projectId]);
 
   const handleGenerate = async () => {
