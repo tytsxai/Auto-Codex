@@ -102,6 +102,13 @@ from core.workspace.models import (
     ParallelMergeResult,
     ParallelMergeTask,
 )
+
+# Import workflow manager for new staging workflow
+try:
+    from core.workflow import WorkflowManager
+except ImportError:
+    WorkflowManager = None  # type: ignore
+
 from merge import (
     FileTimelineTracker,
     MergeOrchestrator,
@@ -130,11 +137,72 @@ MODULE = "workspace"
 # - _heuristic_merge
 
 
+def _merge_with_workflow_manager(
+    project_dir: Path,
+    spec_name: str,
+    task_id: str | None = None,
+    auto_cleanup: bool | None = None,
+) -> bool:
+    """
+    Merge using the new WorkflowManager for staging and change tracking.
+
+    This provides:
+    - Unified staging without auto-commit
+    - Change tracking by task
+    - Optional auto-cleanup after merge
+
+    Args:
+        project_dir: The project directory
+        spec_name: Name of the spec
+        task_id: Task identifier for change tracking
+        auto_cleanup: Override auto-cleanup setting
+
+    Returns:
+        True if staging succeeded
+    """
+    if WorkflowManager is None:
+        print_status("WorkflowManager not available, falling back to standard merge", "warning")
+        return False
+
+    try:
+        manager = WorkflowManager(project_dir)
+        result = manager.stage_worktree(
+            spec_name=spec_name,
+            task_id=task_id or spec_name,
+            auto_cleanup=auto_cleanup,
+        )
+
+        if result.success:
+            print()
+            if result.files_staged:
+                print_status(f"Staged {len(result.files_staged)} file(s) from {spec_name}", "success")
+                print()
+                print(muted("Changes are staged but not committed."))
+                print(muted("Review with: git diff --staged"))
+                print(muted("Commit with: git commit -m 'your message'"))
+                if result.worktree_cleaned:
+                    print()
+                    print(muted(f"Worktree '{spec_name}' was automatically cleaned up."))
+            else:
+                print_status("No changes to stage", "info")
+            return True
+        else:
+            print_status(f"Failed to stage: {result.error}", "error")
+            return False
+
+    except Exception as e:
+        print_status(f"WorkflowManager error: {e}", "error")
+        return False
+
+
 def merge_existing_build(
     project_dir: Path,
     spec_name: str,
     no_commit: bool = False,
     use_smart_merge: bool = True,
+    use_workflow_manager: bool = False,
+    auto_cleanup: bool | None = None,
+    task_id: str | None = None,
 ) -> bool:
     """
     Merge an existing build into the project using intent-aware merge.
@@ -153,10 +221,21 @@ def merge_existing_build(
         spec_name: Name of the spec
         no_commit: If True, merge changes but don't commit (stage only for review in IDE)
         use_smart_merge: If True, use intent-aware merge (default True)
+        use_workflow_manager: If True, use WorkflowManager for staging and tracking
+        auto_cleanup: Override auto-cleanup setting (only used with use_workflow_manager)
+        task_id: Task identifier for change tracking (only used with use_workflow_manager)
 
     Returns:
         True if merge succeeded
     """
+    # If using workflow manager, delegate to the new workflow system
+    if use_workflow_manager:
+        return _merge_with_workflow_manager(
+            project_dir=project_dir,
+            spec_name=spec_name,
+            task_id=task_id,
+            auto_cleanup=auto_cleanup,
+        )
     worktree_path = get_existing_build_worktree(project_dir, spec_name)
 
     if not worktree_path:
