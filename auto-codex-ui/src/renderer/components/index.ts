@@ -14,3 +14,6 @@ export * from './Changelog';
 export * from './WelcomeScreen';
 export * from './EnvConfigModal';
 export * from './AddProjectModal';
+export * from './StagedChanges';
+export * from './AIReviewPanel';
+export * from './Worktrees';

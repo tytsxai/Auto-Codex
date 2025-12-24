@@ -14,7 +14,10 @@ import {
   Check,
   X,
   Clock,
-  AlertTriangle
+  AlertTriangle,
+  HardDrive,
+  Shield,
+  ArrowUpDown
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -38,9 +41,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle
 } from './ui/alert-dialog';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger
+} from './ui/tooltip';
 import { useProjectStore } from '../stores/project-store';
 import { useTaskStore } from '../stores/task-store';
-import type { WorktreeListItem, WorktreeMergeResult } from '../../shared/types';
+import type { WorktreeListItem, WorktreeMergeResult, WorktreeHealthStatus, ConflictRisk, MergeOrderSuggestion } from '../../shared/types';
 
 interface WorktreesProps {
   projectId: string;
@@ -55,6 +64,11 @@ export function Worktrees({ projectId }: WorktreesProps) {
   const [staleCount, setStaleCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Health status state
+  const [healthStatus, setHealthStatus] = useState<WorktreeHealthStatus | null>(null);
+  const [conflictRisks, setConflictRisks] = useState<ConflictRisk[]>([]);
+  const [mergeOrder, setMergeOrder] = useState<MergeOrderSuggestion | null>(null);
 
   // Merge dialog state
   const [showMergeDialog, setShowMergeDialog] = useState(false);
@@ -82,6 +96,24 @@ export function Worktrees({ projectId }: WorktreesProps) {
       } else {
         setError(result.error || '加载工作树失败');
       }
+
+      // Load health status
+      const healthResult = await window.electronAPI.getHealthStatus();
+      if (healthResult.success && healthResult.data) {
+        setHealthStatus(healthResult.data);
+      }
+
+      // Load conflict risks
+      const conflictResult = await window.electronAPI.getConflictRisks();
+      if (conflictResult.success && conflictResult.data) {
+        setConflictRisks(conflictResult.data);
+      }
+
+      // Load merge order suggestion
+      const orderResult = await window.electronAPI.getMergeOrder();
+      if (orderResult.success && orderResult.data) {
+        setMergeOrder(orderResult.data);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : '加载工作树失败');
     } finally {
@@ -97,6 +129,32 @@ export function Worktrees({ projectId }: WorktreesProps) {
   // Find task for a worktree
   const findTaskForWorktree = (specName: string) => {
     return tasks.find((t) => t.projectId === projectId && t.specId === specName);
+  };
+
+  // Get conflict risk for a worktree
+  const getConflictRiskForWorktree = (specName: string): ConflictRisk | undefined => {
+    return conflictRisks.find(
+      (r) => r.worktreeA === specName || r.worktreeB === specName
+    );
+  };
+
+  // Get merge order position
+  const getMergeOrderPosition = (specName: string): number | undefined => {
+    if (!mergeOrder) return undefined;
+    const index = mergeOrder.order.indexOf(specName);
+    return index >= 0 ? index + 1 : undefined;
+  };
+
+  // Get risk level badge variant
+  const getRiskBadgeVariant = (level: string): 'default' | 'outline' | 'destructive' | 'secondary' => {
+    switch (level) {
+      case 'high':
+        return 'destructive';
+      case 'medium':
+        return 'default';
+      default:
+        return 'secondary';
+    }
   };
 
   // Handle merge
@@ -235,6 +293,68 @@ export function Worktrees({ projectId }: WorktreesProps) {
         </div>
       )}
 
+      {/* Health Status Summary */}
+      {healthStatus && worktrees.length > 0 && (
+        <div className="mb-4 grid grid-cols-2 md:grid-cols-4 gap-3">
+          <Card className="p-3">
+            <div className="flex items-center gap-2">
+              <GitBranch className="h-4 w-4 text-info" />
+              <div>
+                <p className="text-xs text-muted-foreground">工作树</p>
+                <p className="text-lg font-semibold">{healthStatus.totalCount}</p>
+              </div>
+            </div>
+          </Card>
+          <Card className="p-3">
+            <div className="flex items-center gap-2">
+              <HardDrive className="h-4 w-4 text-muted-foreground" />
+              <div>
+                <p className="text-xs text-muted-foreground">磁盘占用</p>
+                <p className="text-lg font-semibold">{healthStatus.totalDiskUsageMb.toFixed(1)} MB</p>
+              </div>
+            </div>
+          </Card>
+          <Card className="p-3">
+            <div className="flex items-center gap-2">
+              <Clock className="h-4 w-4 text-warning" />
+              <div>
+                <p className="text-xs text-muted-foreground">过期</p>
+                <p className="text-lg font-semibold">{healthStatus.staleCount}</p>
+              </div>
+            </div>
+          </Card>
+          <Card className="p-3">
+            <div className="flex items-center gap-2">
+              <Shield className="h-4 w-4 text-destructive" />
+              <div>
+                <p className="text-xs text-muted-foreground">冲突风险</p>
+                <p className="text-lg font-semibold">{conflictRisks.length}</p>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Merge Order Suggestion */}
+      {mergeOrder && mergeOrder.order.length > 1 && (
+        <div className="mb-4 rounded-lg border border-info/50 bg-info/10 p-4 text-sm">
+          <div className="flex items-start gap-2">
+            <ArrowUpDown className="h-4 w-4 text-info mt-0.5 shrink-0" />
+            <div className="flex-1">
+              <p className="font-medium text-info">建议合并顺序</p>
+              <p className="text-muted-foreground mt-1">{mergeOrder.reason}</p>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {mergeOrder.order.map((spec, i) => (
+                  <Badge key={spec} variant="outline" className="text-xs">
+                    {i + 1}. {spec}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Loading state */}
       {isLoading && worktrees.length === 0 && (
         <div className="flex h-full items-center justify-center">
@@ -262,6 +382,8 @@ export function Worktrees({ projectId }: WorktreesProps) {
           <div className="space-y-4 px-2">
             {worktrees.map((worktree) => {
               const task = findTaskForWorktree(worktree.specName);
+              const conflictRisk = getConflictRiskForWorktree(worktree.specName);
+              const orderPosition = getMergeOrderPosition(worktree.specName);
               return (
                 <Card key={worktree.specName} className="overflow-hidden">
                   <CardHeader className="pb-3">
@@ -274,6 +396,29 @@ export function Worktrees({ projectId }: WorktreesProps) {
                             <Badge variant="outline" className="shrink-0 text-warning border-warning/50 bg-warning/10">
                               <Clock className="h-3 w-3 mr-1" />
                               过期
+                            </Badge>
+                          )}
+                          {conflictRisk && (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Badge
+                                    variant={getRiskBadgeVariant(conflictRisk.riskLevel)}
+                                    className="shrink-0"
+                                  >
+                                    <AlertTriangle className="h-3 w-3 mr-1" />
+                                    冲突风险
+                                  </Badge>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>与 {conflictRisk.worktreeA === worktree.specName ? conflictRisk.worktreeB : conflictRisk.worktreeA} 有 {conflictRisk.conflictingFiles.length} 个文件冲突</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
+                          {orderPosition && (
+                            <Badge variant="outline" className="shrink-0 text-info border-info/50">
+                              #{orderPosition}
                             </Badge>
                           )}
                         </CardTitle>
@@ -331,7 +476,7 @@ export function Worktrees({ projectId }: WorktreesProps) {
                         disabled={!task}
                       >
                         <GitMerge className="h-3.5 w-3.5 mr-1.5" />
-                        合并到 {worktree.baseBranch}
+                        暂存到 {worktree.baseBranch}
                       </Button>
                       <Button
                         variant="outline"
@@ -365,16 +510,15 @@ export function Worktrees({ projectId }: WorktreesProps) {
         </ScrollArea>
       )}
 
-      {/* Merge Dialog */}
       <Dialog open={showMergeDialog} onOpenChange={setShowMergeDialog}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <GitMerge className="h-5 w-5" />
-              合并工作树
+              暂存工作树更改
             </DialogTitle>
             <DialogDescription>
-              将此工作树的更改合并到基础分支。
+              将此工作树的更改暂存到基础分支。暂存后可在"暂存更改"面板中统一审查和提交。
             </DialogDescription>
           </DialogHeader>
 
@@ -408,20 +552,47 @@ export function Worktrees({ projectId }: WorktreesProps) {
             <div className="py-4">
               <div className={`rounded-lg p-4 text-sm ${
                 mergeResult.success
-                  ? 'bg-success/10 border border-success/30'
+                  ? mergeResult.staged
+                    ? 'bg-info/10 border border-info/30'
+                    : 'bg-success/10 border border-success/30'
                   : 'bg-destructive/10 border border-destructive/30'
               }`}>
                 <div className="flex items-start gap-2">
                   {mergeResult.success ? (
-                    <Check className="h-4 w-4 text-success mt-0.5" />
+                    mergeResult.staged ? (
+                      <GitMerge className="h-4 w-4 text-info mt-0.5" />
+                    ) : (
+                      <Check className="h-4 w-4 text-success mt-0.5" />
+                    )
                   ) : (
                     <X className="h-4 w-4 text-destructive mt-0.5" />
                   )}
-                  <div>
-                    <p className={`font-medium ${mergeResult.success ? 'text-success' : 'text-destructive'}`}>
-                      {mergeResult.success ? '合并成功' : '合并失败'}
+                  <div className="flex-1">
+                    <p className={`font-medium ${
+                      mergeResult.success
+                        ? mergeResult.staged
+                          ? 'text-info'
+                          : 'text-success'
+                        : 'text-destructive'
+                    }`}>
+                      {mergeResult.success
+                        ? mergeResult.staged
+                          ? '已暂存'
+                          : '合并成功'
+                        : '合并失败'}
                     </p>
                     <p className="text-muted-foreground mt-1">{mergeResult.message}</p>
+                    {mergeResult.staged && (
+                      <p className="text-xs text-muted-foreground mt-2">
+                        更改已暂存到主仓库，可在"暂存更改"面板中查看和提交。
+                      </p>
+                    )}
+                    {mergeResult.suggestedCommitMessage && (
+                      <div className="mt-3 p-2 bg-muted/50 rounded text-xs">
+                        <p className="font-medium mb-1">建议的提交消息：</p>
+                        <p className="font-mono text-muted-foreground">{mergeResult.suggestedCommitMessage}</p>
+                      </div>
+                    )}
                     {mergeResult.conflictFiles && mergeResult.conflictFiles.length > 0 && (
                       <div className="mt-2">
                         <p className="text-xs font-medium">冲突文件：</p>
@@ -456,12 +627,12 @@ export function Worktrees({ projectId }: WorktreesProps) {
                 {isMerging ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    合并中...
+                    暂存中...
                   </>
                 ) : (
                   <>
                     <GitMerge className="h-4 w-4 mr-2" />
-                    合并
+                    暂存更改
                   </>
                 )}
               </Button>
