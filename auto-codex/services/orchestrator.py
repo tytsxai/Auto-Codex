@@ -29,6 +29,13 @@ from typing import Any
 
 from providers.codex_cli import get_gui_env
 
+# Import debug utilities
+try:
+    from core.debug import debug_warning
+except ImportError:
+    def debug_warning(*args, **kwargs):  # type: ignore[misc]
+        pass
+
 # =============================================================================
 # DATA CLASSES
 # =============================================================================
@@ -193,8 +200,15 @@ class ServiceOrchestrator:
                         health_check_url=health_url,
                     )
                 )
-        except Exception:
-            pass
+        except Exception as e:
+            # Avoid silent failure: service discovery is a core input to QA and
+            # orchestration decisions, so emit a lightweight warning.
+            debug_warning(
+                "services.orchestrator",
+                "Failed to parse docker-compose services",
+                error=str(e),
+                compose_file=str(self._compose_file),
+            )
 
     def _extract_published_port(self, ports: Any) -> int | None:
         if isinstance(ports, (str, int, dict)):
@@ -341,6 +355,11 @@ class ServiceOrchestrator:
             docker_cmd = self._get_docker_compose_cmd()
             if not docker_cmd:
                 result.errors.append("docker-compose not found")
+                debug_warning(
+                    "services.orchestrator",
+                    "docker-compose not found; cannot start services",
+                    compose_file=str(self._compose_file) if self._compose_file else None,
+                )
                 return result
 
             # Start services
@@ -356,7 +375,14 @@ class ServiceOrchestrator:
             )
 
             if proc.returncode != 0:
-                result.errors.append(f"docker-compose up failed: {proc.stderr}")
+                stderr = (proc.stderr or "").strip()
+                result.errors.append(f"docker-compose up failed: {stderr}")
+                debug_warning(
+                    "services.orchestrator",
+                    "docker-compose up failed",
+                    returncode=proc.returncode,
+                    stderr_tail=stderr[-2000:],
+                )
                 return result
 
             # Wait for health checks
@@ -366,11 +392,23 @@ class ServiceOrchestrator:
             else:
                 result.errors.append("Services did not become healthy in time")
                 result.services_failed = [s.name for s in self._services]
+                debug_warning(
+                    "services.orchestrator",
+                    "docker-compose services did not become healthy in time",
+                    timeout_seconds=timeout,
+                    services=result.services_failed,
+                )
 
         except subprocess.TimeoutExpired:
             result.errors.append("docker-compose startup timed out")
         except Exception as e:
             result.errors.append(f"Error starting services: {str(e)}")
+            debug_warning(
+                "services.orchestrator",
+                "Unexpected error starting docker-compose services",
+                error=str(e),
+                compose_file=str(self._compose_file) if self._compose_file else None,
+            )
 
         return result
 
@@ -381,12 +419,15 @@ class ServiceOrchestrator:
         for service in self._services:
             if service.startup_command:
                 try:
+                    cwd = (
+                        (self.project_dir / service.path)
+                        if service.path
+                        else self.project_dir
+                    )
                     proc = subprocess.Popen(
                         service.startup_command,
                         shell=True,
-                        cwd=self.project_dir / service.path
-                        if service.path
-                        else self.project_dir,
+                        cwd=cwd,
                         stdout=subprocess.DEVNULL,
                         stderr=subprocess.DEVNULL,
                         env=get_gui_env(),
@@ -396,6 +437,14 @@ class ServiceOrchestrator:
                 except Exception as e:
                     result.errors.append(f"Failed to start {service.name}: {str(e)}")
                     result.services_failed.append(service.name)
+                    debug_warning(
+                        "services.orchestrator",
+                        "Failed to start local service",
+                        service=service.name,
+                        command=service.startup_command,
+                        cwd=str(cwd) if "cwd" in locals() else None,
+                        error=str(e),
+                    )
 
         # Wait for services to be ready
         if result.services_started:
@@ -409,8 +458,20 @@ class ServiceOrchestrator:
                             f"{name} exited during startup (code {code})"
                         )
                         result.services_failed.append(name)
+                    debug_warning(
+                        "services.orchestrator",
+                        "Local services exited during startup",
+                        timeout_seconds=timeout,
+                        exited=exited,
+                    )
                 else:
                     result.errors.append("Services did not become healthy in time")
+                    debug_warning(
+                        "services.orchestrator",
+                        "Local services did not become healthy in time",
+                        timeout_seconds=timeout,
+                        services=result.services_started,
+                    )
 
         return result
 
@@ -433,8 +494,12 @@ class ServiceOrchestrator:
                     timeout=60,
                     env=get_gui_env(),
                 )
-        except Exception:
-            pass
+        except Exception as e:
+            debug_warning(
+                "services.orchestrator",
+                "Failed to stop docker-compose services",
+                error=str(e),
+            )
 
     def _stop_local_services(self) -> None:
         """Stop local services."""
@@ -442,11 +507,22 @@ class ServiceOrchestrator:
             try:
                 proc.terminate()
                 proc.wait(timeout=10)
-            except Exception:
+            except Exception as e:
+                debug_warning(
+                    "services.orchestrator",
+                    "Failed to terminate local service; attempting kill",
+                    service=name,
+                    error=str(e),
+                )
                 try:
                     proc.kill()
-                except Exception:
-                    pass
+                except Exception as kill_error:
+                    debug_warning(
+                        "services.orchestrator",
+                        "Failed to kill local service process",
+                        service=name,
+                        error=str(kill_error),
+                    )
         self._processes.clear()
 
     def _get_docker_compose_cmd(self) -> list[str] | None:
@@ -461,8 +537,12 @@ class ServiceOrchestrator:
             )
             if proc.returncode == 0:
                 return ["docker", "compose", "-f", str(self._compose_file)]
-        except Exception:
-            pass
+        except Exception as e:
+            debug_warning(
+                "services.orchestrator",
+                "Error checking docker compose v2",
+                error=str(e),
+            )
 
         # Try docker-compose v1
         try:
@@ -474,8 +554,12 @@ class ServiceOrchestrator:
             )
             if proc.returncode == 0:
                 return ["docker-compose", "-f", str(self._compose_file)]
-        except Exception:
-            pass
+        except Exception as e:
+            debug_warning(
+                "services.orchestrator",
+                "Error checking docker-compose v1",
+                error=str(e),
+            )
 
         return None
 
@@ -539,7 +623,8 @@ class ServiceOrchestrator:
                 s.settimeout(1)
                 result = s.connect_ex(("localhost", port))
                 return result == 0
-        except Exception:
+        except Exception as exc:
+            debug_warning("orchestrator", f"Port check failed for localhost:{port}", error=type(exc).__name__, detail=str(exc))
             return False
 
     def _check_http_health(self, url: str) -> bool:
@@ -551,7 +636,8 @@ class ServiceOrchestrator:
                 return True
         except urllib.error.HTTPError:
             return True
-        except Exception:
+        except Exception as exc:
+            debug_warning("orchestrator", f"HTTP health check failed for {url}", error=type(exc).__name__, detail=str(exc))
             return False
 
     def to_dict(self) -> dict[str, Any]:

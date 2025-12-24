@@ -12,6 +12,8 @@ import logging
 from pathlib import Path
 from typing import Any
 
+from debug import debug_warning
+
 logger = logging.getLogger(__name__)
 _pending_tasks: set[asyncio.Task] = set()
 
@@ -26,6 +28,7 @@ def _track_task(task: asyncio.Task) -> asyncio.Task:
         try:
             done_task.result()
         except Exception as exc:
+            debug_warning("graphiti", "Graphiti async task failed", error=str(exc))
             logger.warning(f"Graphiti async task failed: {exc}")
 
     task.add_done_callback(_on_done)
@@ -147,9 +150,10 @@ async def save_to_graphiti_async(
         return result
 
     except Exception as e:
+        debug_warning("graphiti", "Failed to save to Graphiti", error=str(e))
         logger.warning(f"Failed to save to Graphiti: {e}")
         try:
             await graphiti.close()
-        except Exception:
-            pass
+        except Exception as e:
+            debug_warning("graphiti", "Failed to close Graphiti after save failure", error=str(e))
         return False

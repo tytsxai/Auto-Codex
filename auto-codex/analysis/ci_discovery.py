@@ -28,6 +28,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from debug import debug_warning
+
 # Try to import yaml, fall back gracefully
 try:
     import yaml
@@ -227,7 +229,12 @@ class CIDiscovery:
                 if isinstance(env, dict):
                     result.environment_variables.extend(env.keys())
 
-            except Exception:
+            except Exception as e:
+                debug_warning(
+                    "ci_discovery",
+                    f"Failed to parse GitHub Actions workflow '{wf_file}'",
+                    error=str(e),
+                )
                 continue
 
         return result
@@ -297,8 +304,12 @@ class CIDiscovery:
             if isinstance(variables, dict):
                 result.environment_variables.extend(variables.keys())
 
-        except Exception:
-            pass
+        except Exception as e:
+            debug_warning(
+                "ci_discovery",
+                f"Failed to parse GitLab CI config '{config_file}'",
+                error=str(e),
+            )
 
         return result
 
@@ -355,8 +366,12 @@ class CIDiscovery:
                     )
                 )
 
-        except Exception:
-            pass
+        except Exception as e:
+            debug_warning(
+                "ci_discovery",
+                f"Failed to parse CircleCI config '{config_file}'",
+                error=str(e),
+            )
 
         return result
 
@@ -400,8 +415,12 @@ class CIDiscovery:
                     )
                 )
 
-        except Exception:
-            pass
+        except Exception as e:
+            debug_warning(
+                "ci_discovery",
+                f"Failed to parse Jenkinsfile '{jenkinsfile}'",
+                error=str(e),
+            )
 
         return result
 
