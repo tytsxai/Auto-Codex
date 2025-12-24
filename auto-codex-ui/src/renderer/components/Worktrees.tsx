@@ -169,7 +169,7 @@ export function Worktrees({ projectId }: WorktreesProps) {
 
     setIsMerging(true);
     try {
-      const result = await window.electronAPI.mergeWorktree(task.id);
+      const result = await window.electronAPI.mergeWorktree(task.id, { noCommit: true });
       if (result.success && result.data) {
         setMergeResult(result.data);
         if (result.data.success) {

@@ -8,6 +8,9 @@ Persists state to .auto-codex/staged_changes.json.
 """
 
 import json
+import os
+import tempfile
+import threading
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -21,7 +24,12 @@ class ChangeTracker:
     
     Provides persistence to survive app restarts and allows
     grouping changes by source task for flexible commit options.
+    
+    Thread-safe with atomic file writes to prevent corruption.
     """
+    
+    # Class-level lock for thread safety
+    _lock = threading.Lock()
     
     def __init__(self, project_dir: Path):
         """
@@ -160,27 +168,61 @@ class ChangeTracker:
         return len(self.store.changes)
     
     def persist(self) -> None:
-        """Save state to disk."""
-        # Ensure directory exists
-        self.store_path.parent.mkdir(parents=True, exist_ok=True)
+        """
+        Save state to disk using atomic write.
         
-        # Write JSON
-        with open(self.store_path, "w", encoding="utf-8") as f:
-            json.dump(self.store.to_dict(), f, indent=2, ensure_ascii=False)
+        Uses write-to-temp-then-rename pattern to ensure atomicity.
+        This prevents corruption if the process is interrupted during write.
+        """
+        with self._lock:
+            # Ensure directory exists
+            self.store_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            # Write to temporary file first, then atomically rename
+            # This ensures we never have a partially written file
+            fd, temp_path = tempfile.mkstemp(
+                dir=self.store_path.parent,
+                prefix=".staged_changes_",
+                suffix=".tmp"
+            )
+            try:
+                with os.fdopen(fd, "w", encoding="utf-8") as f:
+                    json.dump(self.store.to_dict(), f, indent=2, ensure_ascii=False)
+                
+                # Atomic rename (on POSIX systems)
+                # On Windows, this may fail if target exists, so we remove first
+                if os.name == 'nt' and self.store_path.exists():
+                    self.store_path.unlink()
+                os.rename(temp_path, self.store_path)
+            except Exception:
+                # Clean up temp file on error
+                try:
+                    os.unlink(temp_path)
+                except OSError:
+                    pass
+                raise
     
     def restore(self) -> None:
-        """Load state from disk."""
-        if self.store_path.exists():
-            try:
-                with open(self.store_path, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-                self._store = StagedChangesStore.from_dict(data)
-            except (json.JSONDecodeError, KeyError, TypeError) as e:
-                # Corrupted file - reset to empty state
-                print(f"Warning: Could not load staged_changes.json: {e}")
+        """Load state from disk with error recovery."""
+        with self._lock:
+            if self.store_path.exists():
+                try:
+                    with open(self.store_path, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                    self._store = StagedChangesStore.from_dict(data)
+                except (json.JSONDecodeError, KeyError, TypeError, OSError) as e:
+                    # Corrupted file - backup and reset to empty state
+                    backup_path = self.store_path.with_suffix(".json.bak")
+                    try:
+                        if self.store_path.exists():
+                            self.store_path.rename(backup_path)
+                            print(f"Warning: Corrupted staged_changes.json backed up to {backup_path}")
+                    except OSError:
+                        pass
+                    print(f"Warning: Could not load staged_changes.json: {e}")
+                    self._store = StagedChangesStore()
+            else:
                 self._store = StagedChangesStore()
-        else:
-            self._store = StagedChangesStore()
     
     def to_dict(self) -> dict[str, Any]:
         """Convert current state to dictionary."""

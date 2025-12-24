@@ -104,10 +104,16 @@ from core.workspace.models import (
 )
 
 # Import workflow manager for new staging workflow
+# This is optional - if not available, we fall back to standard merge
+_WORKFLOW_MANAGER_AVAILABLE = False
+_WORKFLOW_IMPORT_ERROR: str | None = None
+
 try:
     from core.workflow import WorkflowManager
-except ImportError:
+    _WORKFLOW_MANAGER_AVAILABLE = True
+except ImportError as e:
     WorkflowManager = None  # type: ignore
+    _WORKFLOW_IMPORT_ERROR = str(e)
 
 from merge import (
     FileTimelineTracker,
@@ -159,10 +165,14 @@ def _merge_with_workflow_manager(
 
     Returns:
         True if staging succeeded
+        
+    Raises:
+        RuntimeError: If WorkflowManager is not available (caller should handle)
     """
-    if WorkflowManager is None:
-        print_status("WorkflowManager not available, falling back to standard merge", "warning")
-        return False
+    if not _WORKFLOW_MANAGER_AVAILABLE or WorkflowManager is None:
+        error_msg = f"WorkflowManager not available: {_WORKFLOW_IMPORT_ERROR or 'unknown error'}"
+        print_status(error_msg, "warning")
+        raise RuntimeError(error_msg)
 
     try:
         manager = WorkflowManager(project_dir)
@@ -230,12 +240,18 @@ def merge_existing_build(
     """
     # If using workflow manager, delegate to the new workflow system
     if use_workflow_manager:
-        return _merge_with_workflow_manager(
-            project_dir=project_dir,
-            spec_name=spec_name,
-            task_id=task_id,
-            auto_cleanup=auto_cleanup,
-        )
+        try:
+            return _merge_with_workflow_manager(
+                project_dir=project_dir,
+                spec_name=spec_name,
+                task_id=task_id,
+                auto_cleanup=auto_cleanup,
+            )
+        except RuntimeError:
+            # WorkflowManager not available, fall back to standard merge
+            print_status("Falling back to standard merge...", "info")
+            # Continue with standard merge below
+    
     worktree_path = get_existing_build_worktree(project_dir, spec_name)
 
     if not worktree_path:

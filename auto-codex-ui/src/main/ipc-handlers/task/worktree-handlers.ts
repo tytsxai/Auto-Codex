@@ -11,35 +11,82 @@ import { getProfileEnv } from '../../rate-limit-detector';
 import { findTaskAndProject } from './shared';
 import { findPythonCommand, parsePythonCommand } from '../../python-detector';
 
+/** Maximum retries for tracking staged changes */
+const TRACK_CHANGES_MAX_RETRIES = 2;
+/** Timeout for tracking operation in milliseconds */
+const TRACK_CHANGES_TIMEOUT_MS = 30000;
+
+/**
+ * Result of tracking staged changes
+ */
+interface TrackChangesResult {
+  success: boolean;
+  tracked?: number;
+  error?: string;
+}
+
 /**
  * Track staged changes using the workflow system.
  * This records which files were staged from which task for later review/commit.
+ * 
+ * Features:
+ * - Automatic retry on failure (up to TRACK_CHANGES_MAX_RETRIES times)
+ * - Timeout protection to prevent hanging
+ * - Detailed error reporting
+ * - Uses base64 encoding for safe parameter passing
  */
 async function trackStagedChanges(
   pythonEnvManager: PythonEnvManager,
   projectPath: string,
   specName: string,
   taskId: string,
-  stagedFiles: string[]
-): Promise<void> {
+  stagedFiles: string[],
+  retryCount: number = 0
+): Promise<TrackChangesResult> {
   if (stagedFiles.length === 0) {
-    return;
+    return { success: true, tracked: 0 };
+  }
+
+  if (!pythonEnvManager.isEnvReady()) {
+    const autoBuildSource = getEffectiveSourcePath();
+    if (autoBuildSource) {
+      const status = await pythonEnvManager.initialize(autoBuildSource);
+      if (!status.ready) {
+        const error = 'Python env not ready';
+        console.warn('[WORKFLOW] Cannot track changes:', error);
+        return { success: false, error };
+      }
+    } else {
+      const error = 'Auto Codex source not found';
+      console.warn('[WORKFLOW] Cannot track changes:', error);
+      return { success: false, error };
+    }
   }
 
   const sourcePath = getEffectiveSourcePath();
   if (!sourcePath) {
-    console.warn('[WORKFLOW] Cannot track changes: Auto Codex source not found');
-    return;
+    const error = 'Auto Codex source not found';
+    console.warn('[WORKFLOW] Cannot track changes:', error);
+    return { success: false, error };
   }
 
   const pythonPath = pythonEnvManager.getPythonPath() || findPythonCommand() || 'python';
   const [pythonCommand, pythonBaseArgs] = parsePythonCommand(pythonPath);
+  const payload = {
+    taskId,
+    specName,
+    files: stagedFiles,
+    mergeSource: path.join(projectPath, '.worktrees', specName)
+  };
+  const payloadB64 = Buffer.from(JSON.stringify(payload), 'utf-8').toString('base64');
 
   // Build the Python command to track changes
   const scriptArgs = [
     '-c',
     `
 import json
+import base64
+import os
 import sys
 sys.path.insert(0, '${sourcePath.replace(/\\/g, '\\\\')}')
 
@@ -48,24 +95,29 @@ from pathlib import Path
 
 project_dir = Path('${projectPath.replace(/\\/g, '\\\\')}')
 tracker = ChangeTracker(project_dir)
+payload = json.loads(base64.b64decode(os.environ.get('WORKFLOW_TRACK_B64', 'e30=')).decode('utf-8'))
 
 # Track the staged changes
 tracker.track_changes(
-    task_id='${taskId}',
-    spec_name='${specName}',
-    files=${JSON.stringify(stagedFiles)},
-    merge_source='${path.join(projectPath, '.worktrees', specName).replace(/\\/g, '\\\\')}'
+    task_id=payload.get('taskId', ''),
+    spec_name=payload.get('specName', ''),
+    files=payload.get('files', []),
+    merge_source=payload.get('mergeSource', '')
 )
 
-print(json.dumps({'success': True, 'tracked': len(${JSON.stringify(stagedFiles)})}))
+print(json.dumps({'success': True, 'tracked': len(payload.get('files', []))}))
 `
   ];
 
   return new Promise((resolve) => {
+    let timeoutId: NodeJS.Timeout | null = null;
+    let resolved = false;
+
     const proc = spawn(pythonCommand, [...pythonBaseArgs, ...scriptArgs], {
       cwd: sourcePath,
       env: {
         ...process.env,
+        WORKFLOW_TRACK_B64: payloadB64,
         PYTHONUNBUFFERED: '1',
         PYTHONIOENCODING: 'utf-8',
         PYTHONUTF8: '1'
@@ -74,6 +126,25 @@ print(json.dumps({'success': True, 'tracked': len(${JSON.stringify(stagedFiles)}
 
     let stdout = '';
     let stderr = '';
+
+    // Set timeout to prevent hanging
+    timeoutId = setTimeout(() => {
+      if (!resolved) {
+        resolved = true;
+        proc.kill('SIGTERM');
+        const error = `Tracking operation timed out after ${TRACK_CHANGES_TIMEOUT_MS}ms`;
+        console.warn('[WORKFLOW]', error);
+        
+        // Retry if we haven't exceeded max retries
+        if (retryCount < TRACK_CHANGES_MAX_RETRIES) {
+          console.warn(`[WORKFLOW] Retrying... (attempt ${retryCount + 2}/${TRACK_CHANGES_MAX_RETRIES + 1})`);
+          trackStagedChanges(pythonEnvManager, projectPath, specName, taskId, stagedFiles, retryCount + 1)
+            .then(resolve);
+        } else {
+          resolve({ success: false, error });
+        }
+      }
+    }, TRACK_CHANGES_TIMEOUT_MS);
 
     proc.stdout.on('data', (data: Buffer) => {
       stdout += data.toString();
@@ -84,22 +155,51 @@ print(json.dumps({'success': True, 'tracked': len(${JSON.stringify(stagedFiles)}
     });
 
     proc.on('close', (code: number) => {
+      if (resolved) return;
+      resolved = true;
+      if (timeoutId) clearTimeout(timeoutId);
+
       if (code === 0) {
         try {
-          const result = JSON.parse(stdout.trim());
+          const result = JSON.parse(stdout.trim()) as TrackChangesResult;
           console.warn('[WORKFLOW] Tracked staged changes:', result);
+          resolve(result);
         } catch (_e) {
           console.warn('[WORKFLOW] Failed to parse tracking result:', stdout, stderr);
+          // Assume success if output is malformed but exit code was 0
+          resolve({ success: true, tracked: stagedFiles.length });
         }
       } else {
-        console.warn('[WORKFLOW] Failed to track changes:', stderr || stdout);
+        const error = stderr || stdout || `Process exited with code ${code}`;
+        console.warn('[WORKFLOW] Failed to track changes:', error);
+        
+        // Retry on failure
+        if (retryCount < TRACK_CHANGES_MAX_RETRIES) {
+          console.warn(`[WORKFLOW] Retrying... (attempt ${retryCount + 2}/${TRACK_CHANGES_MAX_RETRIES + 1})`);
+          trackStagedChanges(pythonEnvManager, projectPath, specName, taskId, stagedFiles, retryCount + 1)
+            .then(resolve);
+        } else {
+          resolve({ success: false, error });
+        }
       }
-      resolve();
     });
 
     proc.on('error', (err: Error) => {
-      console.warn('[WORKFLOW] Error tracking changes:', err.message);
-      resolve();
+      if (resolved) return;
+      resolved = true;
+      if (timeoutId) clearTimeout(timeoutId);
+
+      const error = err.message;
+      console.warn('[WORKFLOW] Error tracking changes:', error);
+      
+      // Retry on error
+      if (retryCount < TRACK_CHANGES_MAX_RETRIES) {
+        console.warn(`[WORKFLOW] Retrying... (attempt ${retryCount + 2}/${TRACK_CHANGES_MAX_RETRIES + 1})`);
+        trackStagedChanges(pythonEnvManager, projectPath, specName, taskId, stagedFiles, retryCount + 1)
+          .then(resolve);
+      } else {
+        resolve({ success: false, error });
+      }
     });
   });
 }

@@ -16,6 +16,7 @@ import {
   FileText,
   Sparkles,
   GitBranch,
+  GitCommit,
   HelpCircle
 } from 'lucide-react';
 import { Button } from './ui/button';
@@ -56,7 +57,7 @@ import { GitSetupModal } from './GitSetupModal';
 import { RateLimitIndicator } from './RateLimitIndicator';
 import type { Project, AutoBuildVersionInfo, GitStatus } from '../../shared/types';
 
-export type SidebarView = 'kanban' | 'terminals' | 'roadmap' | 'context' | 'ideation' | 'github-issues' | 'changelog' | 'insights' | 'worktrees' | 'agent-tools';
+export type SidebarView = 'kanban' | 'terminals' | 'roadmap' | 'context' | 'ideation' | 'github-issues' | 'changelog' | 'insights' | 'worktrees' | 'staged-changes' | 'agent-tools';
 
 interface SidebarProps {
   onSettingsClick: () => void;
@@ -84,7 +85,8 @@ const projectNavItems: NavItem[] = [
 
 const toolsNavItems: NavItem[] = [
   { id: 'github-issues', label: 'GitHub 问题', icon: Github, shortcut: 'G' },
-  { id: 'worktrees', label: '工作树', icon: GitBranch, shortcut: 'W' }
+  { id: 'worktrees', label: '工作树', icon: GitBranch, shortcut: 'W' },
+  { id: 'staged-changes', label: '暂存更改', icon: GitCommit, shortcut: 'S' }
 ];
 
 export function Sidebar({
@@ -106,6 +108,7 @@ export function Sidebar({
   const [pendingProject, setPendingProject] = useState<Project | null>(null);
   const [_versionInfo, setVersionInfo] = useState<AutoBuildVersionInfo | null>(null);
   const [isInitializing, setIsInitializing] = useState(false);
+  const [stagedChangesCount, setStagedChangesCount] = useState(0);
 
   const selectedProject = projects.find((p) => p.id === selectedProjectId);
 
@@ -157,6 +160,32 @@ export function Sidebar({
     };
     checkUpdates();
   }, [selectedProjectId, settings.autoUpdateAutoBuild]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadStagedChanges = async () => {
+      if (!selectedProjectId) {
+        setStagedChangesCount(0);
+        return;
+      }
+
+      try {
+        const result = await window.electronAPI.getStagedChanges();
+        if (!isMounted) return;
+        setStagedChangesCount(result.success && result.data ? result.data.length : 0);
+      } catch {
+        if (!isMounted) return;
+        setStagedChangesCount(0);
+      }
+    };
+
+    loadStagedChanges();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedProjectId, activeView]);
 
   // 项目变更时检查 Git 状态
   useEffect(() => {

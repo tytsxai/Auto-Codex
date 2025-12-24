@@ -56,23 +56,27 @@ async function runWorkflowCommand(
 
   const pythonPath = pythonEnvManager.getPythonPath() || findPythonCommand() || 'python';
   const [pythonCommand, pythonBaseArgs] = parsePythonCommand(pythonPath);
+  const argsPayload = Buffer.from(JSON.stringify(args), 'utf-8').toString('base64');
 
   // Build the Python command
   const scriptArgs = [
     '-c',
     `
 import json
+import base64
+import os
 import sys
 import asyncio
 sys.path.insert(0, '${sourcePath.replace(/\\/g, '\\\\')}')
 
-from auto_codex.core.workflow import (
+from core.workflow import (
     WorkflowManager, ChangeTracker, CommitManager, AIReviewer, WorkflowSettings
 )
 from pathlib import Path
 
 project_dir = Path('${projectPath.replace(/\\/g, '\\\\')}')
-args = json.loads('${JSON.stringify(args).replace(/'/g, "\\'")}')
+args_json = base64.b64decode(os.environ.get('WORKFLOW_ARGS_B64', 'e30=')).decode('utf-8')
+args = json.loads(args_json)
 command = '${command}'
 
 async def main():
@@ -158,6 +162,7 @@ asyncio.run(main())
       cwd: sourcePath,
       env: {
         ...process.env,
+        WORKFLOW_ARGS_B64: argsPayload,
         PYTHONUNBUFFERED: '1',
         PYTHONIOENCODING: 'utf-8',
         PYTHONUTF8: '1'
