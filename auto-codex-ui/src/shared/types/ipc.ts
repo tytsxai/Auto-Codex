@@ -95,6 +95,18 @@ import type {
   RoadmapGenerationStatus
 } from './roadmap';
 import type {
+  StageWorktreeRequest,
+  CommitChangesRequest,
+  DiscardChangesRequest,
+  StagedChange,
+  StageResult,
+  WorktreeHealthStatus,
+  ConflictRisk,
+  ReviewReport,
+  CommitResult,
+  MergeOrderSuggestion
+} from './workflow';
+import type {
   LinearTeam,
   LinearProject,
   LinearIssue,
@@ -527,6 +539,18 @@ export interface ElectronAPI {
   detectMainBranch: (projectPath: string) => Promise<IPCResult<string | null>>;
   checkGitStatus: (projectPath: string) => Promise<IPCResult<GitStatus>>;
   initializeGit: (projectPath: string) => Promise<IPCResult<InitializationResult>>;
+
+  // Workflow operations (smart worktree management)
+  stageWorktree: (request: StageWorktreeRequest) => Promise<IPCResult<StageResult>>;
+  getStagedChanges: () => Promise<IPCResult<StagedChange[]>>;
+  commitChanges: (request: CommitChangesRequest) => Promise<IPCResult<CommitResult | CommitResult[]>>;
+  discardChanges: (request: DiscardChangesRequest) => Promise<IPCResult<{ success: boolean }>>;
+  getHealthStatus: () => Promise<IPCResult<WorktreeHealthStatus>>;
+  getConflictRisks: () => Promise<IPCResult<ConflictRisk[]>>;
+  getMergeOrder: () => Promise<IPCResult<MergeOrderSuggestion>>;
+  aiReview: () => Promise<IPCResult<ReviewReport>>;
+  cleanupStale: (days?: number) => Promise<IPCResult<{ cleaned: string[] }>>;
+  generateCommitMessage: (mode: string) => Promise<IPCResult<{ message: string }>>;
 }
 
 declare global {
