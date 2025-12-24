@@ -51,7 +51,11 @@ def test_get_auth_token_uses_config_dir(monkeypatch, tmp_path):
 def test_get_auth_token_uses_default_codex_config_dir(monkeypatch, tmp_path):
     codex_dir = tmp_path / ".codex"
     codex_dir.mkdir()
-    (codex_dir / "config.toml").write_text("")
+    (codex_dir / "config.toml").write_text(
+        'model_provider = "yunyi"\n'
+        '[model_providers.yunyi]\n'
+        'experimental_bearer_token = "yunyi-token-1234567890"\n'
+    )
 
     monkeypatch.setattr(auth, "_DEFAULT_CODEX_CONFIG_DIR", str(codex_dir))
     monkeypatch.delenv("AUTO_CODEX_DISABLE_DEFAULT_CODEX_CONFIG_DIR", raising=False)
@@ -59,8 +63,9 @@ def test_get_auth_token_uses_default_codex_config_dir(monkeypatch, tmp_path):
     monkeypatch.delenv("CODEX_CODE_OAUTH_TOKEN", raising=False)
     monkeypatch.delenv("CODEX_CONFIG_DIR", raising=False)
 
-    assert get_auth_token() == str(codex_dir)
-    assert get_auth_token_source() == "DEFAULT_CODEX_CONFIG_DIR"
+    # Now get_auth_token() extracts the actual token from config.toml
+    assert get_auth_token() == "yunyi-token-1234567890"
+    assert get_auth_token_source() == "OPENAI_API_KEY"  # Token was hydrated to env
 
 
 def test_require_auth_token_invalid_format(monkeypatch):
@@ -116,8 +121,8 @@ def test_is_valid_codex_config_dir(tmp_path):
     assert is_valid_codex_config_dir(str(tmp_path / "missing")) is False
 
 
-class TestHydrateEnvFromCodexAuthJson:
-    """Tests for _hydrate_env_from_codex_auth_json and _read_codex_auth_json."""
+class TestHydrateEnvFromCodexConfig:
+    """Tests for _hydrate_env_from_codex_config, _read_codex_auth_json, and _read_codex_config_toml."""
 
     def test_hydrate_env_from_auth_json(self, monkeypatch, tmp_path):
         """Test that auth.json credentials are loaded into env vars."""
@@ -137,7 +142,7 @@ class TestHydrateEnvFromCodexAuthJson:
         monkeypatch.delenv("OPENAI_API_BASE", raising=False)
         monkeypatch.delenv("CODEX_CONFIG_DIR", raising=False)
 
-        auth._hydrate_env_from_codex_auth_json()
+        auth._hydrate_env_from_codex_config()
 
         import os
         assert os.environ.get("OPENAI_API_KEY") == "test-key-12345678901234567890"
@@ -161,7 +166,7 @@ class TestHydrateEnvFromCodexAuthJson:
         monkeypatch.setenv("OPENAI_BASE_URL", "https://existing.example.com")
         monkeypatch.delenv("CODEX_CONFIG_DIR", raising=False)
 
-        auth._hydrate_env_from_codex_auth_json()
+        auth._hydrate_env_from_codex_config()
 
         import os
         # Should not be overwritten
@@ -181,7 +186,7 @@ class TestHydrateEnvFromCodexAuthJson:
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
         monkeypatch.delenv("OPENAI_BASE_URL", raising=False)
 
-        auth._hydrate_env_from_codex_auth_json()
+        auth._hydrate_env_from_codex_config()
 
         import os
         assert os.environ.get("OPENAI_API_KEY") == "custom-key-12345678901234567890"
@@ -200,7 +205,7 @@ class TestHydrateEnvFromCodexAuthJson:
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
         monkeypatch.delenv("CODEX_CONFIG_DIR", raising=False)
 
-        auth._hydrate_env_from_codex_auth_json()
+        auth._hydrate_env_from_codex_config()
 
         import os
         assert os.environ.get("OPENAI_API_KEY") == "alt-key-12345678901234567890"
@@ -221,6 +226,100 @@ class TestHydrateEnvFromCodexAuthJson:
         (tmp_path / "auth.json").write_text('["array", "not", "dict"]')
         result = auth._read_codex_auth_json(str(tmp_path))
         assert result is None
+
+    def test_read_codex_config_toml_with_provider(self, tmp_path):
+        """Test that config.toml with provider data is parsed."""
+        config_path = tmp_path / "config.toml"
+        config_path.write_text(
+            'model_provider = "yunyi"\n'
+            '[model_providers.yunyi]\n'
+            'base_url = "https://yunyi.example.com/v1"\n'
+            'experimental_bearer_token = "yunyi-token-1234567890"\n'
+        )
+
+        result = auth._read_codex_config_toml(str(tmp_path))
+
+        assert isinstance(result, dict)
+        assert result.get("model_provider") == "yunyi"
+        providers = result.get("model_providers")
+        assert isinstance(providers, dict)
+        assert providers["yunyi"]["base_url"] == "https://yunyi.example.com/v1"
+        assert providers["yunyi"]["experimental_bearer_token"] == "yunyi-token-1234567890"
+
+    def test_hydrate_env_prefers_auth_json_over_config_toml(self, monkeypatch, tmp_path):
+        """Test that auth.json takes precedence over config.toml."""
+        import json
+
+        codex_dir = tmp_path / ".codex"
+        codex_dir.mkdir()
+        (codex_dir / "auth.json").write_text(json.dumps({
+            "api_key": "auth-json-key-12345678901234567890",
+            "api_base_url": "https://auth-json.example.com/v1",
+        }))
+        (codex_dir / "config.toml").write_text(
+            'model_provider = "yunyi"\n'
+            '[model_providers.yunyi]\n'
+            'base_url = "https://config.example.com/v1"\n'
+            'experimental_bearer_token = "config-token-1234567890"\n'
+        )
+
+        monkeypatch.setattr(auth, "_DEFAULT_CODEX_CONFIG_DIR", str(codex_dir))
+        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+        monkeypatch.delenv("OPENAI_BASE_URL", raising=False)
+        monkeypatch.delenv("OPENAI_API_BASE", raising=False)
+        monkeypatch.delenv("CODEX_CONFIG_DIR", raising=False)
+
+        auth._hydrate_env_from_codex_config()
+
+        import os
+        assert os.environ.get("OPENAI_API_KEY") == "auth-json-key-12345678901234567890"
+        assert os.environ.get("OPENAI_BASE_URL") == "https://auth-json.example.com/v1"
+        assert os.environ.get("OPENAI_API_BASE") == "https://auth-json.example.com/v1"
+
+    def test_hydrate_env_uses_config_toml_only(self, monkeypatch, tmp_path):
+        """Test that config.toml credentials are loaded when auth.json is missing."""
+        codex_dir = tmp_path / ".codex"
+        codex_dir.mkdir()
+        (codex_dir / "config.toml").write_text(
+            'model_provider = "yunyi"\n'
+            '[model_providers.yunyi]\n'
+            'base_url = "https://yunyi.example.com/v1"\n'
+            'experimental_bearer_token = "yunyi-token-1234567890"\n'
+        )
+
+        monkeypatch.setattr(auth, "_DEFAULT_CODEX_CONFIG_DIR", str(codex_dir))
+        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+        monkeypatch.delenv("OPENAI_BASE_URL", raising=False)
+        monkeypatch.delenv("OPENAI_API_BASE", raising=False)
+        monkeypatch.delenv("CODEX_CONFIG_DIR", raising=False)
+
+        auth._hydrate_env_from_codex_config()
+
+        import os
+        assert os.environ.get("OPENAI_API_KEY") == "yunyi-token-1234567890"
+        assert os.environ.get("OPENAI_BASE_URL") == "https://yunyi.example.com/v1"
+        assert os.environ.get("OPENAI_API_BASE") == "https://yunyi.example.com/v1"
+
+    def test_hydrate_env_extracts_experimental_bearer_token(self, monkeypatch, tmp_path):
+        """Test that experimental_bearer_token is used as OPENAI_API_KEY."""
+        codex_dir = tmp_path / ".codex"
+        codex_dir.mkdir()
+        (codex_dir / "config.toml").write_text(
+            'model_provider = "yunyi"\n'
+            '[model_providers.yunyi]\n'
+            'experimental_bearer_token = "yunyi-token-abcdef123456"\n'
+        )
+
+        monkeypatch.setattr(auth, "_DEFAULT_CODEX_CONFIG_DIR", str(codex_dir))
+        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+        monkeypatch.delenv("OPENAI_BASE_URL", raising=False)
+        monkeypatch.delenv("OPENAI_API_BASE", raising=False)
+        monkeypatch.delenv("CODEX_CONFIG_DIR", raising=False)
+
+        auth._hydrate_env_from_codex_config()
+
+        import os
+        assert os.environ.get("OPENAI_API_KEY") == "yunyi-token-abcdef123456"
 
 
 class TestCheckAuthHealth:

@@ -13,6 +13,11 @@ from typing import Optional
 
 from .debug import debug, debug_success, debug_warning
 
+try:
+    import tomllib
+except ImportError:  # pragma: no cover - fallback for older environments
+    import tomli as tomllib
+
 # Priority order for auth token resolution.
 #
 # Auto Codex primarily targets Codex CLI. Authentication can come from:
@@ -77,61 +82,134 @@ def _read_codex_auth_json(config_dir: str) -> dict[str, object] | None:
     """
     try:
         auth_path = os.path.join(config_dir, "auth.json")
+        debug("auth", "Attempting to read Codex auth.json", path=auth_path)
         if not os.path.isfile(auth_path):
+            debug_warning("auth", "Codex auth.json not found", path=auth_path)
             return None
         with open(auth_path, "r", encoding="utf-8") as f:
             data = json.load(f)
-        return data if isinstance(data, dict) else None
-    except Exception:
+        if isinstance(data, dict):
+            debug_success("auth", "Loaded Codex auth.json", path=auth_path)
+            return data
+        debug_warning("auth", "Codex auth.json is not a dict", path=auth_path)
+        return None
+    except Exception as exc:
+        debug_warning("auth", "Failed to read Codex auth.json", error=str(exc))
         return None
 
 
-def _hydrate_env_from_codex_auth_json() -> None:
+def _read_codex_config_toml(config_dir: str) -> dict[str, object] | None:
+    """
+    Read Codex CLI config.toml from a config directory.
+
+    Third-party providers (e.g., yunyi) store credentials here:
+    - model_provider: provider name
+    - model_providers.<name>.base_url: API base URL
+    - model_providers.<name>.experimental_bearer_token: auth token
+    """
+    try:
+        config_path = os.path.join(config_dir, "config.toml")
+        debug("auth", "Attempting to read Codex config.toml", path=config_path)
+        if not os.path.isfile(config_path):
+            debug_warning("auth", "Codex config.toml not found", path=config_path)
+            return None
+        with open(config_path, "rb") as f:
+            data = tomllib.load(f)
+        if isinstance(data, dict):
+            debug_success("auth", "Loaded Codex config.toml", path=config_path)
+            return data
+        debug_warning("auth", "Codex config.toml is not a dict", path=config_path)
+        return None
+    except Exception as exc:
+        debug_warning("auth", "Failed to read Codex config.toml", error=str(exc))
+        return None
+
+
+def _hydrate_env_from_codex_config() -> None:
     """
     Populate process env from Codex CLI config when GUI apps don't inherit shell env.
 
     - If OPENAI_API_KEY is missing, try to load it from `CODEX_CONFIG_DIR/auth.json`
       (or the default `~/.codex/auth.json`).
+    - If auth.json is missing or incomplete, try to load from `config.toml` provider profile.
     - If a gateway base URL is present (`api_base_url`), map it to OPENAI_BASE_URL /
       OPENAI_API_BASE for OpenAI-compatible SDKs.
     """
+    debug("auth", "Hydrating environment from Codex config")
     # Never override explicit env vars.
     if (os.environ.get("OPENAI_API_KEY") or "").strip() and (os.environ.get("OPENAI_BASE_URL") or "").strip():
+        debug("auth", "OPENAI_API_KEY and OPENAI_BASE_URL already set; skipping hydration")
         return
 
     config_dir = (os.environ.get("CODEX_CONFIG_DIR") or "").strip()
     if not config_dir:
         if os.environ.get("AUTO_CODEX_DISABLE_DEFAULT_CODEX_CONFIG_DIR", "").strip():
+            debug("auth", "Default Codex config dir disabled by env")
             return
         config_dir = _DEFAULT_CODEX_CONFIG_DIR
+    debug("auth", "Using Codex config directory", config_dir=config_dir)
     if not os.path.isdir(config_dir):
+        debug_warning("auth", "Codex config directory not found", config_dir=config_dir)
         return
 
     auth = _read_codex_auth_json(config_dir)
     if not auth:
-        return
+        debug_warning("auth", "auth.json not found or unreadable", config_dir=config_dir)
+    config = _read_codex_config_toml(config_dir)
+    if not config:
+        debug_warning("auth", "config.toml not found or unreadable", config_dir=config_dir)
 
     if (os.environ.get("CODEX_CODE_OAUTH_TOKEN") or "").strip():
+        debug("auth", "CODEX_CODE_OAUTH_TOKEN already set; skipping config hydration")
         return
 
     if not (os.environ.get("OPENAI_API_KEY") or "").strip():
-        key = auth.get("OPENAI_API_KEY") or auth.get("api_key") or auth.get("apiKey") or auth.get("key") or auth.get("token")
+        key = None
+        key_source = None
+        if auth:
+            key = auth.get("OPENAI_API_KEY") or auth.get("api_key") or auth.get("apiKey") or auth.get("key") or auth.get("token")
+            if isinstance(key, str) and key.strip():
+                key_source = "auth.json"
+        if not key_source:
+            provider_name = config.get("model_provider") if isinstance(config, dict) else None
+            providers = config.get("model_providers") if isinstance(config, dict) else None
+            provider = providers.get(provider_name) if isinstance(providers, dict) and isinstance(provider_name, str) else None
+            if isinstance(provider, dict):
+                key = provider.get("experimental_bearer_token")
+                if isinstance(key, str) and key.strip():
+                    key_source = "config.toml"
         if isinstance(key, str) and key.strip():
             os.environ["OPENAI_API_KEY"] = key.strip()
+            debug_success("auth", "Loaded OPENAI_API_KEY", source=key_source, config_dir=config_dir)
+        else:
+            debug_warning("auth", "No OPENAI_API_KEY found in auth.json or config.toml", config_dir=config_dir)
 
-    base_url = auth.get("api_base_url")
+    base_url = auth.get("api_base_url") if auth else None
+    base_url_source = "auth.json" if base_url else None
+    if not base_url:
+        provider_name = config.get("model_provider") if isinstance(config, dict) else None
+        providers = config.get("model_providers") if isinstance(config, dict) else None
+        provider = providers.get(provider_name) if isinstance(providers, dict) and isinstance(provider_name, str) else None
+        if isinstance(provider, dict):
+            base_url = provider.get("base_url")
+            if isinstance(base_url, str) and base_url.strip():
+                base_url_source = "config.toml"
     if isinstance(base_url, str) and base_url.strip():
         if not (os.environ.get("OPENAI_BASE_URL") or "").strip():
             os.environ["OPENAI_BASE_URL"] = base_url.strip()
+            debug_success("auth", "Loaded OPENAI_BASE_URL", source=base_url_source, config_dir=config_dir)
         if not (os.environ.get("OPENAI_API_BASE") or "").strip():
             os.environ["OPENAI_API_BASE"] = base_url.strip()
+            debug_success("auth", "Loaded OPENAI_API_BASE", source=base_url_source, config_dir=config_dir)
+    else:
+        debug_warning("auth", "No base_url found in auth.json or config.toml", config_dir=config_dir)
 
 
 def ensure_auth_hydrated() -> AuthStatus:
     """
     Ensure authentication credentials are loaded and return status information.
 
-    This function wraps _hydrate_env_from_codex_auth_json() and provides:
+    This function wraps _hydrate_env_from_codex_config() and provides:
     - Logging of authentication source for debugging
     - AuthStatus dataclass with detailed authentication state
 
@@ -149,7 +227,7 @@ def ensure_auth_hydrated() -> AuthStatus:
     had_base_url_before = bool((os.environ.get("OPENAI_BASE_URL") or "").strip())
 
     # Perform hydration
-    _hydrate_env_from_codex_auth_json()
+    _hydrate_env_from_codex_config()
 
     # Check authentication state after hydration
     api_key = (os.environ.get("OPENAI_API_KEY") or "").strip()
@@ -166,10 +244,24 @@ def ensure_auth_hydrated() -> AuthStatus:
             source = "env"
             debug("auth", "Using OPENAI_API_KEY from environment variable")
         else:
-            # Key was loaded from auth.json
             config_dir_used = config_dir_env if config_dir_env else _DEFAULT_CODEX_CONFIG_DIR
-            source = "auth.json"
-            debug_success("auth", f"Loaded credentials from {config_dir_used}/auth.json")
+            auth = _read_codex_auth_json(config_dir_used)
+            if auth:
+                auth_key = auth.get("OPENAI_API_KEY") or auth.get("api_key") or auth.get("apiKey") or auth.get("key") or auth.get("token")
+            else:
+                auth_key = None
+            config = _read_codex_config_toml(config_dir_used)
+            provider_name = config.get("model_provider") if isinstance(config, dict) else None
+            providers = config.get("model_providers") if isinstance(config, dict) else None
+            provider = providers.get(provider_name) if isinstance(providers, dict) and isinstance(provider_name, str) else None
+            config_key = provider.get("experimental_bearer_token") if isinstance(provider, dict) else None
+            if isinstance(auth_key, str) and auth_key.strip() == api_key:
+                source = "auth.json"
+            elif isinstance(config_key, str) and config_key.strip() == api_key:
+                source = "config.toml"
+            else:
+                source = "config_dir"
+            debug_success("auth", f"Loaded credentials from {config_dir_used}", source=source)
         checked_sources.append("OPENAI_API_KEY")
     elif oauth_token and is_valid_codex_oauth_token(oauth_token):
         source = "env"
@@ -250,7 +342,7 @@ def check_auth_health() -> AuthStatus:
     Perform a comprehensive health check of authentication status.
 
     This function:
-    1. Ensures credentials are loaded via _hydrate_env_from_codex_auth_json()
+    1. Ensures credentials are loaded via _hydrate_env_from_codex_config()
     2. Checks authentication status and source
     3. Checks Codex CLI availability and path
 
@@ -339,8 +431,26 @@ def has_default_codex_config_dir() -> bool:
         return False
     if not os.path.isdir(_DEFAULT_CODEX_CONFIG_DIR):
         return False
-    return os.path.isfile(os.path.join(_DEFAULT_CODEX_CONFIG_DIR, "config.toml")) or os.path.isfile(
-        os.path.join(_DEFAULT_CODEX_CONFIG_DIR, "auth.json")
+    auth_path = os.path.join(_DEFAULT_CODEX_CONFIG_DIR, "auth.json")
+    if os.path.isfile(auth_path):
+        return True
+    config = _read_codex_config_toml(_DEFAULT_CODEX_CONFIG_DIR)
+    if not isinstance(config, dict):
+        return False
+    provider_name = config.get("model_provider")
+    providers = config.get("model_providers")
+    if not isinstance(provider_name, str) or not provider_name.strip():
+        return False
+    if not isinstance(providers, dict):
+        return False
+    provider = providers.get(provider_name)
+    if not isinstance(provider, dict):
+        return False
+    base_url = provider.get("base_url")
+    token = provider.get("experimental_bearer_token")
+    return bool(
+        (isinstance(base_url, str) and base_url.strip())
+        or (isinstance(token, str) and token.strip())
     )
 
 
@@ -365,7 +475,7 @@ def get_auth_token() -> str | None:
     Returns:
         Token string if found, None otherwise
     """
-    _hydrate_env_from_codex_auth_json()
+    _hydrate_env_from_codex_config()
 
     openai_token = os.environ.get("OPENAI_API_KEY", "")
     if openai_token and is_valid_openai_api_key(openai_token):
@@ -387,7 +497,7 @@ def get_auth_token() -> str | None:
 
 def get_auth_token_source() -> str | None:
     """Get the name of the source that provided the auth token."""
-    _hydrate_env_from_codex_auth_json()
+    _hydrate_env_from_codex_config()
 
     openai_token = os.environ.get("OPENAI_API_KEY", "")
     if openai_token and is_valid_openai_api_key(openai_token):
@@ -414,7 +524,7 @@ def require_auth_token() -> str:
     Raises:
         ValueError: If no auth token is found in any supported source
     """
-    _hydrate_env_from_codex_auth_json()
+    _hydrate_env_from_codex_config()
 
     token = get_auth_token()
     if token:
