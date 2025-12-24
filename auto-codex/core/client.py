@@ -14,9 +14,12 @@ from pathlib import Path
 from typing import Any, AsyncIterator, Optional
 
 from core.auth import require_auth_token
-from core.protocols import EventType, LLMClientProtocol, LLMEvent
+from core.protocols import EventType, LLMClientProtocol, LLMEvent, LLMQueryClientProtocol
+from debug import debug_warning
 from providers import CodexCliClient
 from security import CodexSecurityConfig, get_security_profile
+
+_SECURITY_STATUS_WARNED = False
 
 
 @dataclass
@@ -34,6 +37,20 @@ class ToolUseBlock:
 class ToolResultBlock:
     content: Any | None = None
     is_error: bool = False
+
+
+@dataclass
+class ReasoningBlock:
+    """Represents model reasoning/thinking content."""
+    text: str
+
+
+@dataclass
+class ProgressBlock:
+    """Represents progress update."""
+    phase: str = ""
+    message: str = ""
+    percent: int = 0
 
 
 @dataclass
@@ -113,6 +130,23 @@ def _event_to_message(event: LLMEvent) -> Any | None:
         if stderr:
             error_text = f"{error_text}\n{stderr}"
         return AssistantMessage(content=[TextBlock(text=str(error_text))])
+    if event.type == EventType.REASONING:
+        text = event.data.get("content", "")
+        if text:
+            return AssistantMessage(content=[ReasoningBlock(text=text)])
+        return None
+    if event.type == EventType.PROGRESS:
+        return AssistantMessage(content=[ProgressBlock(
+            phase=event.data.get("phase", ""),
+            message=event.data.get("message", ""),
+            percent=event.data.get("percent", 0),
+        )])
+    # TOOL_PENDING, TURN_START, TURN_END, RATE_LIMIT 可选择性处理
+    if event.type == EventType.TOOL_PENDING:
+        name = event.data.get("name", "tool")
+        return AssistantMessage(content=[TextBlock(text=f"[Preparing: {name}]")])
+    if event.type == EventType.RATE_LIMIT:
+        return AssistantMessage(content=[TextBlock(text="[Rate limited, waiting...]")])
     return None
 
 
@@ -130,7 +164,7 @@ def create_client(
     model: str | None = None,
     agent_type: str = "coder",
     max_thinking_tokens: int | None = None,
-) -> CodexClientAdapter:
+) -> LLMQueryClientProtocol:
     """
     Create a Codex-backed client with project security settings applied.
 
@@ -153,6 +187,7 @@ def create_client(
         security_profile,
         allowed_paths=["./**"],
     )
+    _maybe_warn_security_status(codex_security_config)
     codex_security_args = codex_security_config.to_codex_args()
 
     reasoning_effort = _infer_reasoning_effort(max_thinking_tokens)
@@ -166,10 +201,34 @@ def create_client(
         reasoning_effort=reasoning_effort,
         workdir=str(resolved_project_dir),
         timeout=600,
-        bypass_sandbox=(os.environ.get("AUTO_CODEX_BYPASS_CODEX_SANDBOX", "1") != "0"),
+        bypass_sandbox=(os.environ.get("AUTO_CODEX_BYPASS_CODEX_SANDBOX", "0") != "0"),
         extra_args=codex_security_args,
     )
     return CodexClientAdapter(client)
+
+
+def _maybe_warn_security_status(config: CodexSecurityConfig) -> None:
+    global _SECURITY_STATUS_WARNED
+    if _SECURITY_STATUS_WARNED:
+        return
+    try:
+        status = config.get_security_status()
+    except Exception as exc:
+        debug_warning("security", "Failed to compute security status", error=str(exc))
+        _SECURITY_STATUS_WARNED = True
+        return
+
+    warnings = status.get("warnings") or []
+    if warnings:
+        debug_warning(
+            "security",
+            "Codex CLI security rules are not fully enforced",
+            mode=status.get("mode"),
+            flags_sent_to_codex=status.get("flags_sent_to_codex"),
+            bypass_sandbox=status.get("bypass_sandbox"),
+            warnings=warnings,
+        )
+    _SECURITY_STATUS_WARNED = True
 
 
 def get_client(provider: str = "codex", **kwargs) -> LLMClientProtocol:
@@ -185,7 +244,7 @@ def get_client(provider: str = "codex", **kwargs) -> LLMClientProtocol:
         reasoning_effort=kwargs.get("reasoning_effort"),
         workdir=workdir,
         timeout=kwargs.get("timeout", 600),
-        bypass_sandbox=kwargs.get("bypass_sandbox", True),
+        bypass_sandbox=kwargs.get("bypass_sandbox", False),
         extra_args=kwargs.get("extra_args"),
     )
 

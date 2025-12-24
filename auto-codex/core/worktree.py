@@ -56,7 +56,7 @@ class WorktreeManager:
         self.project_dir = project_dir
         self.base_branch = base_branch or self._detect_base_branch()
         self.worktrees_dir = project_dir / ".worktrees"
-        self._merge_lock = threading.Lock()
+        self._worktree_lock = threading.Lock()  # Protects create/remove/merge operations
 
     def _detect_base_branch(self) -> str:
         """
@@ -314,6 +314,11 @@ class WorktreeManager:
         Raises:
             WorktreeError: If a branch namespace conflict exists or worktree creation fails
         """
+        with self._worktree_lock:
+            return self._create_worktree_unlocked(spec_name)
+
+    def _create_worktree_unlocked(self, spec_name: str) -> WorktreeInfo:
+        """Internal create_worktree without lock (caller must hold _worktree_lock)."""
         worktree_path = self.get_worktree_path(spec_name)
         branch_name = self.get_branch_name(spec_name)
 
@@ -443,6 +448,11 @@ class WorktreeManager:
             spec_name: The spec folder name
             delete_branch: Whether to also delete the branch
         """
+        with self._worktree_lock:
+            self._remove_worktree_unlocked(spec_name, delete_branch)
+
+    def _remove_worktree_unlocked(self, spec_name: str, delete_branch: bool = False) -> None:
+        """Internal remove_worktree without lock (caller must hold _worktree_lock)."""
         worktree_path = self.get_worktree_path(spec_name)
         branch_name = self.get_branch_name(spec_name)
 
@@ -454,7 +464,10 @@ class WorktreeManager:
                 print(f"Removed worktree: {worktree_path.name}")
             else:
                 print(f"Warning: Could not remove worktree: {result.stderr}")
-                shutil.rmtree(worktree_path, ignore_errors=True)
+                try:
+                    shutil.rmtree(worktree_path)
+                except OSError as e:
+                    print(f"Warning: Failed to remove worktree directory: {e}")
 
         if delete_branch:
             self._run_git(["branch", "-D", branch_name])
@@ -476,7 +489,7 @@ class WorktreeManager:
         Returns:
             True if merge succeeded
         """
-        with self._merge_lock:
+        with self._worktree_lock:
             return self._merge_worktree_unlocked(spec_name, delete_after, no_commit)
 
     def _merge_worktree_unlocked(
@@ -635,7 +648,10 @@ class WorktreeManager:
         for item in self.worktrees_dir.iterdir():
             if item.is_dir() and item.resolve() not in registered_paths:
                 print(f"Removing stale worktree directory: {item.name}")
-                shutil.rmtree(item, ignore_errors=True)
+                try:
+                    shutil.rmtree(item)
+                except OSError as e:
+                    print(f"Warning: Failed to remove stale directory {item.name}: {e}")
 
         self._run_git(["worktree", "prune"])
 

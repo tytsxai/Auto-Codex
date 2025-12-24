@@ -32,7 +32,7 @@ from ui import (
     print_key_value,
     print_status,
 )
-from core.protocols import LLMClientProtocol
+from core.protocols import LLMQueryClientProtocol
 
 from .memory_manager import save_session_memory
 from .utils import (
@@ -312,7 +312,7 @@ async def post_session_processing(
 
 
 async def run_agent_session(
-    client: LLMClientProtocol,
+    client: LLMQueryClientProtocol,
     message: str,
     spec_dir: Path,
     verbose: bool = False,

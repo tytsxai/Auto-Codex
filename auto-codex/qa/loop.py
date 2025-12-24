@@ -10,7 +10,7 @@ import time as time_module
 from pathlib import Path
 
 from core.client import create_client
-from core.protocols import LLMClientProtocol
+from core.protocols import LLMQueryClientProtocol
 from debug import debug, debug_error, debug_section, debug_success, debug_warning
 from linear_updater import (
     LinearTaskState,
@@ -134,7 +134,7 @@ async def run_qa_validation_loop(
         qa_model = get_phase_model(spec_dir, "qa", model)
         fixer_thinking_budget = get_phase_thinking_budget(spec_dir, "qa")
 
-        fix_client: LLMClientProtocol = create_client(
+        fix_client: LLMQueryClientProtocol = create_client(
             project_dir,
             spec_dir,
             qa_model,
@@ -162,8 +162,8 @@ async def run_qa_validation_loop(
         try:
             fix_request_file.unlink()
             debug("qa_loop", "Removed processed QA_FIX_REQUEST.md")
-        except OSError:
-            pass  # Ignore if file removal fails
+        except OSError as e:
+            debug_warning("qa_loop", f"Failed to remove QA_FIX_REQUEST.md: {e}")
 
     # Check for no-test projects
     if is_no_test_project(spec_dir, project_dir):
@@ -214,7 +214,7 @@ async def run_qa_validation_loop(
             model=qa_model,
             thinking_budget=qa_thinking_budget,
         )
-        client: LLMClientProtocol = create_client(
+        client: LLMQueryClientProtocol = create_client(
             project_dir,
             spec_dir,
             qa_model,

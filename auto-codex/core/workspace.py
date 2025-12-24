@@ -18,6 +18,8 @@ Public API is exported via workspace/__init__.py for backward compatibility.
 """
 
 import subprocess
+from datetime import datetime, timezone
+import json
 from pathlib import Path
 
 from ui import (
@@ -142,6 +144,53 @@ MODULE = "workspace"
 # - _merge_file_with_ai
 # - _heuristic_merge
 
+
+def _record_merge_completion(
+    project_dir: Path,
+    spec_name: str,
+    resolved_files: list[str],
+) -> None:
+    """
+    Record that a spec/worktree merge has completed.
+
+    This is used to close out file evolution tracking for the task so future
+    merges can reason about "active vs completed" modifications.
+    """
+    try:
+        orchestrator = MergeOrchestrator(
+            project_dir,
+            enable_ai=False,
+            dry_run=True,
+        )
+        orchestrator.evolution_tracker.mark_task_completed(spec_name)
+    except Exception as e:
+        debug_warning(MODULE, f"Could not record merge completion: {e}")
+
+    # Best-effort: also persist a simple merge history record for auditing.
+    try:
+        storage_dir = Path(project_dir) / ".auto-codex"
+        storage_dir.mkdir(parents=True, exist_ok=True)
+        history_file = storage_dir / "merge_history.json"
+
+        record = {
+            "task_id": spec_name,
+            "completed_at": datetime.now(timezone.utc).isoformat(),
+            "files": list(resolved_files),
+        }
+
+        history: list[dict] = []
+        if history_file.exists():
+            try:
+                history = json.loads(history_file.read_text(encoding="utf-8"))
+            except Exception:
+                history = []
+
+        if not isinstance(history, list):
+            history = []
+        history.append(record)
+        history_file.write_text(json.dumps(history, indent=2), encoding="utf-8")
+    except Exception as e:
+        debug_warning(MODULE, f"Could not persist merge history: {e}")
 
 def _merge_with_workflow_manager(
     project_dir: Path,
@@ -1068,9 +1117,8 @@ def _resolve_git_conflicts_with_ai(
             print(muted(f"    Warning: Could not process {file_path}: {e}"))
 
     # V2: Record merge completion in Evolution Tracker for future context
-    # TODO: _record_merge_completion not yet implemented - see line 141
-    # if resolved_files:
-    #     _record_merge_completion(project_dir, spec_name, resolved_files)
+    if resolved_files:
+        _record_merge_completion(project_dir, spec_name, resolved_files)
 
     # Build result - partial success if some files failed but we got others
     result = {
