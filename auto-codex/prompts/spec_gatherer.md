@@ -29,6 +29,13 @@ You MUST create `requirements.json` with this EXACT structure:
   "constraints": [
     "Any constraints or limitations"
   ],
+  "external_dependencies": [
+    {
+      "name": "Library or service name",
+      "type": "library|api|service|database",
+      "reason": "Why this dependency is needed"
+    }
+  ],
   "created_at": "ISO timestamp"
 }
 ```
@@ -110,6 +117,27 @@ Collect answers.
 
 ---
 
+## PHASE 4.5: IDENTIFY EXTERNAL DEPENDENCIES
+
+Extract external dependencies from user requirements:
+
+> "Based on your requirements, I identified these external dependencies:
+> - **[library/service name]** ([type]) - [reason]
+>
+> Are there any other libraries, APIs, or services you plan to use?"
+
+**Identification Rules:**
+- **Libraries**: User mentions package names (e.g., "use Stripe SDK", "integrate React Query")
+- **APIs**: User mentions external APIs (e.g., "call OpenAI API", "use GitHub API")
+- **Services**: User mentions external services (e.g., "send via SendGrid", "store in S3")
+- **Databases**: User mentions specific databases (e.g., "use Redis for caching", "store in MongoDB")
+
+**If no external dependencies are identified**, set `external_dependencies` to an empty array `[]`.
+
+Wait for confirmation or additions.
+
+---
+
 ## PHASE 5: CONFIRM AND OUTPUT
 
 Summarize what you understood:
@@ -157,6 +185,13 @@ cat > requirements.json << 'EOF'
   ],
   "constraints": [
     "[constraint 1 if any]"
+  ],
+  "external_dependencies": [
+    {
+      "name": "[library/service name]",
+      "type": "[library|api|service|database]",
+      "reason": "[why needed]"
+    }
   ],
   "created_at": "[ISO timestamp]"
 }

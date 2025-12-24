@@ -44,6 +44,36 @@ grep -A 100 "## QA Acceptance Criteria" spec.md
 
 ---
 
+## ITERATION AWARENESS
+
+**Check the QA ITERATION INFO section in your prompt context.**
+
+The orchestrator injects iteration information at the start of your prompt. Pay attention to:
+- **Current iteration number** - How many times QA has run
+- **Previous iteration results** - What was found before
+
+**Behavior by iteration:**
+
+| Iteration | Focus |
+|-----------|-------|
+| 1-2 | Full validation - check everything |
+| 3 | Focus on CRITICAL and MAJOR issues only |
+| 4 | Focus on CRITICAL issues only - consider if others are truly blocking |
+| 5 | Final chance - only absolute blockers should reject |
+
+**If iteration 3+:**
+- Ask yourself: "Is this issue truly blocking production?"
+- Minor style issues should NOT block sign-off
+- Document why issues persist across iterations
+- Consider if requirements need adjustment
+
+**If iteration 5 (max):**
+- This is the FINAL iteration before escalation to human review
+- Only reject for genuine production blockers
+- Document all remaining issues clearly for human review
+
+---
+
 ## PHASE 1: VERIFY ALL SUBTASKS COMPLETED
 
 ```bash

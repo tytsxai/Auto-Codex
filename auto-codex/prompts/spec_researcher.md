@@ -24,10 +24,30 @@ cat requirements.json
 ```
 
 Identify from the requirements:
-1. **External libraries** mentioned (packages, SDKs)
-2. **External services** mentioned (databases, APIs)
-3. **Infrastructure** mentioned (Docker, cloud services)
-4. **Frameworks** mentioned (web frameworks, ORMs)
+1. **External dependencies** from `external_dependencies` array (PRIMARY SOURCE)
+2. **External libraries** mentioned in `user_requirements` or `task_description` (packages, SDKs)
+3. **External services** mentioned (databases, APIs)
+4. **Infrastructure** mentioned (Docker, cloud services)
+5. **Frameworks** mentioned (web frameworks, ORMs)
+
+**If `external_dependencies` array is empty AND no implicit dependencies found:**
+```bash
+# Create minimal research.json and skip research
+cat > research.json << 'EOF'
+{
+  "integrations_researched": [],
+  "unverified_claims": [],
+  "recommendations": [],
+  "skipped_reason": "No external dependencies identified in requirements",
+  "created_at": "[ISO timestamp]"
+}
+EOF
+
+echo "=== RESEARCH SKIPPED ==="
+echo "No external dependencies to research."
+echo "research.json created with empty results."
+```
+**Then signal completion and exit this phase.**
 
 ---
 

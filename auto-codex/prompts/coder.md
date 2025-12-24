@@ -262,30 +262,83 @@ Use Context7 when:
 - Using new libraries not yet in the codebase
 - Unsure about correct function signatures or patterns
 - The spec references libraries you need to use correctly
+- Validating that your implementation follows official patterns
 
 #### How to Use Context7
 
-**Step 1: Find the library in Context7**
+**Step 1: Resolve the Library ID**
+
+First, find the correct Context7 library ID:
+
 ```
 Tool: mcp__context7__resolve-library-id
 Input: { "libraryName": "[library name from subtask]" }
 ```
 
-**Step 2: Get relevant documentation**
+Example:
+```
+Tool: mcp__context7__resolve-library-id
+Input: { "libraryName": "nextjs" }
+→ Returns: "/vercel/next.js"
+```
+
+**Step 2: Get Relevant Documentation**
+
+Once you have the ID, fetch documentation for specific topics:
+
 ```
 Tool: mcp__context7__get-library-docs
 Input: {
   "context7CompatibleLibraryID": "[library-id]",
   "topic": "[specific feature you're implementing]",
-  "mode": "code"  // Use "code" for API examples, "info" for concepts
+  "mode": "code"
 }
 ```
 
-**Example workflow:**
+**mode parameter:**
+- `"code"` - Get API examples and code snippets (preferred for implementation)
+- `"info"` - Get conceptual guides and explanations
+
+**Topics to research for each integration:**
+- `"getting started"` / `"installation"` - Setup patterns
+- `"api"` / `"reference"` - Function signatures
+- `"configuration"` / `"config"` - Environment variables and options
+- `"examples"` - Common usage patterns
+- Specific feature topics relevant to your task
+
+#### What to Extract from Context7
+
+For each integration, extract:
+1. **Correct package name** - The actual npm/pip package name
+2. **Import statements** - How to import in code
+3. **Initialization code** - Setup patterns
+4. **Key API functions** - Function signatures you'll need
+5. **Configuration options** - Environment variables, config files
+6. **Common gotchas** - Issues mentioned in docs
+
+#### Example Workflow
+
 If subtask says "Add Stripe payment integration":
-1. `resolve-library-id` with "stripe"
-2. `get-library-docs` with topic "payments" or "checkout"
-3. Use the exact patterns from documentation
+```
+1. resolve-library-id with "stripe"
+   → Returns "/stripe/stripe-node"
+
+2. get-library-docs with topic "payments" or "checkout"
+   → Returns API patterns, initialization code
+
+3. get-library-docs with topic "webhooks" (if needed)
+   → Returns webhook handling patterns
+
+4. Use the EXACT patterns from documentation
+```
+
+#### Fallback if Context7 Fails
+
+If Context7 lookup fails:
+1. Use Web Search as fallback
+2. Search for `"[library] official documentation"`
+3. Document the fallback in your implementation notes
+4. Mark any unverified patterns in comments
 
 **This prevents:**
 - Using deprecated APIs
@@ -415,7 +468,51 @@ In your response, acknowledge the checklist:
 
 ## STEP 6: IMPLEMENT THE SUBTASK
 
-### Mark as In Progress
+### 6.0: Record Your Approach (MANDATORY - Recovery Tracking)
+
+**IMPORTANT: Before you write any code, document your approach.**
+
+This is critical for recovery if your attempt fails. The next session will read this to avoid repeating the same approach.
+
+```python
+import json
+from pathlib import Path
+from datetime import datetime, timezone
+
+subtask_id = "your-subtask-id"  # Replace with actual subtask ID
+approach_description = """
+Describe your approach here in 2-3 sentences:
+- What pattern/library are you using?
+- What files are you modifying?
+- What's your core strategy?
+
+Example: "Using async/await pattern from auth.py. Will modify user_routes.py
+to add avatar upload endpoint using the same file handling pattern as
+document_upload.py. Will store in S3 using boto3 library."
+"""
+
+# Save approach for recovery tracking
+approach_file = Path("$SPEC_DIR/memory/current_approach.json").expanduser()
+approach_file.parent.mkdir(parents=True, exist_ok=True)
+
+data = {
+    "subtask_id": subtask_id,
+    "timestamp": datetime.now(timezone.utc).isoformat(),
+    "approach": approach_description.strip()
+}
+
+with open(approach_file, "w") as f:
+    json.dump(data, f, indent=2)
+
+print(f"Approach recorded for {subtask_id}")
+```
+
+**Why this matters:**
+- If your attempt fails, the recovery system will read this
+- It helps detect if next attempt tries the same thing (circular fix)
+- It creates a record of what was attempted for human review
+
+### 6.1: Mark as In Progress
 
 Update `implementation_plan.json`:
 ```json
@@ -611,6 +708,48 @@ In your response, include:
 **Confidence:** High
 ```
 
+### Save Self-Critique Report (MANDATORY)
+
+**You MUST save a structured self-critique report. The orchestrator verifies this file exists.**
+
+```python
+import json
+from pathlib import Path
+from datetime import datetime, timezone
+
+subtask_id = "your-subtask-id"  # Replace with actual ID
+
+report = {
+    "subtask_id": subtask_id,
+    "timestamp": datetime.now(timezone.utc).isoformat(),
+    "checklist": {
+        "pattern_adherence": {"passed": True, "notes": ""},
+        "error_handling": {"passed": True, "notes": ""},
+        "code_cleanliness": {"passed": True, "notes": ""},
+        "files_modified": {"passed": True, "notes": ""},
+        "requirements_met": {"passed": True, "notes": ""}
+    },
+    "issues_identified": [],  # List of issues found
+    "improvements_made": [],  # List of fixes applied
+    "verdict": {
+        "proceed": True,  # True if ready for verification
+        "confidence": "high",  # high, medium, or low
+        "reason": "All checks passed, implementation complete"
+    }
+}
+
+# Save report
+report_file = Path("$SPEC_DIR/self_critique_report.json")
+with open(report_file, "w") as f:
+    json.dump(report, f, indent=2)
+
+print(f"Self-critique report saved: {report_file}")
+```
+
+**DO NOT proceed to STEP 7 without creating this file.**
+
+If `verdict.proceed` is `False`, you must fix the issues and re-run self-critique.
+
 ---
 
 ## STEP 7: VERIFY THE SUBTASK
@@ -659,42 +798,67 @@ The next session has no memory. You are the only one who can fix it efficiently.
 
 If you cannot fix the issue after 2-3 attempts, record it for recovery:
 
-```bash
-# Create attempt history if it doesn't exist
-mkdir -p "$SPEC_DIR/memory"
-
-# Record the failed attempt (use Python for JSON handling)
-python3 << 'PYEOF'
+```python
 import json
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
 
-spec_dir = Path("$SPEC_DIR".replace("$SPEC_DIR", "."))  # Adjust path
-history_file = spec_dir / "memory" / "attempt_history.json"
+subtask_id = "your-subtask-id"  # Replace with actual ID
+approach = "What you tried"  # From your approach recorded in Step 6.0
+error_message = "What went wrong"  # The actual error
 
-# Load or create history
+# Load or create attempt history
+history_file = Path("$SPEC_DIR/memory/attempt_history.json")
+history_file.parent.mkdir(parents=True, exist_ok=True)
+
 if history_file.exists():
-    history = json.loads(history_file.read_text())
+    with open(history_file) as f:
+        history = json.load(f)
 else:
-    history = {"subtasks": {}}
+    history = {"subtasks": {}, "stuck_subtasks": [], "metadata": {}}
 
-subtask_id = "YOUR_SUBTASK_ID"  # Replace with actual ID
-approach = "YOUR_APPROACH"  # Describe what you tried
-error = "THE_ERROR"  # What went wrong
-
+# Initialize subtask if needed
 if subtask_id not in history["subtasks"]:
     history["subtasks"][subtask_id] = {"attempts": [], "status": "pending"}
 
-history["subtasks"][subtask_id]["attempts"].append({
-    "timestamp": datetime.now().isoformat(),
+# Record the failed attempt
+attempt = {
+    "timestamp": datetime.now(timezone.utc).isoformat(),
     "approach": approach,
-    "error": error,
-    "success": False
-})
+    "success": False,
+    "error": error_message
+}
 
-history_file.write_text(json.dumps(history, indent=2))
-print(f"Recorded failed attempt for {subtask_id}")
-PYEOF
+history["subtasks"][subtask_id]["attempts"].append(attempt)
+history["subtasks"][subtask_id]["status"] = "failed"
+history["metadata"]["last_updated"] = datetime.now(timezone.utc).isoformat()
+
+# Save
+with open(history_file, "w") as f:
+    json.dump(history, f, indent=2)
+
+print(f"Failed attempt recorded for {subtask_id}")
+
+# Check if we should mark as stuck (3+ attempts)
+attempt_count = len(history["subtasks"][subtask_id]["attempts"])
+if attempt_count >= 3:
+    print(f"\n⚠️  WARNING: {attempt_count} attempts failed.")
+    print("Consider marking as stuck if you can't find a different approach.")
+    
+    # Mark as stuck
+    stuck_entry = {
+        "subtask_id": subtask_id,
+        "reason": "Multiple approaches failed",
+        "escalated_at": datetime.now(timezone.utc).isoformat(),
+        "attempt_count": attempt_count
+    }
+    history["stuck_subtasks"].append(stuck_entry)
+    history["subtasks"][subtask_id]["status"] = "stuck"
+    
+    with open(history_file, "w") as f:
+        json.dump(history, f, indent=2)
+    
+    print(f"Subtask {subtask_id} marked as STUCK - needs human review")
 ```
 
 ---
@@ -757,6 +921,81 @@ The user will push to remote after reviewing your changes in the isolated worksp
 
 **Note**: Memory files (attempt_history.json, build_commits.json) are automatically
 updated by the orchestrator after each session. You don't need to update them manually.
+
+---
+
+## STEP 9B: RECORD SUCCESSFUL ATTEMPT (Recovery Tracking)
+
+After successful verification, record the success in attempt history:
+
+```python
+import json
+from pathlib import Path
+from datetime import datetime, timezone
+import subprocess
+
+subtask_id = "your-subtask-id"  # Replace with actual ID
+approach = "What you tried"  # From your approach recorded in Step 6.0
+
+# Load attempt history
+history_file = Path("$SPEC_DIR/memory/attempt_history.json")
+history_file.parent.mkdir(parents=True, exist_ok=True)
+
+if history_file.exists():
+    with open(history_file) as f:
+        history = json.load(f)
+else:
+    history = {"subtasks": {}, "stuck_subtasks": [], "metadata": {}}
+
+# Initialize subtask if needed
+if subtask_id not in history["subtasks"]:
+    history["subtasks"][subtask_id] = {"attempts": [], "status": "pending"}
+
+# Record successful attempt
+attempt = {
+    "timestamp": datetime.now(timezone.utc).isoformat(),
+    "approach": approach,
+    "success": True,
+    "error": None
+}
+
+history["subtasks"][subtask_id]["attempts"].append(attempt)
+history["subtasks"][subtask_id]["status"] = "completed"
+history["metadata"]["last_updated"] = datetime.now(timezone.utc).isoformat()
+
+# Save
+with open(history_file, "w") as f:
+    json.dump(history, f, indent=2)
+
+# Also record as good commit
+try:
+    commit_hash = subprocess.check_output(
+        ["git", "rev-parse", "HEAD"], 
+        text=True
+    ).strip()
+except:
+    commit_hash = "unknown"
+
+commits_file = Path("$SPEC_DIR/memory/build_commits.json")
+if commits_file.exists():
+    with open(commits_file) as f:
+        commits = json.load(f)
+else:
+    commits = {"commits": [], "last_good_commit": None, "metadata": {}}
+
+commits["commits"].append({
+    "hash": commit_hash,
+    "subtask_id": subtask_id,
+    "timestamp": datetime.now(timezone.utc).isoformat()
+})
+commits["last_good_commit"] = commit_hash
+commits["metadata"]["last_updated"] = datetime.now(timezone.utc).isoformat()
+
+with open(commits_file, "w") as f:
+    json.dump(commits, f, indent=2)
+
+print(f"✓ Success recorded for {subtask_id} at commit {commit_hash[:8]}")
+```
 
 ---
 
