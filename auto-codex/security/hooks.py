@@ -7,14 +7,45 @@ Main enforcement point for the security system.
 """
 
 import os
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from core.debug import debug_warning
 from project_analyzer import BASE_COMMANDS, SecurityProfile, is_command_allowed
 
 from .parser import extract_commands, get_command_for_validation, split_command_segments
 from .profile import get_security_profile
 from .validator import VALIDATORS
+
+
+# Audit log file path (optional, set via environment)
+AUDIT_LOG_FILE = os.environ.get("AUTO_CODEX_AUDIT_LOG")
+
+
+def _audit_log(event_type: str, command: str, reason: str, allowed: bool) -> None:
+    """
+    Write security audit log entry.
+
+    Logs to:
+    1. Debug output (if DEBUG=true)
+    2. Audit log file (if AUTO_CODEX_AUDIT_LOG is set)
+    """
+    timestamp = datetime.now().isoformat()
+    status = "ALLOWED" if allowed else "BLOCKED"
+
+    # Always log blocked commands to debug
+    if not allowed:
+        debug_warning("security", f"Command {status}: {command[:100]}", reason=reason)
+
+    # Write to audit log file if configured
+    if AUDIT_LOG_FILE:
+        try:
+            log_entry = f"{timestamp}|{status}|{event_type}|{reason}|{command}\n"
+            with open(AUDIT_LOG_FILE, "a") as f:
+                f.write(log_entry)
+        except OSError:
+            pass  # Don't fail on audit log errors
 
 
 async def bash_security_hook(

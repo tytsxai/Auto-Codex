@@ -38,11 +38,18 @@ class CodexSecurityConfig:
     blocked_paths: list[str] = field(default_factory=list)
 
     def to_codex_args(self) -> list[str]:
-        """Convert to Codex CLI arguments."""
+        """Convert to Codex CLI arguments.
+
+        Security flags are sent by default. Set AUTO_CODEX_LEGACY_SECURITY=true
+        to disable (for backwards compatibility during transition).
+        """
         args = []
         if self.bypass_sandbox:
             args.append("--dangerously-bypass-approvals-and-sandbox")
-        if os.environ.get("AUTO_CODEX_CODEXCLI_LEGACY_SECURITY_FLAGS", "").strip():
+        # Default: send security flags to Codex CLI
+        # Set AUTO_CODEX_LEGACY_SECURITY=true to disable (backwards compat)
+        legacy_mode = os.environ.get("AUTO_CODEX_LEGACY_SECURITY", "").strip().lower() in ("1", "true", "yes")
+        if not legacy_mode:
             args.extend(_format_list_args("--allowed-command", self.allowed_commands))
             args.extend(_format_list_args("--blocked-command", self.blocked_commands))
             args.extend(_format_list_args("--allowed-path", self.allowed_paths))
@@ -100,3 +107,37 @@ class CodexSecurityConfig:
             allowed_paths=_dedupe(allowed_paths),
             blocked_paths=_dedupe(blocked_paths),
         )
+
+    def get_security_status(self) -> dict:
+        """
+        Return security configuration status for self-check/UI display.
+
+        Returns dict with:
+        - mode: "bypass" | "legacy" | "enforced"
+        - flags_sent_to_codex: bool
+        - warnings: list of warning messages
+        """
+        warnings = []
+        legacy_mode = os.environ.get("AUTO_CODEX_LEGACY_SECURITY", "").strip().lower() in ("1", "true", "yes")
+        flags_sent = not legacy_mode
+
+        if self.bypass_sandbox:
+            mode = "bypass"
+            warnings.append("Sandbox bypassed - all commands allowed without approval")
+        elif legacy_mode:
+            mode = "legacy"
+            warnings.append(
+                "Security rules are local pre-check only (AUTO_CODEX_LEGACY_SECURITY=true); "
+                "remove this env var to enable Codex CLI enforcement"
+            )
+        else:
+            mode = "enforced"
+
+        return {
+            "mode": mode,
+            "flags_sent_to_codex": flags_sent,
+            "bypass_sandbox": self.bypass_sandbox,
+            "allowed_commands_count": len(self.allowed_commands),
+            "blocked_commands_count": len(self.blocked_commands),
+            "warnings": warnings,
+        }
