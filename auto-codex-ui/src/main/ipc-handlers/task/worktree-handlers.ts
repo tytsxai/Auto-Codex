@@ -12,6 +12,99 @@ import { findTaskAndProject } from './shared';
 import { findPythonCommand, parsePythonCommand } from '../../python-detector';
 
 /**
+ * Track staged changes using the workflow system.
+ * This records which files were staged from which task for later review/commit.
+ */
+async function trackStagedChanges(
+  pythonEnvManager: PythonEnvManager,
+  projectPath: string,
+  specName: string,
+  taskId: string,
+  stagedFiles: string[]
+): Promise<void> {
+  if (stagedFiles.length === 0) {
+    return;
+  }
+
+  const sourcePath = getEffectiveSourcePath();
+  if (!sourcePath) {
+    console.warn('[WORKFLOW] Cannot track changes: Auto Codex source not found');
+    return;
+  }
+
+  const pythonPath = pythonEnvManager.getPythonPath() || findPythonCommand() || 'python';
+  const [pythonCommand, pythonBaseArgs] = parsePythonCommand(pythonPath);
+
+  // Build the Python command to track changes
+  const scriptArgs = [
+    '-c',
+    `
+import json
+import sys
+sys.path.insert(0, '${sourcePath.replace(/\\/g, '\\\\')}')
+
+from core.workflow import ChangeTracker
+from pathlib import Path
+
+project_dir = Path('${projectPath.replace(/\\/g, '\\\\')}')
+tracker = ChangeTracker(project_dir)
+
+# Track the staged changes
+tracker.track_changes(
+    task_id='${taskId}',
+    spec_name='${specName}',
+    files=${JSON.stringify(stagedFiles)},
+    merge_source='${path.join(projectPath, '.worktrees', specName).replace(/\\/g, '\\\\')}'
+)
+
+print(json.dumps({'success': True, 'tracked': len(${JSON.stringify(stagedFiles)})}))
+`
+  ];
+
+  return new Promise((resolve) => {
+    const proc = spawn(pythonCommand, [...pythonBaseArgs, ...scriptArgs], {
+      cwd: sourcePath,
+      env: {
+        ...process.env,
+        PYTHONUNBUFFERED: '1',
+        PYTHONIOENCODING: 'utf-8',
+        PYTHONUTF8: '1'
+      }
+    });
+
+    let stdout = '';
+    let stderr = '';
+
+    proc.stdout.on('data', (data: Buffer) => {
+      stdout += data.toString();
+    });
+
+    proc.stderr.on('data', (data: Buffer) => {
+      stderr += data.toString();
+    });
+
+    proc.on('close', (code: number) => {
+      if (code === 0) {
+        try {
+          const result = JSON.parse(stdout.trim());
+          console.warn('[WORKFLOW] Tracked staged changes:', result);
+        } catch (_e) {
+          console.warn('[WORKFLOW] Failed to parse tracking result:', stdout, stderr);
+        }
+      } else {
+        console.warn('[WORKFLOW] Failed to track changes:', stderr || stdout);
+      }
+      resolve();
+    });
+
+    proc.on('error', (err: Error) => {
+      console.warn('[WORKFLOW] Error tracking changes:', err.message);
+      resolve();
+    });
+  });
+}
+
+/**
  * Register worktree management handlers
  */
 export function registerWorktreeHandlers(
@@ -435,12 +528,24 @@ export function registerWorktreeHandlers(
               // This prevents false positives when merge was already committed previously
               let hasActualStagedChanges = false;
               let mergeAlreadyCommitted = false;
+              let stagedFilesList: string[] = [];
 
               if (isStageOnly) {
                 try {
                   const gitDiffStaged = execSync('git diff --staged --stat', { cwd: project.path, encoding: 'utf-8' });
                   hasActualStagedChanges = gitDiffStaged.trim().length > 0;
                   debug('Stage-only verification: hasActualStagedChanges:', hasActualStagedChanges);
+
+                  // Get list of staged files for workflow tracking
+                  if (hasActualStagedChanges) {
+                    try {
+                      const stagedFilesOutput = execSync('git diff --staged --name-only', { cwd: project.path, encoding: 'utf-8' });
+                      stagedFilesList = stagedFilesOutput.trim().split('\n').filter(f => f.trim());
+                      debug('Staged files for tracking:', stagedFilesList.length);
+                    } catch (e) {
+                      debug('Failed to get staged files list:', e);
+                    }
+                  }
 
                   if (!hasActualStagedChanges) {
                     // Check if worktree branch was already merged (merge commit exists)
@@ -543,6 +648,21 @@ export function registerWorktreeHandlers(
                 }
               } catch (persistError) {
                 console.error('Failed to persist task status:', persistError);
+              }
+
+              // Track staged changes using the workflow system (Requirements 1.1, 2.1)
+              // This records which files were staged from which task for later review/commit
+              if (staged && stagedFilesList.length > 0) {
+                debug('Tracking staged changes via workflow system:', stagedFilesList.length, 'files');
+                trackStagedChanges(
+                  pythonEnvManager,
+                  project.path,
+                  task.specId,
+                  taskId,
+                  stagedFilesList
+                ).catch(err => {
+                  debug('Failed to track staged changes (non-blocking):', err);
+                });
               }
 
               const mainWindow = getMainWindow();

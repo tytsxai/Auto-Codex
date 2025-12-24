@@ -22,7 +22,6 @@ import type {
   MergeOrderSuggestion
 } from '../../shared/types';
 import { spawn } from 'child_process';
-import path from 'path';
 import { projectStore } from '../project-store';
 import { PythonEnvManager } from '../python-env-manager';
 import { getEffectiveSourcePath } from '../auto-codex-updater';
@@ -181,7 +180,7 @@ asyncio.run(main())
         try {
           const result = JSON.parse(stdout.trim());
           resolve(result);
-        } catch (e) {
+        } catch (_e) {
           reject(new Error(`Failed to parse output: ${stdout}\nStderr: ${stderr}`));
         }
       } else {
@@ -200,7 +199,7 @@ asyncio.run(main())
  */
 export function registerWorkflowHandlers(
   pythonEnvManager: PythonEnvManager,
-  getMainWindow: () => BrowserWindow | null
+  _getMainWindow: () => BrowserWindow | null
 ): void {
   // Get current project path helper
   const getProjectPath = (): string | null => {
