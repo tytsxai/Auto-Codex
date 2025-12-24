@@ -63,7 +63,7 @@ function ReleaseNotesRenderer({ markdown }: { markdown: string }) {
 interface AdvancedSettingsProps {
   settings: AppSettings;
   onSettingsChange: (settings: AppSettings) => void;
-  section: 'updates' | 'notifications';
+  section: 'updates' | 'notifications' | 'workflow';
   version: string;
 }
 
@@ -425,37 +425,101 @@ export function AdvancedSettings({ settings, onSettingsChange, section, version 
   }
 
   // 通知分区
+  if (section === 'notifications') {
+    return (
+      <SettingsSection
+        title="通知"
+        description="配置默认通知偏好"
+      >
+        <div className="space-y-4">
+          {[
+            { key: 'onTaskComplete', label: '任务完成时', description: '任务成功完成时通知' },
+            { key: 'onTaskFailed', label: '任务失败时', description: '任务出错时通知' },
+            { key: 'onReviewNeeded', label: '需要评审时', description: '质量审查需要你的评审时通知' },
+            { key: 'sound', label: '声音', description: '通知时播放声音' }
+          ].map((item) => (
+            <div key={item.key} className="flex items-center justify-between p-4 rounded-lg border border-border">
+              <div className="space-y-1">
+                <Label className="font-medium text-foreground">{item.label}</Label>
+                <p className="text-sm text-muted-foreground">{item.description}</p>
+              </div>
+              <Switch
+                checked={settings.notifications[item.key as keyof typeof settings.notifications]}
+                onCheckedChange={(checked) =>
+                  onSettingsChange({
+                    ...settings,
+                    notifications: {
+                      ...settings.notifications,
+                      [item.key]: checked
+                    }
+                  })
+                }
+              />
+            </div>
+          ))}
+        </div>
+      </SettingsSection>
+    );
+  }
+
+  // 工作流分区
   return (
     <SettingsSection
-      title="通知"
-      description="配置默认通知偏好"
+      title="工作流"
+      description="配置工作树管理与合并行为"
     >
       <div className="space-y-4">
-        {[
-          { key: 'onTaskComplete', label: '任务完成时', description: '任务成功完成时通知' },
-          { key: 'onTaskFailed', label: '任务失败时', description: '任务出错时通知' },
-          { key: 'onReviewNeeded', label: '需要评审时', description: '质量审查需要你的评审时通知' },
-          { key: 'sound', label: '声音', description: '通知时播放声音' }
-        ].map((item) => (
-          <div key={item.key} className="flex items-center justify-between p-4 rounded-lg border border-border">
-            <div className="space-y-1">
-              <Label className="font-medium text-foreground">{item.label}</Label>
-              <p className="text-sm text-muted-foreground">{item.description}</p>
-            </div>
-            <Switch
-              checked={settings.notifications[item.key as keyof typeof settings.notifications]}
-              onCheckedChange={(checked) =>
-                onSettingsChange({
-                  ...settings,
-                  notifications: {
-                    ...settings.notifications,
-                    [item.key]: checked
-                  }
-                })
-              }
-            />
+        <div className="flex items-center justify-between p-4 rounded-lg border border-border">
+          <div className="space-y-1">
+            <Label className="font-medium text-foreground">合并后自动清理</Label>
+            <p className="text-sm text-muted-foreground">
+              成功合并并提交后自动删除工作树
+            </p>
           </div>
-        ))}
+          <Switch
+            checked={settings.autoCleanupWorktreeAfterMerge ?? false}
+            onCheckedChange={(checked) =>
+              onSettingsChange({ ...settings, autoCleanupWorktreeAfterMerge: checked })
+            }
+          />
+        </div>
+
+        <div className="flex items-center justify-between p-4 rounded-lg border border-border">
+          <div className="space-y-1">
+            <Label className="font-medium text-foreground">过期天数</Label>
+            <p className="text-sm text-muted-foreground">
+              超过此天数未活动的工作树将被标记为过期
+            </p>
+          </div>
+          <input
+            type="number"
+            min={1}
+            max={90}
+            value={settings.staleWorktreeDays ?? 7}
+            onChange={(e) =>
+              onSettingsChange({
+                ...settings,
+                staleWorktreeDays: Math.max(1, Math.min(90, parseInt(e.target.value) || 7))
+              })
+            }
+            className="w-20 h-9 px-3 rounded-md border border-input bg-background text-sm"
+          />
+        </div>
+
+        <div className="flex items-center justify-between p-4 rounded-lg border border-border">
+          <div className="space-y-1">
+            <Label className="font-medium text-foreground">显示过期警告</Label>
+            <p className="text-sm text-muted-foreground">
+              启动时显示过期工作树警告
+            </p>
+          </div>
+          <Switch
+            checked={settings.showStaleWorktreeWarning ?? true}
+            onCheckedChange={(checked) =>
+              onSettingsChange({ ...settings, showStaleWorktreeWarning: checked })
+            }
+          />
+        </div>
       </div>
     </SettingsSection>
   );

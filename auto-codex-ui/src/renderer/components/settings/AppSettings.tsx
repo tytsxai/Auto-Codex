@@ -13,7 +13,8 @@ import {
   Zap,
   Github,
   Database,
-  Sparkles
+  Sparkles,
+  GitBranch
 } from 'lucide-react';
 import {
   FullScreenDialog,
@@ -46,7 +47,7 @@ interface AppSettingsDialogProps {
 }
 
 // 应用级设置分区
-export type AppSection = 'appearance' | 'agent' | 'paths' | 'integrations' | 'updates' | 'notifications';
+export type AppSection = 'appearance' | 'agent' | 'paths' | 'integrations' | 'updates' | 'notifications' | 'workflow';
 
 interface NavItem<T extends string> {
   id: T;
@@ -60,6 +61,7 @@ const appNavItems: NavItem<AppSection>[] = [
   { id: 'agent', label: '智能体设置', icon: Bot, description: '默认模型与框架' },
   { id: 'paths', label: '路径', icon: FolderOpen, description: 'Python 与框架路径' },
   { id: 'integrations', label: '集成', icon: Key, description: 'API 密钥与 Codex 账户' },
+  { id: 'workflow', label: '工作流', icon: GitBranch, description: '工作树管理与合并' },
   { id: 'updates', label: '更新', icon: Package, description: 'Auto Codex 更新' },
   { id: 'notifications', label: '通知', icon: Bell, description: '提醒偏好' }
 ];
@@ -167,6 +169,8 @@ export function AppSettingsDialog({ open, onOpenChange, initialSection, initialP
         return <AdvancedSettings settings={settings} onSettingsChange={setSettings} section="updates" version={version} />;
       case 'notifications':
         return <AdvancedSettings settings={settings} onSettingsChange={setSettings} section="notifications" version={version} />;
+      case 'workflow':
+        return <AdvancedSettings settings={settings} onSettingsChange={setSettings} section="workflow" version={version} />;
       default:
         return null;
     }
