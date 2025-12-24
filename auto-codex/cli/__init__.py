@@ -13,6 +13,9 @@ This package provides a modular CLI structure:
 - utils.py: Shared utilities and configuration
 """
 
-from .main import main
+# Lazy import to avoid RuntimeWarning when running as module
+def main():
+    from .main import main as _main
+    return _main()
 
 __all__ = ["main"]
