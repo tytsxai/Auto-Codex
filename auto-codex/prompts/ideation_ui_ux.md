@@ -81,22 +81,18 @@ If `graph_hints.json` exists and contains hints for your ideation type (`ui_ux_i
 
 ## PHASE 1: LAUNCH BROWSER AND CAPTURE INITIAL STATE
 
-Use Puppeteer MCP to navigate to the application:
+Use Puppeteer MCP to navigate to the application. Call the appropriate MCP tool:
 
+**Navigate to app:**
 ```
-<puppeteer_navigate>
-url: http://localhost:3000
-wait_until: networkidle2
-</puppeteer_navigate>
+Tool: puppeteer_navigate
+Parameters: { "url": "http://localhost:3000" }
 ```
 
-Take a screenshot of the landing page:
-
+**Take screenshot of landing page:**
 ```
-<puppeteer_screenshot>
-path: ideation/screenshots/landing_page.png
-full_page: true
-</puppeteer_screenshot>
+Tool: puppeteer_screenshot
+Parameters: { "name": "landing_page", "fullPage": true }
 ```
 
 Analyze:
@@ -114,10 +110,8 @@ Navigate through the main user flows and capture screenshots:
 
 ### 2.1 Navigation and Layout
 ```
-<puppeteer_screenshot>
-path: ideation/screenshots/navigation.png
-selector: nav, header, .sidebar
-</puppeteer_screenshot>
+Tool: puppeteer_screenshot
+Parameters: { "name": "navigation", "selector": "nav, header, .sidebar" }
 ```
 
 Look for:
@@ -129,13 +123,13 @@ Look for:
 Click on buttons, forms, and interactive elements:
 
 ```
-<puppeteer_click>
-selector: button, .btn, [type="submit"]
-</puppeteer_click>
+Tool: puppeteer_click
+Parameters: { "selector": "button, .btn, [type='submit']" }
+```
 
-<puppeteer_screenshot>
-path: ideation/screenshots/interactive_state.png
-</puppeteer_screenshot>
+```
+Tool: puppeteer_screenshot
+Parameters: { "name": "interactive_state" }
 ```
 
 Look for:
@@ -149,10 +143,8 @@ Look for:
 If forms exist, analyze them:
 
 ```
-<puppeteer_screenshot>
-path: ideation/screenshots/forms.png
-selector: form, .form-container
-</puppeteer_screenshot>
+Tool: puppeteer_screenshot
+Parameters: { "name": "forms", "selector": "form, .form-container" }
 ```
 
 Look for:
@@ -166,9 +158,8 @@ Look for:
 Check for empty state handling:
 
 ```
-<puppeteer_screenshot>
-path: ideation/screenshots/empty_state.png
-</puppeteer_screenshot>
+Tool: puppeteer_screenshot
+Parameters: { "name": "empty_state" }
 ```
 
 Look for:
@@ -180,15 +171,13 @@ Look for:
 Resize viewport and check responsive behavior:
 
 ```
-<puppeteer_set_viewport>
-width: 375
-height: 812
-</puppeteer_set_viewport>
+Tool: puppeteer_evaluate
+Parameters: { "script": "window.resizeTo(375, 812)" }
+```
 
-<puppeteer_screenshot>
-path: ideation/screenshots/mobile_view.png
-full_page: true
-</puppeteer_screenshot>
+```
+Tool: puppeteer_screenshot
+Parameters: { "name": "mobile_view", "fullPage": true }
 ```
 
 Look for:
@@ -204,18 +193,10 @@ Look for:
 Check for accessibility issues:
 
 ```
-<puppeteer_evaluate>
-// Check for accessibility basics
-const audit = {
-  images_without_alt: document.querySelectorAll('img:not([alt])').length,
-  buttons_without_text: document.querySelectorAll('button:empty').length,
-  inputs_without_labels: document.querySelectorAll('input:not([aria-label]):not([id])').length,
-  low_contrast_text: 0, // Would need more complex check
-  missing_lang: !document.documentElement.lang,
-  missing_title: !document.title
-};
-return JSON.stringify(audit);
-</puppeteer_evaluate>
+Tool: puppeteer_evaluate
+Parameters: {
+  "script": "JSON.stringify({ images_without_alt: document.querySelectorAll('img:not([alt])').length, buttons_without_text: document.querySelectorAll('button:empty').length, inputs_without_labels: document.querySelectorAll('input:not([aria-label]):not([id])').length, missing_lang: !document.documentElement.lang, missing_title: !document.title })"
+}
 ```
 
 Also check:

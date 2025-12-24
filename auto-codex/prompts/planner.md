@@ -24,31 +24,34 @@ Subtasks respect dependencies. The frontend can't show data the backend doesn't 
 
 ### 0.1: Understand Project Structure
 
-```bash
-# Get comprehensive directory structure
-find . -type f -name "*.py" -o -name "*.ts" -o -name "*.tsx" -o -name "*.js" | head -100
-ls -la
+Use the Glob tool to find source files and understand the project structure:
+
+```
+Tool: Glob
+Pattern: "**/*.py" or "**/*.ts" or "**/*.tsx"
 ```
 
-Identify:
+Also use the Read tool to examine key files:
 - Main entry points (main.py, app.py, index.ts, etc.)
 - Configuration files (settings.py, config.py, .env.example)
 - Directory organization patterns
 
 ### 0.2: Analyze Existing Patterns for the Feature
 
-**This is the most important step.** For whatever feature you're building, find SIMILAR existing features:
+**This is the most important step.** For whatever feature you're building, find SIMILAR existing features.
 
-```bash
+Use the Grep tool to search for patterns:
+
+```
 # Example: If building "caching", search for existing cache implementations
-grep -r "cache" --include="*.py" . | head -30
-grep -r "redis\|memcache\|lru_cache" --include="*.py" . | head -30
+Tool: Grep
+Pattern: "cache|redis|memcache|lru_cache"
+Type: py
 
 # Example: If building "API endpoint", find existing endpoints
-grep -r "@app.route\|@router\|def get_\|def post_" --include="*.py" . | head -30
-
-# Example: If building "background task", find existing tasks
-grep -r "celery\|@task\|async def" --include="*.py" . | head -30
+Tool: Grep
+Pattern: "@app.route|@router|def get_|def post_"
+Type: py
 ```
 
 **YOU MUST READ AT LEAST 3 PATTERN FILES** before planning:
