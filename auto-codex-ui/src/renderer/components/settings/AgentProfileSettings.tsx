@@ -182,8 +182,9 @@ export function AgentProfileSettings() {
         {/* 说明 */}
         <div className="rounded-lg bg-muted/50 p-3">
           <p className="text-xs text-muted-foreground">
-            智能体配置提供 Codex 模型与思考等级的预设组合。
-            创建新任务时将默认使用这些设置，你也可以在任务创建向导中随时覆盖。
+            模型（如 gpt-5.2 / gpt-5.2-codex）与“思考等级”（low / medium / high / xhigh）是两件事：
+            思考等级是运行参数（model_reasoning_effort），不是模型名后缀。
+            通常在 medium 与 xhigh 中二选一；low 适合极简任务，high 一般可跳过。
           </p>
         </div>
 

@@ -75,6 +75,9 @@ export function GeneralSettings({ settings, onSettingsChange, section }: General
                 <p className="text-sm text-muted-foreground">
                   用于洞察、构思与路线图的模型与思考等级
                 </p>
+                <p className="text-[11px] text-muted-foreground">
+                  提示：思考等级（low / medium / high / xhigh）是运行参数（model_reasoning_effort），不是模型名的一部分；通常优先用 medium 或 xhigh。
+                </p>
               </div>
 
               {(Object.keys(FEATURE_LABELS) as Array<keyof FeatureModelConfig>).map((feature) => {
