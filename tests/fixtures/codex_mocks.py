@@ -11,6 +11,8 @@ class MockCodexClient(LLMClientProtocol):
         self.responses = responses or []
         self.sessions: dict[str, dict[str, object]] = {}
         self.calls: list[tuple] = []
+        # Mirror CodexCliClient defaults expected by robustness tests.
+        self.bypass_sandbox = False
 
     def is_available(self) -> bool:
         return True
