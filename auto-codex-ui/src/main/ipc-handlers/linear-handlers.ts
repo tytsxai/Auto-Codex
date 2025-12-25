@@ -469,6 +469,20 @@ ${issue.description || 'No description provided.'}
             const specDir = path.join(specsDir, specId);
             mkdirSync(specDir, { recursive: true });
 
+            // Build metadata
+            const metadata: TaskMetadata = {
+              sourceType: 'linear',
+              linearIssueId: issue.id,
+              linearIdentifier: issue.identifier,
+              linearUrl: issue.url,
+              category: 'feature'
+            };
+            atomicWriteFileSync(
+              path.join(specDir, 'task_metadata.json'),
+              JSON.stringify(metadata, null, 2),
+              { encoding: 'utf-8' }
+            );
+
             // Create initial implementation_plan.json
             const now = new Date().toISOString();
             const workflowType = mapCategoryToWorkflowType(metadata.category);
@@ -499,20 +513,6 @@ ${issue.description || 'No description provided.'}
             atomicWriteFileSync(
               path.join(specDir, AUTO_BUILD_PATHS.REQUIREMENTS),
               JSON.stringify(requirements, null, 2),
-              { encoding: 'utf-8' }
-            );
-
-            // Build metadata
-            const metadata: TaskMetadata = {
-              sourceType: 'linear',
-              linearIssueId: issue.id,
-              linearIdentifier: issue.identifier,
-              linearUrl: issue.url,
-              category: 'feature'
-            };
-            atomicWriteFileSync(
-              path.join(specDir, 'task_metadata.json'),
-              JSON.stringify(metadata, null, 2),
               { encoding: 'utf-8' }
             );
 
