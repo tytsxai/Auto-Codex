@@ -26,7 +26,8 @@ import {
   getCompletedSubtaskCount,
   getTaskProgress
 } from '../stores/task-store';
-import type { Task, TaskStatus, ImplementationPlan, TaskDraft } from '../../shared/types';
+import { useRoadmapStore } from '../stores/roadmap-store';
+import type { Task, TaskStatus, ImplementationPlan, TaskDraft, Roadmap } from '../../shared/types';
 
 // Helper to create test tasks
 function createTestTask(overrides: Partial<Task> = {}): Task {
@@ -70,6 +71,29 @@ function createTestPlan(overrides: Partial<ImplementationPlan> = {}): Implementa
   };
 }
 
+function createTestRoadmap(overrides: Partial<Roadmap> = {}): Roadmap {
+  return {
+    id: 'roadmap-1',
+    projectId: 'project-1',
+    projectName: 'Test Project',
+    version: 'v1',
+    vision: 'Test vision',
+    targetAudience: {
+      primary: 'Developer',
+      secondary: [],
+      painPoints: [],
+      goals: [],
+      usageContext: ''
+    },
+    phases: [],
+    features: [],
+    status: 'draft',
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    ...overrides
+  };
+}
+
 describe('Task Store', () => {
   let electronAPI: {
     getTasks: ReturnType<typeof vi.fn>;
@@ -83,6 +107,7 @@ describe('Task Store', () => {
     recoverStuckTask: ReturnType<typeof vi.fn>;
     deleteTask: ReturnType<typeof vi.fn>;
     archiveTasks: ReturnType<typeof vi.fn>;
+    saveRoadmap: ReturnType<typeof vi.fn>;
   };
   const localStorageMock = (() => {
     let store: Record<string, string> = {};
@@ -112,7 +137,8 @@ describe('Task Store', () => {
       checkTaskRunning: vi.fn(),
       recoverStuckTask: vi.fn(),
       deleteTask: vi.fn(),
-      archiveTasks: vi.fn()
+      archiveTasks: vi.fn(),
+      saveRoadmap: vi.fn()
     };
 
     if (!(globalThis as typeof globalThis & { window?: Window }).window) {
@@ -129,6 +155,12 @@ describe('Task Store', () => {
       selectedTaskId: null,
       isLoading: false,
       error: null
+    });
+    useRoadmapStore.setState({
+      roadmap: null,
+      competitorAnalysis: null,
+      generationStatus: { phase: 'idle', progress: 0, message: '' },
+      currentProjectId: null
     });
   });
 
@@ -729,6 +761,63 @@ describe('Task Store', () => {
       expect(useTaskStore.getState().tasks).toHaveLength(1);
       expect(useTaskStore.getState().tasks[0].id).toBe('task-2');
       expect(useTaskStore.getState().selectedTaskId).toBeNull();
+    });
+
+    it('deleteTask should remove linked roadmap features and persist changes', async () => {
+      const task = createTestTask({
+        id: 'task-1',
+        specId: 'spec-123',
+        projectId: 'project-1'
+      });
+      useTaskStore.setState({
+        tasks: [task]
+      });
+      useRoadmapStore.setState({
+        roadmap: createTestRoadmap({
+          features: [
+            {
+              id: 'feature-1',
+              title: 'Linked Feature',
+              description: 'linked',
+              rationale: 'why',
+              priority: 'must',
+              complexity: 'low',
+              impact: 'low',
+              phaseId: 'phase-1',
+              dependencies: [],
+              status: 'planned',
+              acceptanceCriteria: [],
+              userStories: [],
+              linkedSpecId: 'spec-123',
+              source: { provider: 'internal' }
+            },
+            {
+              id: 'feature-2',
+              title: 'Other Feature',
+              description: 'other',
+              rationale: 'why',
+              priority: 'should',
+              complexity: 'low',
+              impact: 'low',
+              phaseId: 'phase-1',
+              dependencies: [],
+              status: 'planned',
+              acceptanceCriteria: [],
+              userStories: [],
+              linkedSpecId: 'spec-999',
+              source: { provider: 'internal' }
+            }
+          ]
+        })
+      });
+      electronAPI.deleteTask.mockResolvedValue({ success: true });
+
+      const result = await deleteTask('task-1');
+
+      expect(result.success).toBe(true);
+      const roadmap = useRoadmapStore.getState().roadmap;
+      expect(roadmap?.features.find((feature) => feature.linkedSpecId === 'spec-123')).toBeUndefined();
+      expect(electronAPI.saveRoadmap).toHaveBeenCalledWith('project-1', expect.anything());
     });
 
     it('deleteTask should return error on failure', async () => {

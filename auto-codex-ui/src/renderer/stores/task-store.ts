@@ -376,22 +376,49 @@ export async function recoverStuckTask(
 
 /**
  * 删除任务及其 spec 目录
+ * 同时删除路线图中关联的 feature
  */
 export async function deleteTask(
   taskId: string
 ): Promise<{ success: boolean; error?: string }> {
   const store = useTaskStore.getState();
 
+  // 获取任务的 specId，用于查找关联的路线图 feature
+  const task = store.tasks.find(t => t.id === taskId || t.specId === taskId);
+  const specId = task?.specId || taskId;
+
   try {
     const result = await window.electronAPI.deleteTask(taskId);
 
     if (result.success) {
       // 从本地状态移除
-      store.setTasks(store.tasks.filter(t => t.id !== taskId && t.specId !== taskId));
+      store.setTasks(store.tasks.filter(t => t.id !== taskId && t.specId !== specId));
       // 如果此任务被选中则清除选择
-      if (store.selectedTaskId === taskId) {
+      if (store.selectedTaskId && (store.selectedTaskId === taskId || store.selectedTaskId === specId)) {
         store.selectTask(null);
       }
+
+      // 同步删除路线图中关联的 feature
+      // 延迟导入避免循环依赖
+      const { useRoadmapStore } = await import('./roadmap-store');
+      const roadmapStore = useRoadmapStore.getState();
+      if (roadmapStore.roadmap) {
+        const linkedFeatures = roadmapStore.roadmap.features.filter(
+          f => f.linkedSpecId === specId
+        );
+        if (linkedFeatures.length > 0) {
+          linkedFeatures.forEach(feature => roadmapStore.deleteFeature(feature.id));
+          // 持久化路线图更改
+          const updatedRoadmap = useRoadmapStore.getState().roadmap;
+          const projectId = roadmapStore.currentProjectId ?? task?.projectId;
+          if (updatedRoadmap && projectId) {
+            window.electronAPI.saveRoadmap(projectId, updatedRoadmap).catch(err => {
+              console.error('Failed to save roadmap after deleting linked feature:', err);
+            });
+          }
+        }
+      }
+
       return { success: true };
     }
 
