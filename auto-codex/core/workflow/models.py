@@ -47,10 +47,10 @@ class WorkflowSettings:
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
-            "auto_cleanup_after_merge": self.auto_cleanup_after_merge,
-            "stale_worktree_days": self.stale_worktree_days,
-            "max_worktrees_warning": self.max_worktrees_warning,
-            "show_conflict_risks": self.show_conflict_risks,
+            "autoCleanupAfterMerge": self.auto_cleanup_after_merge,
+            "staleWorktreeDays": self.stale_worktree_days,
+            "maxWorktreesWarning": self.max_worktrees_warning,
+            "showConflictRisks": self.show_conflict_risks,
         }
     
     @classmethod
@@ -76,11 +76,11 @@ class StagedChange:
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
-            "task_id": self.task_id,
-            "spec_name": self.spec_name,
+            "taskId": self.task_id,
+            "specName": self.spec_name,
             "files": self.files,
-            "staged_at": self.staged_at.isoformat(),
-            "merge_source": self.merge_source,
+            "stagedAt": self.staged_at.isoformat(),
+            "mergeSource": self.merge_source,
         }
     
     @classmethod
@@ -135,8 +135,8 @@ class StageResult:
         """Convert to dictionary for serialization."""
         return {
             "success": self.success,
-            "files_staged": self.files_staged,
-            "worktree_cleaned": self.worktree_cleaned,
+            "filesStaged": self.files_staged,
+            "worktreeCleaned": self.worktree_cleaned,
             "error": self.error,
         }
 
@@ -151,17 +151,33 @@ class WorktreeInfo:
     disk_usage_mb: float
     has_conflicts: bool = False
     conflict_files: list[str] = field(default_factory=list)
+    # Extended Git Stats
+    base_branch: str = "main"
+    commit_count: int = 0
+    files_changed: int = 0
+    additions: int = 0
+    deletions: int = 0
+    last_commit_date: str | None = None
+    is_stale: bool = False
     
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
-            "spec_name": self.spec_name,
+            "specName": self.spec_name,
             "path": self.path,
             "branch": self.branch,
-            "days_since_activity": self.days_since_activity,
-            "disk_usage_mb": self.disk_usage_mb,
-            "has_conflicts": self.has_conflicts,
-            "conflict_files": self.conflict_files,
+            "daysSinceActivity": self.days_since_activity,
+            "daysSinceLastActivity": self.days_since_activity,  # Alias for frontend compatibility
+            "diskUsageMb": self.disk_usage_mb,
+            "hasConflicts": self.has_conflicts,
+            "conflictFiles": self.conflict_files,
+            "baseBranch": self.base_branch,
+            "commitCount": self.commit_count,
+            "filesChanged": self.files_changed,
+            "additions": self.additions,
+            "deletions": self.deletions,
+            "lastCommitDate": self.last_commit_date,
+            "isStale": self.is_stale,
         }
 
 
@@ -177,11 +193,11 @@ class WorktreeHealthStatus:
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
-            "total_count": self.total_count,
-            "stale_count": self.stale_count,
-            "total_disk_usage_mb": self.total_disk_usage_mb,
+            "totalCount": self.total_count,
+            "staleCount": self.stale_count,
+            "totalDiskUsageMb": self.total_disk_usage_mb,
             "worktrees": [w.to_dict() for w in self.worktrees],
-            "warning_message": self.warning_message,
+            "warningMessage": self.warning_message,
         }
 
 
@@ -196,10 +212,10 @@ class ConflictRisk:
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
-            "worktree_a": self.worktree_a,
-            "worktree_b": self.worktree_b,
-            "conflicting_files": self.conflicting_files,
-            "risk_level": self.risk_level.value,
+            "worktreeA": self.worktree_a,
+            "worktreeB": self.worktree_b,
+            "conflictingFiles": self.conflicting_files,
+            "riskLevel": self.risk_level.value,
         }
     
     @classmethod
@@ -258,7 +274,7 @@ class TestResults:
             "failed": self.failed,
             "skipped": self.skipped,
             "errors": self.errors,
-            "duration_seconds": self.duration_seconds,
+            "durationSeconds": self.duration_seconds,
             "success": self.success,
         }
 
@@ -277,7 +293,7 @@ class ReviewReport:
         return {
             "success": self.success,
             "issues": [i.to_dict() for i in self.issues],
-            "test_results": self.test_results.to_dict() if self.test_results else None,
+            "testResults": self.test_results.to_dict() if self.test_results else None,
             "suggestions": self.suggestions,
             "summary": self.summary,
         }
@@ -296,8 +312,8 @@ class CommitResult:
         """Convert to dictionary for serialization."""
         return {
             "success": self.success,
-            "commit_hash": self.commit_hash,
+            "commitHash": self.commit_hash,
             "message": self.message,
-            "files_committed": self.files_committed,
+            "filesCommitted": self.files_committed,
             "error": self.error,
         }
