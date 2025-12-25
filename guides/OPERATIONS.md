@@ -43,7 +43,7 @@ Run before a release or after changing dependencies/env:
 
 This validates Python/Node/Git/Codex auth, ensures the git working tree is clean, and if Graphiti is enabled it checks Docker/Compose and pinned image tags. A non-zero exit indicates a blocking issue.
 
-For strict production gating, set `AUTO_CODEX_PRODUCTION=true` (or `AUTO_CODEX_ENFORCE_SANDBOX=true` / `AUTO_CODEX_ENFORCE_FALKORDB_AUTH=true`) to turn warnings into failures.
+For internal "production-lite" gating, set `AUTO_CODEX_PRODUCTION=true` to require healthchecks in release scripts. If you want stricter gating, set `AUTO_CODEX_ENFORCE_CLEAN_GIT=true` and/or strict security enforcement via `AUTO_CODEX_ENFORCE_SANDBOX=true` and `AUTO_CODEX_ENFORCE_FALKORDB_AUTH=true` to turn warnings into failures.
 
 ## Dependency Locking (Production)
 
@@ -103,6 +103,9 @@ For production-like stability, pin image tags (required for production) instead 
 Task execution logs are stored per-spec under:
 
 `<your-project>/.auto-codex/specs/<spec>/logs/`
+
+Notes:
+- Task logs are redacted for common secret patterns, but should still be treated as sensitive.
 
 ### Desktop App State (Auto-Codex UI)
 

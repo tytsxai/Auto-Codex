@@ -107,7 +107,13 @@ check_git_clean() {
   status="$(git -C "$ROOT_DIR" status --porcelain)"
   if [[ -n "$status" ]]; then
     count="$(printf "%s\n" "$status" | wc -l | tr -d ' ')"
-    log_fail "git working tree dirty (${count} change(s))"
+    local production="${AUTO_CODEX_PRODUCTION:-}"
+    local enforce_clean="${AUTO_CODEX_ENFORCE_CLEAN_GIT:-}"
+    if is_true "$production" || is_true "$enforce_clean"; then
+      log_fail "git working tree dirty (${count} change(s))"
+    else
+      log_warn "git working tree dirty (${count} change(s))"
+    fi
     return
   fi
   log_ok "git working tree clean"
@@ -222,10 +228,9 @@ check_sandbox() {
   fi
 
   local enforce="${AUTO_CODEX_ENFORCE_SANDBOX:-}"
-  local production="${AUTO_CODEX_PRODUCTION:-}"
-  if is_true "$production" || is_true "$enforce"; then
-    if [[ "$bypass" == "0" ]]; then
-      log_ok "Codex CLI sandbox enforced (AUTO_CODEX_BYPASS_CODEX_SANDBOX=0)"
+  if is_true "$enforce"; then
+    if [[ "$bypass" == "0" || -z "$bypass" ]]; then
+      log_ok "Codex CLI sandbox enforced"
     else
       log_fail "Codex CLI sandbox must be enforced (set AUTO_CODEX_BYPASS_CODEX_SANDBOX=0)"
     fi
@@ -233,7 +238,7 @@ check_sandbox() {
   fi
 
   if [[ -z "$bypass" ]]; then
-    log_warn "AUTO_CODEX_BYPASS_CODEX_SANDBOX not set (recommended: 0 for production)"
+    log_ok "Codex CLI sandbox enforced by default (AUTO_CODEX_BYPASS_CODEX_SANDBOX not set)"
     return
   fi
 
@@ -327,18 +332,16 @@ check_graphiti() {
   fi
 
   local enforce_auth="${AUTO_CODEX_ENFORCE_FALKORDB_AUTH:-}"
-  local production="${AUTO_CODEX_PRODUCTION:-}"
-
-  if is_true "$production" || is_true "$enforce_auth"; then
+  if is_true "$enforce_auth"; then
     if [[ -n "$falkor_password" ]]; then
       log_ok "GRAPHITI_FALKORDB_PASSWORD set"
     else
-      log_fail "GRAPHITI_FALKORDB_PASSWORD not set (required for production)"
+      log_fail "GRAPHITI_FALKORDB_PASSWORD not set (required when AUTO_CODEX_ENFORCE_FALKORDB_AUTH=true)"
     fi
     if [[ "$falkor_args" == *"--requirepass"* ]]; then
       log_ok "FALKORDB_ARGS includes --requirepass"
     else
-      log_fail "FALKORDB_ARGS missing --requirepass (required for production)"
+      log_fail "FALKORDB_ARGS missing --requirepass (required when AUTO_CODEX_ENFORCE_FALKORDB_AUTH=true)"
     fi
   else
     if [[ -n "$falkor_password" ]]; then
