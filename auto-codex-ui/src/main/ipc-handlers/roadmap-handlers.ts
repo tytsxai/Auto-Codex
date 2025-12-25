@@ -298,7 +298,7 @@ export function registerRoadmapHandlers(
 
       const autoBuildSource = getAutoBuildSourcePath();
       if (!autoBuildSource) {
-        mainWindow.webContents.send(IPC_CHANNELS.ROADMAP_ERROR, projectId, 'Auto Codex source not found');
+        mainWindow.webContents.send(IPC_CHANNELS.ROADMAP_ERROR, projectId, '未找到 Auto Codex 源码');
         return;
       }
 
@@ -394,7 +394,7 @@ export function registerRoadmapHandlers(
 
       const autoBuildSource = getAutoBuildSourcePath();
       if (!autoBuildSource) {
-        mainWindow.webContents.send(IPC_CHANNELS.ROADMAP_ERROR, projectId, 'Auto Codex source not found');
+        mainWindow.webContents.send(IPC_CHANNELS.ROADMAP_ERROR, projectId, '未找到 Auto Codex 源码');
         return;
       }
 

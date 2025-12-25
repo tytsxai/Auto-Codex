@@ -109,7 +109,7 @@ export function startIdeationGeneration(
     mainWindow.webContents.send(
       IPC_CHANNELS.IDEATION_ERROR,
       projectId,
-      'Project not found'
+      '未找到项目'
     );
     return;
   }
@@ -170,7 +170,7 @@ export function refreshIdeationSession(
     mainWindow.webContents.send(
       IPC_CHANNELS.IDEATION_ERROR,
       projectId,
-      'Project not found'
+      '未找到项目'
     );
     return;
   }

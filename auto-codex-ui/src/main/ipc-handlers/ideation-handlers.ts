@@ -85,7 +85,7 @@ export function registerIdeationHandlers(
       const autoBuildSource = getAutoBuildSourcePath();
       if (!autoBuildSource) {
         if (mainWindow) {
-          mainWindow.webContents.send(IPC_CHANNELS.IDEATION_ERROR, projectId, 'Auto Codex source not found');
+          mainWindow.webContents.send(IPC_CHANNELS.IDEATION_ERROR, projectId, '未找到 Auto Codex 源码');
         }
         return;
       }
@@ -117,7 +117,7 @@ export function registerIdeationHandlers(
       const autoBuildSource = getAutoBuildSourcePath();
       if (!autoBuildSource) {
         if (mainWindow) {
-          mainWindow.webContents.send(IPC_CHANNELS.IDEATION_ERROR, projectId, 'Auto Codex source not found');
+          mainWindow.webContents.send(IPC_CHANNELS.IDEATION_ERROR, projectId, '未找到 Auto Codex 源码');
         }
         return;
       }
