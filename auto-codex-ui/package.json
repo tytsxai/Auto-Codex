@@ -160,6 +160,12 @@
     "mac": {
       "category": "public.app-category.developer-tools",
       "icon": "resources/icon.icns",
+      "extraResources": [
+        {
+          "from": "node_modules/@lydell/node-pty-darwin-arm64",
+          "to": "node_modules/@lydell/node-pty-darwin-arm64"
+        }
+      ],
       "target": [
         "dmg",
         "zip"
