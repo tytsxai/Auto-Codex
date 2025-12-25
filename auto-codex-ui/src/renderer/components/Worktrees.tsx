@@ -196,22 +196,30 @@ export function Worktrees({ projectId }: WorktreesProps) {
   const handleDelete = async () => {
     if (!worktreeToDelete) return;
 
-    const task = findTaskForWorktree(worktreeToDelete.specName);
-    if (!task) {
-      setError('未找到此工作树对应的任务');
-      return;
-    }
-
     setIsDeleting(true);
     try {
-      const result = await window.electronAPI.discardWorktree(task.id);
-      if (result.success) {
-        // Refresh worktrees after successful delete
-        await loadWorktrees();
-        setShowDeleteConfirm(false);
-        setWorktreeToDelete(null);
+      const task = findTaskForWorktree(worktreeToDelete.specName);
+
+      if (task) {
+        // Use task-based deletion if task exists
+        const result = await window.electronAPI.discardWorktree(task.id);
+        if (result.success) {
+          await loadWorktrees();
+          setShowDeleteConfirm(false);
+          setWorktreeToDelete(null);
+        } else {
+          setError(result.error || '删除工作树失败');
+        }
       } else {
-        setError(result.error || '删除工作树失败');
+        // Direct worktree deletion for orphaned worktrees (no matching task)
+        const result = await window.electronAPI.deleteWorktreeDirect(worktreeToDelete.specName);
+        if (result.success) {
+          await loadWorktrees();
+          setShowDeleteConfirm(false);
+          setWorktreeToDelete(null);
+        } else {
+          setError(result.error || '删除工作树失败');
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : '删除工作树失败');
@@ -269,7 +277,7 @@ export function Worktrees({ projectId }: WorktreesProps) {
       {error && (
         <div className="mb-4 rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-sm">
           <div className="flex items-start gap-2">
-              <AlertCircle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
+            <AlertCircle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
             <div>
               <p className="font-medium text-destructive">错误</p>
               <p className="text-muted-foreground mt-1">{error}</p>
@@ -496,7 +504,6 @@ export function Worktrees({ projectId }: WorktreesProps) {
                         size="sm"
                         className="text-destructive hover:text-destructive hover:bg-destructive/10"
                         onClick={() => confirmDelete(worktree)}
-                        disabled={!task}
                       >
                         <Trash2 className="h-3.5 w-3.5 mr-1.5" />
                         删除
@@ -550,13 +557,12 @@ export function Worktrees({ projectId }: WorktreesProps) {
 
           {mergeResult && (
             <div className="py-4">
-              <div className={`rounded-lg p-4 text-sm ${
-                mergeResult.success
+              <div className={`rounded-lg p-4 text-sm ${mergeResult.success
                   ? mergeResult.staged
                     ? 'bg-info/10 border border-info/30'
                     : 'bg-success/10 border border-success/30'
                   : 'bg-destructive/10 border border-destructive/30'
-              }`}>
+                }`}>
                 <div className="flex items-start gap-2">
                   {mergeResult.success ? (
                     mergeResult.staged ? (
@@ -568,13 +574,12 @@ export function Worktrees({ projectId }: WorktreesProps) {
                     <X className="h-4 w-4 text-destructive mt-0.5" />
                   )}
                   <div className="flex-1">
-                    <p className={`font-medium ${
-                      mergeResult.success
+                    <p className={`font-medium ${mergeResult.success
                         ? mergeResult.staged
                           ? 'text-info'
                           : 'text-success'
                         : 'text-destructive'
-                    }`}>
+                      }`}>
                       {mergeResult.success
                         ? mergeResult.staged
                           ? '已暂存'
