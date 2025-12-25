@@ -713,6 +713,16 @@ export class AgentQueueManager {
    */
   isRoadmapRunning(projectId: string): boolean {
     const processInfo = this.state.getProcess(projectId);
-    return processInfo?.queueProcessType === 'roadmap';
+    const isRunning = processInfo?.queueProcessType === 'roadmap';
+    // Debug: Also show all running process keys to detect key mismatch
+    const allRunningKeys = this.state.getRunningTaskIds();
+    debugLog('[Agent Queue] isRoadmapRunning check:', {
+      queriedProjectId: projectId,
+      hasProcess: !!processInfo,
+      processType: processInfo?.queueProcessType,
+      isRunning,
+      allRunningKeys
+    });
+    return isRunning;
   }
 }
