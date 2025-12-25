@@ -58,6 +58,9 @@ export interface TaskAPI {
   discardWorktree: (
     taskId: string,
   ) => Promise<IPCResult<import("../../shared/types").WorktreeDiscardResult>>;
+  deleteWorktreeDirect: (
+    specName: string,
+  ) => Promise<IPCResult<import("../../shared/types").WorktreeDiscardResult>>;
   listWorktrees: (
     projectId: string,
   ) => Promise<IPCResult<import("../../shared/types").WorktreeListResult>>;
@@ -183,6 +186,11 @@ export const createTaskAPI = (): TaskAPI => ({
     taskId: string,
   ): Promise<IPCResult<import("../../shared/types").WorktreeDiscardResult>> =>
     invokeIpcResult(IPC_CHANNELS.TASK_WORKTREE_DISCARD, taskId),
+
+  deleteWorktreeDirect: (
+    specName: string,
+  ): Promise<IPCResult<import("../../shared/types").WorktreeDiscardResult>> =>
+    invokeIpcResult(IPC_CHANNELS.TASK_WORKTREE_DELETE_DIRECT, specName),
 
   listWorktrees: (
     projectId: string,

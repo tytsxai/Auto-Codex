@@ -32,6 +32,7 @@ export const IPC_CHANNELS = {
   TASK_WORKTREE_MERGE: "task:worktreeMerge",
   TASK_WORKTREE_MERGE_PREVIEW: "task:worktreeMergePreview", // 合并前预览冲突
   TASK_WORKTREE_DISCARD: "task:worktreeDiscard",
+  TASK_WORKTREE_DELETE_DIRECT: "task:worktreeDeleteDirect",
   TASK_LIST_WORKTREES: "task:listWorktrees",
   TASK_ARCHIVE: "task:archive",
   TASK_UNARCHIVE: "task:unarchive",
