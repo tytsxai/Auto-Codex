@@ -302,4 +302,5 @@ export const IPC_CHANNELS = {
   WORKFLOW_AI_REVIEW: "workflow:aiReview",
   WORKFLOW_CLEANUP_STALE: "workflow:cleanupStale",
   WORKFLOW_GENERATE_COMMIT_MESSAGE: "workflow:generateCommitMessage",
+  WORKFLOW_GET_WORKTREE_CHANGES: "workflow:getWorktreeChanges",
 } as const;

@@ -151,6 +151,10 @@ async def main():
             message = reviewer.generate_commit_message(changes, args.get('mode', 'all'))
             result = {'message': message}
 
+        elif command == 'get_worktree_changes':
+            # Get actual git changes from all worktrees (not staged yet)
+            result = manager.get_all_worktree_changes()
+
         else:
             result = {'error': f'Unknown command: {command}'}
 
@@ -570,6 +574,35 @@ export function registerWorkflowHandlers(
         return {
           success: false,
           error: error instanceof Error ? error.message : 'Failed to generate commit message'
+        };
+      }
+    }
+  );
+
+  /**
+   * Get actual git changes from all worktrees (without staging)
+   */
+  ipcMain.handle(
+    IPC_CHANNELS.WORKFLOW_GET_WORKTREE_CHANGES,
+    async (): Promise<IPCResult<Array<{ spec_name: string; files: string[]; file_count: number; staged: boolean }>>> => {
+      try {
+        const projectPath = getProjectPath();
+        if (!projectPath) {
+          return { success: false, error: 'No project found' };
+        }
+
+        const result = await runWorkflowCommand(
+          pythonEnvManager,
+          projectPath,
+          'get_worktree_changes'
+        ) as Array<{ spec_name: string; files: string[]; file_count: number; staged: boolean }>;
+
+        return { success: true, data: result };
+      } catch (error) {
+        console.error('Failed to get worktree changes:', error);
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to get worktree changes'
         };
       }
     }

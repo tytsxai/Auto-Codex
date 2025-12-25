@@ -87,7 +87,9 @@ export const useTaskStore = create<TaskState>((set, get) => ({
         let status: TaskStatus = t.status;
         let reviewReason: ReviewReason | undefined = t.reviewReason;
 
-        if (allCompleted) {
+        // Only mark as complete if all subtasks completed AND no failures
+        // This prevents false "completed" status when errors exist in logs
+        if (allCompleted && !anyFailed) {
           // 手动任务跳过 AI 评审，直接进入人工评审
           status = t.metadata?.sourceType === 'manual' ? 'human_review' : 'ai_review';
           if (t.metadata?.sourceType === 'manual') {
@@ -354,8 +356,8 @@ export async function recoverStuckTask(
     if (result.success && result.data) {
       // 更新本地状态
       store.updateTaskStatus(taskId, result.data.newStatus);
-      return { 
-        success: true, 
+      return {
+        success: true,
         message: result.data.message,
         autoRestarted: result.data.autoRestarted
       };
