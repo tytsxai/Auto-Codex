@@ -291,7 +291,7 @@ export function registerRoadmapHandlers(
         mainWindow.webContents.send(
           IPC_CHANNELS.ROADMAP_ERROR,
           projectId,
-          'Competitor analysis is blocked by risk policy. Set riskPolicy to "permissive" in settings.json to allow.'
+          '竞品分析被风险策略拦截。请前往「设置 → 工作流 → 风险策略」选择"宽松"以允许此功能。'
         );
         return;
       }
@@ -387,7 +387,7 @@ export function registerRoadmapHandlers(
         mainWindow.webContents.send(
           IPC_CHANNELS.ROADMAP_ERROR,
           projectId,
-          'Competitor analysis is blocked by risk policy. Set riskPolicy to "permissive" in settings.json to allow.'
+          '竞品分析被风险策略拦截。请前往「设置 → 工作流 → 风险策略」选择"宽松"以允许此功能。'
         );
         return;
       }
@@ -636,8 +636,8 @@ ${(feature.acceptance_criteria || []).map((c: string) => `- [ ] ${c}`).join('\n'
         let specNumber = 1;
         const existingDirs = existsSync(specsDir)
           ? readdirSync(specsDir, { withFileTypes: true })
-              .filter(d => d.isDirectory())
-              .map(d => d.name)
+            .filter(d => d.isDirectory())
+            .map(d => d.name)
           : [];
         const existingNumbers = existingDirs
           .map(name => {
