@@ -426,6 +426,31 @@ def extract_location_content(content: str, location: str) -> str:
     return content
 
 
+def _find_location_span(content: str, location: str) -> tuple[int, int] | None:
+    if ":" not in location:
+        return None
+
+    loc_type, loc_name = location.split(":", 1)
+
+    if loc_type == "function":
+        patterns = [
+            rf"(function\s+{loc_name}\s*\([^)]*\)\s*\{{[\s\S]*?\n\}})",
+            rf"((?:const|let|var)\s+{loc_name}\s*=[\s\S]*?\n\}};?)",
+        ]
+        for pattern in patterns:
+            match = re.search(pattern, content)
+            if match:
+                return match.span(1)
+
+    if loc_type == "class":
+        pattern = rf"(class\s+{loc_name}\s*(?:extends\s+\w+)?\s*\{{[\s\S]*?\n\}})"
+        match = re.search(pattern, content)
+        if match:
+            return match.span(1)
+
+    return None
+
+
 def apply_ai_merge(
     content: str,
     location: str,
@@ -445,9 +470,14 @@ def apply_ai_merge(
     if merged_region is None:
         return content
 
-    # Find and replace the location content
+    span = _find_location_span(content, location)
+    if span:
+        start, end = span
+        return content[:start] + merged_region + content[end:]
+
+    # Find and replace the location content as a fallback
     original = extract_location_content(content, location)
     if original and original != content:
-        return content.replace(original, merged_region)
+        return _replace_once(content, original, merged_region)
 
     return content

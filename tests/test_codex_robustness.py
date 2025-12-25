@@ -114,25 +114,24 @@ class TestSecurityStatus:
         assert status["bypass_sandbox"] is True
 
     def test_enforced_mode_default(self):
-        """Default mode should be enforced (flags sent to Codex CLI)."""
+        """Default mode should be enforced with workspace-write sandbox."""
         from security.codex_config import CodexSecurityConfig
 
         config = CodexSecurityConfig()
         status = config.get_security_status()
 
         assert status["mode"] == "enforced"
-        assert status["flags_sent_to_codex"] is True
+        assert status["sandbox_mode"] == "workspace-write"
 
-    @patch.dict("os.environ", {"AUTO_CODEX_LEGACY_SECURITY": "true"})
-    def test_legacy_mode_with_env(self):
-        """With legacy env flag set, mode should be legacy (local-only)."""
+    def test_sandbox_mode_in_bypass(self):
+        """Bypass mode should report danger-full-access sandbox mode."""
         from security.codex_config import CodexSecurityConfig
 
-        config = CodexSecurityConfig()
+        config = CodexSecurityConfig(bypass_sandbox=True)
         status = config.get_security_status()
 
-        assert status["mode"] == "legacy"
-        assert status["flags_sent_to_codex"] is False
+        assert status["mode"] == "bypass"
+        assert status["sandbox_mode"] == "danger-full-access"
 
 
 class TestEventTypes:

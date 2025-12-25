@@ -12,6 +12,15 @@ from pathlib import Path
 from .models import LogEntry, LogPhase
 
 
+def _get_max_log_entries() -> int:
+    raw = os.environ.get("AUTO_CODEX_TASK_LOG_MAX_ENTRIES", "2000")
+    try:
+        value = int(raw)
+        return max(value, 0)
+    except (TypeError, ValueError):
+        return 0
+
+
 class LogStorage:
     """Handles persistent storage of task logs."""
 
@@ -27,6 +36,7 @@ class LogStorage:
         self.spec_dir = Path(spec_dir)
         self.log_file = self.spec_dir / self.LOG_FILE
         self._data: dict = self._load_or_create()
+        self._max_entries = _get_max_log_entries()
 
     def _load_or_create(self) -> dict:
         """Load existing logs or create new structure."""
@@ -112,7 +122,17 @@ class LogStorage:
             }
 
         self._data["phases"][phase_key]["entries"].append(entry.to_dict())
+        self._trim_entries(phase_key)
         self.save()
+
+    def _trim_entries(self, phase_key: str) -> None:
+        """Trim entries to the configured maximum, if set."""
+        if self._max_entries <= 0:
+            return
+
+        entries = self._data["phases"][phase_key]["entries"]
+        if len(entries) > self._max_entries:
+            self._data["phases"][phase_key]["entries"] = entries[-self._max_entries:]
 
     def update_phase_status(
         self, phase: str, status: str, completed_at: str | None = None

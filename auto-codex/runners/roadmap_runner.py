@@ -14,6 +14,8 @@ Usage:
 """
 
 import asyncio
+import json
+import os
 import sys
 import traceback
 from pathlib import Path
@@ -35,6 +37,7 @@ from core.auth import ensure_auth_hydrated
 # Import from refactored roadmap package
 from runners.roadmap import RoadmapOrchestrator
 from phase_config import normalize_thinking_level
+from evals.roadmap_eval import evaluate_roadmap
 
 
 def main():
@@ -124,6 +127,16 @@ Your credentials should be in ~/.codex/auth.json
         dest="refresh_competitor_analysis",
         help="Force refresh competitor analysis even if it exists (requires --competitor-analysis)",
     )
+    parser.add_argument(
+        "--eval",
+        action="store_true",
+        help="Run basic evaluation after generation",
+    )
+    parser.add_argument(
+        "--judge",
+        action="store_true",
+        help="Use LLM judge during evaluation (requires --eval)",
+    )
 
     args = parser.parse_args()
     args.thinking_level = normalize_thinking_level(args.thinking_level)
@@ -164,6 +177,22 @@ Your credentials should be in ~/.codex/auth.json
 
     try:
         success = asyncio.run(orchestrator.run())
+        if success and args.eval:
+            output_dir = args.output or (project_dir / ".auto-codex" / "roadmap")
+            roadmap_path = Path(output_dir) / "roadmap.json"
+            eval_result = evaluate_roadmap(
+                roadmap_path,
+                args.model or os.environ.get("AUTO_BUILD_MODEL", "gpt-5.2-codex"),
+                args.thinking_level,
+                use_judge=args.judge,
+            )
+            eval_path = Path(output_dir) / "roadmap_eval.json"
+            try:
+                with open(eval_path, "w") as f:
+                    json.dump(eval_result, f, indent=2)
+                print(f"Roadmap evaluation saved to: {eval_path}", file=sys.stderr)
+            except Exception as e:
+                print(f"Failed to write roadmap_eval.json: {e}", file=sys.stderr)
         debug("roadmap_runner", "Roadmap generation finished", success=success)
         sys.exit(0 if success else 1)
     except KeyboardInterrupt:

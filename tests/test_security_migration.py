@@ -41,9 +41,8 @@ def test_from_security_profile_maps_allowed_commands() -> None:
     assert config.allowed_paths == ["./**"]
 
 
-def test_to_codex_args_includes_bypass_and_lists(monkeypatch) -> None:
-    # Default behavior now sends flags (no env var needed)
-    monkeypatch.delenv("AUTO_CODEX_LEGACY_SECURITY", raising=False)
+def test_to_codex_args_bypass_mode() -> None:
+    """Test that bypass mode generates correct args for codex-cli 0.77.0+."""
     config = CodexSecurityConfig(
         bypass_sandbox=True,
         allowed_commands=["git", "pytest"],
@@ -55,11 +54,23 @@ def test_to_codex_args_includes_bypass_and_lists(monkeypatch) -> None:
     args = config.to_codex_args()
 
     assert "--dangerously-bypass-approvals-and-sandbox" in args
-    assert "--allowed-command=git" in args
-    assert "--allowed-command=pytest" in args
-    assert "--blocked-command=rm" in args
-    assert "--allowed-path=./**" in args
-    assert "--blocked-path=/" in args
+    # codex-cli 0.77.0+ doesn't use --allowed-command flags
+    assert "--sandbox" not in args
+
+
+def test_to_codex_args_sandbox_mode() -> None:
+    """Test that non-bypass mode uses --sandbox workspace-write."""
+    config = CodexSecurityConfig(
+        bypass_sandbox=False,
+        allowed_commands=["git"],
+        allowed_paths=["./**"],
+    )
+
+    args = config.to_codex_args()
+
+    assert "--dangerously-bypass-approvals-and-sandbox" not in args
+    assert "--sandbox" in args
+    assert "workspace-write" in args
 
 
 def test_validate_command_whitelist(python_project) -> None:

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 import re
 from dataclasses import dataclass, field
 from typing import Iterable, Optional, TYPE_CHECKING
@@ -23,10 +22,6 @@ def _dedupe(items: Iterable[str]) -> list[str]:
     return result
 
 
-def _format_list_args(flag: str, values: Iterable[str]) -> list[str]:
-    return [f"{flag}={value}" for value in values]
-
-
 @dataclass
 class CodexSecurityConfig:
     """Security configuration for Codex CLI."""
@@ -40,20 +35,16 @@ class CodexSecurityConfig:
     def to_codex_args(self) -> list[str]:
         """Convert to Codex CLI arguments.
 
-        Security flags are sent by default. Set AUTO_CODEX_LEGACY_SECURITY=true
-        to disable (for backwards compatibility during transition).
+        For codex-cli 0.77.0+, uses --sandbox flag instead of legacy
+        --allowed-command/--allowed-path flags which are no longer supported.
         """
         args = []
         if self.bypass_sandbox:
             args.append("--dangerously-bypass-approvals-and-sandbox")
-        # Default: send security flags to Codex CLI
-        # Set AUTO_CODEX_LEGACY_SECURITY=true to disable (backwards compat)
-        legacy_mode = os.environ.get("AUTO_CODEX_LEGACY_SECURITY", "").strip().lower() in ("1", "true", "yes")
-        if not legacy_mode:
-            args.extend(_format_list_args("--allowed-command", self.allowed_commands))
-            args.extend(_format_list_args("--blocked-command", self.blocked_commands))
-            args.extend(_format_list_args("--allowed-path", self.allowed_paths))
-            args.extend(_format_list_args("--blocked-path", self.blocked_paths))
+        else:
+            # codex-cli 0.77.0+ uses --sandbox with predefined modes
+            # workspace-write: allows writes within the workspace directory
+            args.extend(["--sandbox", "workspace-write"])
         return args
 
     @classmethod
@@ -113,31 +104,23 @@ class CodexSecurityConfig:
         Return security configuration status for self-check/UI display.
 
         Returns dict with:
-        - mode: "bypass" | "legacy" | "enforced"
-        - flags_sent_to_codex: bool
+        - mode: "bypass" | "enforced"
+        - sandbox_mode: the --sandbox value used
         - warnings: list of warning messages
         """
         warnings = []
-        legacy_mode = os.environ.get("AUTO_CODEX_LEGACY_SECURITY", "").strip().lower() in ("1", "true", "yes")
-        flags_sent = not legacy_mode
 
         if self.bypass_sandbox:
             mode = "bypass"
+            sandbox_mode = "danger-full-access"
             warnings.append("Sandbox bypassed - all commands allowed without approval")
-        elif legacy_mode:
-            mode = "legacy"
-            warnings.append(
-                "Security rules are local pre-check only (AUTO_CODEX_LEGACY_SECURITY=true); "
-                "remove this env var to enable Codex CLI enforcement"
-            )
         else:
             mode = "enforced"
+            sandbox_mode = "workspace-write"
 
         return {
             "mode": mode,
-            "flags_sent_to_codex": flags_sent,
+            "sandbox_mode": sandbox_mode,
             "bypass_sandbox": self.bypass_sandbox,
-            "allowed_commands_count": len(self.allowed_commands),
-            "blocked_commands_count": len(self.blocked_commands),
             "warnings": warnings,
         }
