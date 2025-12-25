@@ -95,12 +95,12 @@ export class PythonEnvManager extends EventEmitter {
       }
 
       const version = result.stdout?.toString() || '';
-      // Auto-Codex backend requires Python 3.10+ (uses modern typing features).
+      // Auto-Codex backend requires Python 3.12+ (see run.py + docs).
       const match = version.match(/Python\s+(\d+)\.(\d+)(?:\.(\d+))?/i);
       if (match) {
         const major = parseInt(match[1], 10);
         const minor = parseInt(match[2], 10);
-        if (major < 3 || (major === 3 && minor < 10)) {
+        if (major < 3 || (major === 3 && minor < 12)) {
           console.warn('[PythonEnvManager] Venv Python too old:', version.trim());
           return true;
         }
@@ -169,25 +169,22 @@ export class PythonEnvManager extends EventEmitter {
       if (!match) return false;
       const major = parseInt(match[1], 10);
       const minor = parseInt(match[2], 10);
-      return major === 3 && minor >= 10;
+      return major === 3 && minor >= 12;
     };
 
     // Windows candidates - py launcher is handled specially
     // Unix candidates - prefer modern python3.x explicitly
     const unixCandidates = [
+      'python3.14',
       'python3.13',
       'python3.12',
-      'python3.11',
-      'python3.10',
+      '/opt/homebrew/bin/python3.14',
       '/opt/homebrew/bin/python3.13',
       '/opt/homebrew/bin/python3.12',
-      '/opt/homebrew/bin/python3.11',
-      '/opt/homebrew/bin/python3.10',
       '/opt/homebrew/bin/python3',
+      '/usr/local/bin/python3.14',
       '/usr/local/bin/python3.13',
       '/usr/local/bin/python3.12',
-      '/usr/local/bin/python3.11',
-      '/usr/local/bin/python3.10',
       '/usr/local/bin/python3',
       '/usr/bin/python3',
       'python3',
@@ -280,7 +277,7 @@ export class PythonEnvManager extends EventEmitter {
 
     const systemPython = this.findSystemPython();
     if (!systemPython) {
-      this.emit('error', 'Python 3.10+ not found. Please install Python 3.10+ (recommended: 3.12+)');
+      this.emit('error', 'Python 3.12+ not found. Please install Python 3.12+');
       return false;
     }
 
@@ -520,7 +517,7 @@ export class PythonEnvManager extends EventEmitter {
   /**
    * Preflight check to ensure the backend can actually start under this venv.
    * This catches common regressions:
-   * - Python < 3.10 (auto-codex uses modern typing syntax)
+   * - Python < 3.12 (auto-codex requires 3.12+)
    * - Missing required imports after dependency installation
    */
   private async runBackendPreflight(): Promise<{ ok: boolean; error?: string }> {

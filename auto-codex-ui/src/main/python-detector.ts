@@ -3,7 +3,7 @@ import { existsSync } from 'fs';
 
 /**
  * Detect and return the best available Python command.
- * Tries multiple candidates and returns the first one that works with Python 3.
+ * Tries multiple candidates and returns the first one that works with Python 3.12+.
  *
  * @returns The Python command to use, or null if none found
  */
@@ -15,7 +15,7 @@ export function findPythonCommand(): string | null {
     if (!match) return false;
     const major = parseInt(match[1], 10);
     const minor = parseInt(match[2], 10);
-    return major === 3 && minor >= 10;
+    return major === 3 && minor >= 12;
   };
 
   // On Windows, try py launcher first (most reliable), then python, then python3
@@ -23,19 +23,16 @@ export function findPythonCommand(): string | null {
   const candidates = isWindows
     ? ['py -3', 'python', 'python3', 'py']
     : [
+      'python3.14',
       'python3.13',
       'python3.12',
-      'python3.11',
-      'python3.10',
+      '/opt/homebrew/bin/python3.14',
       '/opt/homebrew/bin/python3.13',
       '/opt/homebrew/bin/python3.12',
-      '/opt/homebrew/bin/python3.11',
-      '/opt/homebrew/bin/python3.10',
       '/opt/homebrew/bin/python3',
+      '/usr/local/bin/python3.14',
       '/usr/local/bin/python3.13',
       '/usr/local/bin/python3.12',
-      '/usr/local/bin/python3.11',
-      '/usr/local/bin/python3.10',
       '/usr/local/bin/python3',
       '/usr/bin/python3',
       'python3',
