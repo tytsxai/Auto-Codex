@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import {
   useIdeationStore,
   loadIdeation,
@@ -65,11 +65,11 @@ export function useIdeation(projectId: string, options: UseIdeationOptions = {})
   // Requirements: 5.2, 5.3
   useEffect(() => {
     const { generationStatus, typeStates, config } = useIdeationStore.getState();
-    
+
     // If status is 'generating' but all types are complete, we have an orphaned state
     if (generationStatus.phase === 'generating') {
       const allComplete = areAllTypesComplete(typeStates, config.enabledTypes);
-      
+
       if (allComplete) {
         // All types finished but phase wasn't updated - recover to 'complete'
         if (window.DEBUG) {
@@ -86,7 +86,7 @@ export function useIdeation(projectId: string, options: UseIdeationOptions = {})
         const hasGeneratingTypes = config.enabledTypes.some(
           type => typeStates[type] === 'generating'
         );
-        
+
         if (!hasGeneratingTypes) {
           // No types are actively generating, but not all are complete
           // This means the process likely crashed - reset to idle
@@ -104,6 +104,61 @@ export function useIdeation(projectId: string, options: UseIdeationOptions = {})
       }
     }
   }, [projectId]);
+
+  // Active state sync: Monitor for stuck generation states
+  // This handles cases where ideas are added but typeStates/generationStatus aren't updated
+  // Uses a debounce to avoid excessive state updates
+  const lastSyncCheckRef = useRef<number>(0);
+  useEffect(() => {
+    // Only check if we're in generating phase
+    if (generationStatus.phase !== 'generating') return;
+    if (!session || session.ideas.length === 0) return;
+
+    // Debounce: only check every 2 seconds
+    const now = Date.now();
+    if (now - lastSyncCheckRef.current < 2000) return;
+    lastSyncCheckRef.current = now;
+
+    // Get idea types that exist in the session
+    const ideasByType = new Map<IdeationType, number>();
+    session.ideas.forEach(idea => {
+      ideasByType.set(idea.type, (ideasByType.get(idea.type) || 0) + 1);
+    });
+
+    // Check if there are ideas for types that are still marked as 'generating'
+    let needsRecovery = false;
+    const stuckTypes: IdeationType[] = [];
+    config.enabledTypes.forEach(type => {
+      const hasIdeas = ideasByType.has(type) && (ideasByType.get(type) || 0) > 0;
+      const isStillGenerating = typeStates[type] === 'generating';
+      if (hasIdeas && isStillGenerating) {
+        stuckTypes.push(type);
+        needsRecovery = true;
+      }
+    });
+
+    if (needsRecovery && stuckTypes.length > 0) {
+      if (window.DEBUG) {
+        console.warn('[Ideation] Active sync: fixing stuck typeStates for:', stuckTypes);
+      }
+      // Fix the stuck types
+      stuckTypes.forEach(type => {
+        useIdeationStore.getState().setTypeState(type, 'completed');
+      });
+
+      // Check if all types are now complete
+      const updatedTypeStates = useIdeationStore.getState().typeStates;
+      const allComplete = areAllTypesComplete(updatedTypeStates, config.enabledTypes);
+      if (allComplete) {
+        useIdeationStore.getState().setGenerationStatus({
+          phase: 'complete',
+          progress: 100,
+          message: 'Ideation complete'
+        });
+        useIdeationStore.getState().addLog('✓ Generation completed (recovered from stuck state)');
+      }
+    }
+  }, [session, generationStatus.phase, typeStates, config.enabledTypes]);
 
   const handleGenerate = async () => {
     generateIdeation(projectId);
