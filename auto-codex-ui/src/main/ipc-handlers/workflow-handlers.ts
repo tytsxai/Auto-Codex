@@ -36,6 +36,7 @@ async function runWorkflowCommand(
   command: string,
   args: Record<string, unknown> = {}
 ): Promise<unknown> {
+  const timeoutMs = Number(process.env.AUTO_CODEX_WORKFLOW_TIMEOUT_MS || 360000);
   // Ensure Python environment is ready
   if (!pythonEnvManager.isEnvReady()) {
     const autoBuildSource = getEffectiveSourcePath();
@@ -67,6 +68,7 @@ import base64
 import os
 import sys
 import asyncio
+from contextlib import redirect_stdout
 sys.path.insert(0, '${sourcePath.replace(/\\/g, '\\\\')}')
 
 from core.workflow import (
@@ -87,69 +89,70 @@ async def main():
 
     result = None
 
-    if command == 'stage_worktree':
-        result = manager.stage_worktree(
-            spec_name=args.get('specName'),
-            task_id=args.get('taskId'),
-            auto_cleanup=args.get('autoCleanup')
-        )
-        result = result.to_dict()
+    with redirect_stdout(sys.stderr):
+        if command == 'stage_worktree':
+            result = manager.stage_worktree(
+                spec_name=args.get('specName'),
+                task_id=args.get('taskId'),
+                auto_cleanup=args.get('autoCleanup')
+            )
+            result = result.to_dict()
 
-    elif command == 'get_staged_changes':
-        changes = tracker.get_all_staged()
-        result = [c.to_dict() for c in changes]
+        elif command == 'get_staged_changes':
+            changes = tracker.get_all_staged()
+            result = [c.to_dict() for c in changes]
 
-    elif command == 'commit_all':
-        result = commit_mgr.commit_all(args.get('message', 'chore: update'))
-        result = result.to_dict()
+        elif command == 'commit_all':
+            result = commit_mgr.commit_all(args.get('message', 'chore: update'))
+            result = result.to_dict()
 
-    elif command == 'commit_by_task':
-        results = commit_mgr.commit_by_task(args.get('taskMessages'))
-        result = [r.to_dict() for r in results]
+        elif command == 'commit_by_task':
+            results = commit_mgr.commit_by_task(args.get('taskMessages'))
+            result = [r.to_dict() for r in results]
 
-    elif command == 'commit_partial':
-        result = commit_mgr.commit_partial(
-            files=args.get('selectedFiles', []),
-            message=args.get('message', 'chore: update')
-        )
-        result = result.to_dict()
+        elif command == 'commit_partial':
+            result = commit_mgr.commit_partial(
+                files=args.get('selectedFiles', []),
+                message=args.get('message', 'chore: update')
+            )
+            result = result.to_dict()
 
-    elif command == 'discard_all':
-        success = commit_mgr.discard_all(args.get('restoreWorktrees', False))
-        result = {'success': success}
+        elif command == 'discard_all':
+            success = commit_mgr.discard_all(args.get('restoreWorktrees', False))
+            result = {'success': success}
 
-    elif command == 'get_health_status':
-        status = manager.get_health_status()
-        result = status.to_dict()
+        elif command == 'get_health_status':
+            status = manager.get_health_status()
+            result = status.to_dict()
 
-    elif command == 'get_conflict_risks':
-        risks = manager.get_conflict_risks()
-        result = [r.to_dict() for r in risks]
+        elif command == 'get_conflict_risks':
+            risks = manager.get_conflict_risks()
+            result = [r.to_dict() for r in risks]
 
-    elif command == 'get_merge_order':
-        order = manager.suggest_merge_order()
-        risks = manager.get_conflict_risks()
-        result = {
-            'order': order,
-            'reason': 'Sorted by conflict count (fewer first), then by age (older first)',
-            'conflictGroups': [r.to_dict() for r in risks]
-        }
+        elif command == 'get_merge_order':
+            order = manager.suggest_merge_order()
+            risks = manager.get_conflict_risks()
+            result = {
+                'order': order,
+                'reason': 'Sorted by conflict count (fewer first), then by age (older first)',
+                'conflictGroups': [r.to_dict() for r in risks]
+            }
 
-    elif command == 'ai_review':
-        report = await reviewer.review_staged_changes()
-        result = report.to_dict()
+        elif command == 'ai_review':
+            report = await reviewer.review_staged_changes()
+            result = report.to_dict()
 
-    elif command == 'cleanup_stale':
-        cleaned = manager.cleanup_stale_worktrees(args.get('days'))
-        result = {'cleaned': cleaned}
+        elif command == 'cleanup_stale':
+            cleaned = manager.cleanup_stale_worktrees(args.get('days'))
+            result = {'cleaned': cleaned}
 
-    elif command == 'generate_commit_message':
-        changes = tracker.get_all_staged()
-        message = reviewer.generate_commit_message(changes, args.get('mode', 'all'))
-        result = {'message': message}
+        elif command == 'generate_commit_message':
+            changes = tracker.get_all_staged()
+            message = reviewer.generate_commit_message(changes, args.get('mode', 'all'))
+            result = {'message': message}
 
-    else:
-        result = {'error': f'Unknown command: {command}'}
+        else:
+            result = {'error': f'Unknown command: {command}'}
 
     print(json.dumps(result, ensure_ascii=False))
 
@@ -158,6 +161,8 @@ asyncio.run(main())
   ];
 
   return new Promise((resolve, reject) => {
+    let timeoutId: NodeJS.Timeout | null = null;
+    let resolved = false;
     const proc = spawn(pythonCommand, [...pythonBaseArgs, ...scriptArgs], {
       cwd: sourcePath,
       env: {
@@ -172,6 +177,13 @@ asyncio.run(main())
     let stdout = '';
     let stderr = '';
 
+    timeoutId = setTimeout(() => {
+      if (resolved) return;
+      resolved = true;
+      proc.kill('SIGTERM');
+      reject(new Error(`Workflow command timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+
     proc.stdout.on('data', (data: Buffer) => {
       stdout += data.toString();
     });
@@ -181,11 +193,15 @@ asyncio.run(main())
     });
 
     proc.on('close', (code: number) => {
+      if (resolved) return;
+      resolved = true;
+      if (timeoutId) clearTimeout(timeoutId);
+
       if (code === 0) {
         try {
-          const result = JSON.parse(stdout.trim());
+          const result = parseWorkflowOutput(stdout);
           resolve(result);
-        } catch (_e) {
+        } catch (_error) {
           reject(new Error(`Failed to parse output: ${stdout}\nStderr: ${stderr}`));
         }
       } else {
@@ -194,9 +210,37 @@ asyncio.run(main())
     });
 
     proc.on('error', (err: Error) => {
+      if (resolved) return;
+      resolved = true;
+      if (timeoutId) clearTimeout(timeoutId);
       reject(err);
     });
   });
+}
+
+function parseWorkflowOutput(output: string): unknown {
+  const trimmed = output.trim();
+  if (!trimmed) {
+    throw new Error('No output');
+  }
+
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    const lines = trimmed.split('\n').reverse();
+    for (const line of lines) {
+      const candidate = line.trim();
+      if (!candidate) continue;
+      if ((candidate.startsWith('{') && candidate.endsWith('}')) || (candidate.startsWith('[') && candidate.endsWith(']'))) {
+        return JSON.parse(candidate);
+      }
+    }
+    const lastBrace = Math.max(trimmed.lastIndexOf('{'), trimmed.lastIndexOf('['));
+    if (lastBrace >= 0) {
+      return JSON.parse(trimmed.slice(lastBrace));
+    }
+    throw new Error('No JSON payload found');
+  }
 }
 
 /**
