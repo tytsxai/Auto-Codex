@@ -35,6 +35,7 @@ class BuildStatus:
     active: bool = False
     spec: str = ""
     state: BuildState = BuildState.IDLE
+    pid: int = 0  # Process ID for liveness check
     subtasks_completed: int = 0
     subtasks_total: int = 0
     subtasks_in_progress: int = 0
@@ -54,6 +55,7 @@ class BuildStatus:
             "active": self.active,
             "spec": self.spec,
             "state": self.state.value,
+            "pid": self.pid,
             "subtasks": {
                 "completed": self.subtasks_completed,
                 "total": self.subtasks_total,
@@ -88,6 +90,7 @@ class BuildStatus:
             active=data.get("active", False),
             spec=data.get("spec", ""),
             state=BuildState(data.get("state", "idle")),
+            pid=data.get("pid", 0),
             subtasks_completed=subtasks.get("completed", 0),
             subtasks_total=subtasks.get("total", 0),
             subtasks_in_progress=subtasks.get("in_progress", 0),
@@ -145,9 +148,11 @@ class StatusManager:
 
     def set_active(self, spec: str, state: BuildState) -> None:
         """Mark build as active."""
+        import os
         self._status.active = True
         self._status.spec = spec
         self._status.state = state
+        self._status.pid = os.getpid()
         self._status.session_started = datetime.now().isoformat()
         self.write()
 
@@ -155,6 +160,7 @@ class StatusManager:
         """Mark build as inactive."""
         self._status.active = False
         self._status.state = BuildState.IDLE
+        self._status.pid = 0
         self.write()
 
     def update_subtasks(
@@ -201,3 +207,30 @@ class StatusManager:
                 self.status_file.unlink()
             except OSError:
                 pass
+
+    def increment_failed(self) -> None:
+        """Increment failed subtask count on error detection."""
+        self._status.subtasks_failed += 1
+        if self._status.subtasks_in_progress > 0:
+            self._status.subtasks_in_progress -= 1
+        self.write()
+
+    def has_failures(self) -> bool:
+        """Check if any subtasks have failed."""
+        return self._status.subtasks_failed > 0
+
+    def is_process_alive(self) -> bool:
+        """Check if the build process is still running."""
+        import os
+        import signal
+        
+        if not self._status.pid or self._status.pid == 0:
+            return False
+        
+        try:
+            # Send signal 0 to check if process exists
+            os.kill(self._status.pid, signal.SIG_DFL)
+            return True
+        except (OSError, ProcessLookupError):
+            return False
+

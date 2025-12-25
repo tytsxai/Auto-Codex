@@ -264,6 +264,49 @@ class WorkflowManager:
                     ))
         
         return risks
+
+    def get_worktree_changes(self, spec_name: str) -> dict:
+        """
+        Get current git changes in a worktree without staging.
+        
+        Args:
+            spec_name: Name of the spec/worktree
+            
+        Returns:
+            Dictionary with files and file_count
+        """
+        worktree_path = self.worktrees_dir / spec_name
+        if not worktree_path.exists():
+            return {"spec_name": spec_name, "files": [], "file_count": 0, "staged": False}
+        
+        try:
+            status_files, deleted_files = self._get_status_changes(worktree_path)
+            all_files = sorted(status_files | deleted_files)
+            return {
+                "spec_name": spec_name,
+                "files": all_files,
+                "file_count": len(all_files),
+                "staged": False,
+            }
+        except Exception:
+            return {"spec_name": spec_name, "files": [], "file_count": 0, "staged": False}
+
+    def get_all_worktree_changes(self) -> list[dict]:
+        """
+        Get git changes from all worktrees.
+        
+        Returns:
+            List of change dictionaries for each worktree with changes
+        """
+        changes = []
+        worktrees = self._list_worktrees()
+        
+        for wt in worktrees:
+            wt_changes = self.get_worktree_changes(wt.spec_name)
+            if wt_changes["file_count"] > 0:
+                changes.append(wt_changes)
+        
+        return changes
     
     def suggest_merge_order(self) -> list[str]:
         """

@@ -98,6 +98,11 @@ def handle_build_command(
     coding_model = get_phase_model(spec_dir, "coding", model)
     qa_model = get_phase_model(spec_dir, "qa", model)
 
+    # Reset status to BUILDING when starting/resuming build
+    # This fixes the issue where status shows 'complete' after --force restart
+    status_manager = StatusManager(project_dir)
+    status_manager.set_active(spec_dir.name, BuildState.BUILDING)
+
     print_banner()
     print(f"\nProject directory: {project_dir}")
     print(f"Spec: {spec_dir.name}")

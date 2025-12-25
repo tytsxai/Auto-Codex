@@ -73,6 +73,21 @@ def finalize_workspace(
         if worktree_info:
             print()
             print(success(f"Build complete in worktree: {worktree_info.path}"))
+            
+            # Auto-stage changes to main repo for UI review
+            # This makes changes visible in the workflow review panel
+            try:
+                from core.workflow import WorkflowManager
+                workflow_mgr = WorkflowManager(project_dir)
+                stage_result = workflow_mgr.stage_worktree(spec_name, auto_cleanup=False)
+                if stage_result.success and stage_result.files_staged:
+                    print(success(f"Auto-staged {len(stage_result.files_staged)} files to main repo"))
+                elif stage_result.error:
+                    print(muted(f"Note: {stage_result.error}"))
+            except Exception as e:
+                # Don't fail the build if staging fails
+                print(muted(f"Note: Could not auto-stage changes: {e}"))
+            
             print(muted("Worktree preserved for UI review."))
         return WorkspaceChoice.LATER
 
