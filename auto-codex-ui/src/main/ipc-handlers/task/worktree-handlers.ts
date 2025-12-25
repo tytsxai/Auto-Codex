@@ -2,7 +2,7 @@ import { ipcMain, BrowserWindow } from 'electron';
 import { IPC_CHANNELS, AUTO_BUILD_PATHS } from '../../../shared/constants';
 import type { IPCResult, WorktreeStatus, WorktreeDiff, WorktreeDiffFile, WorktreeMergeResult, WorktreeDiscardResult, WorktreeListResult, WorktreeListItem } from '../../../shared/types';
 import path from 'path';
-import { existsSync, readdirSync, statSync } from 'fs';
+import { existsSync, readdirSync, statSync, rmSync } from 'fs';
 import { execSync, spawn, spawnSync } from 'child_process';
 import { projectStore } from '../../project-store';
 import { PythonEnvManager } from '../../python-env-manager';
@@ -135,7 +135,7 @@ print(json.dumps({'success': True, 'tracked': len(payload.get('files', []))}))
         proc.kill('SIGTERM');
         const error = `Tracking operation timed out after ${TRACK_CHANGES_TIMEOUT_MS}ms`;
         console.warn('[WORKFLOW]', error);
-        
+
         // Retry if we haven't exceeded max retries
         if (retryCount < TRACK_CHANGES_MAX_RETRIES) {
           console.warn(`[WORKFLOW] Retrying... (attempt ${retryCount + 2}/${TRACK_CHANGES_MAX_RETRIES + 1})`);
@@ -173,7 +173,7 @@ print(json.dumps({'success': True, 'tracked': len(payload.get('files', []))}))
       } else {
         const error = stderr || stdout || `Process exited with code ${code}`;
         console.warn('[WORKFLOW] Failed to track changes:', error);
-        
+
         // Retry on failure
         if (retryCount < TRACK_CHANGES_MAX_RETRIES) {
           console.warn(`[WORKFLOW] Retrying... (attempt ${retryCount + 2}/${TRACK_CHANGES_MAX_RETRIES + 1})`);
@@ -192,7 +192,7 @@ print(json.dumps({'success': True, 'tracked': len(payload.get('files', []))}))
 
       const error = err.message;
       console.warn('[WORKFLOW] Error tracking changes:', error);
-      
+
       // Retry on error
       if (retryCount < TRACK_CHANGES_MAX_RETRIES) {
         console.warn(`[WORKFLOW] Retrying... (attempt ${retryCount + 2}/${TRACK_CHANGES_MAX_RETRIES + 1})`);
@@ -280,7 +280,7 @@ export function registerWorktreeHandlers(
             commitCount = 0;
           }
 
-          // Get diff stats
+          // Get diff stats - COMMITTED changes between branches
           let filesChanged = 0;
           let additions = 0;
           let deletions = 0;
@@ -297,6 +297,33 @@ export function registerWorktreeHandlers(
             }
           } catch {
             // Ignore diff errors
+          }
+
+          // Also count UNCOMMITTED changes (modified, untracked files)
+          try {
+            const statusOutput = runGit(worktreePath, ['status', '--porcelain']).trim();
+            if (statusOutput) {
+              const uncommittedLines = statusOutput.split('\n').filter(line => line.length > 0);
+              filesChanged += uncommittedLines.length;
+
+              // Get line-level changes for uncommitted files
+              try {
+                const uncommittedDiff = runGit(worktreePath, ['diff', '--numstat']).trim();
+                for (const line of uncommittedDiff.split('\n')) {
+                  const parts = line.split('\t');
+                  if (parts.length >= 3) {
+                    const add = parseInt(parts[0], 10) || 0;
+                    const del = parseInt(parts[1], 10) || 0;
+                    additions += add;
+                    deletions += del;
+                  }
+                }
+              } catch {
+                // Ignore uncommitted diff errors
+              }
+            }
+          } catch {
+            // Ignore status errors
           }
 
           return {
@@ -575,8 +602,8 @@ export function registerWorktreeHandlers(
               // Check if merge might have succeeded before the hang
               // Look for success indicators in the output
               const mayHaveSucceeded = stdout.includes('staged') ||
-                                       stdout.includes('Successfully merged') ||
-                                       stdout.includes('Changes from');
+                stdout.includes('Successfully merged') ||
+                stdout.includes('Changes from');
 
               if (mayHaveSucceeded) {
                 debug('TIMEOUT: Process hung but merge may have succeeded based on output');
@@ -1091,6 +1118,67 @@ export function registerWorktreeHandlers(
   );
 
   /**
+   * Delete a worktree directly by specName (for orphaned worktrees without matching tasks)
+   */
+  ipcMain.handle(
+    IPC_CHANNELS.TASK_WORKTREE_DELETE_DIRECT,
+    async (_, specName: string): Promise<IPCResult<WorktreeDiscardResult>> => {
+      try {
+        // Find the project that contains this worktree
+        const projects = projectStore.getProjects();
+        let targetProject: typeof projects[number] | undefined;
+        let worktreePath: string | undefined;
+
+        for (const project of projects) {
+          const potentialPath = path.join(project.path, '.worktrees', specName);
+          if (existsSync(potentialPath)) {
+            targetProject = project;
+            worktreePath = potentialPath;
+            break;
+          }
+        }
+
+        if (!targetProject || !worktreePath) {
+          return {
+            success: false,
+            error: `Worktree not found: ${specName}`
+          };
+        }
+
+        // Remove the worktree using git worktree remove
+        try {
+          runGit(targetProject.path, ['worktree', 'remove', worktreePath, '--force']);
+        } catch (gitError) {
+          // If git worktree remove fails, try removing the directory directly
+          console.warn('git worktree remove failed, removing directory directly:', gitError);
+          rmSync(worktreePath, { recursive: true, force: true });
+        }
+
+        // Prune worktree metadata
+        try {
+          runGit(targetProject.path, ['worktree', 'prune']);
+        } catch {
+          // Ignore prune errors
+        }
+
+        return {
+          success: true,
+          data: {
+            success: true,
+            message: `Worktree ${specName} deleted successfully`
+          }
+        };
+      } catch (error) {
+        console.error('Failed to delete worktree:', error);
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to delete worktree'
+        };
+      }
+    }
+  );
+
+  /**
    * List all spec worktrees for a project
    * Per-spec architecture: Each spec has its own worktree at .worktrees/{spec-name}/
    */
@@ -1159,7 +1247,7 @@ export function registerWorktreeHandlers(
               commitCount = 0;
             }
 
-            // Get diff stats
+            // Get diff stats - COMMITTED changes between branches
             let filesChanged = 0;
             let additions = 0;
             let deletions = 0;
@@ -1178,6 +1266,33 @@ export function registerWorktreeHandlers(
               // Ignore diff errors
             }
 
+            // Also count UNCOMMITTED changes (modified, untracked files)
+            try {
+              const statusOutput = runGit(entryPath, ['status', '--porcelain']).trim();
+              if (statusOutput) {
+                const uncommittedLines = statusOutput.split('\n').filter(line => line.length > 0);
+                filesChanged += uncommittedLines.length;
+
+                // Get line-level changes for uncommitted files
+                try {
+                  const uncommittedDiff = runGit(entryPath, ['diff', '--numstat']).trim();
+                  for (const line of uncommittedDiff.split('\n')) {
+                    const parts = line.split('\t');
+                    if (parts.length >= 3) {
+                      const add = parseInt(parts[0], 10) || 0;
+                      const del = parseInt(parts[1], 10) || 0;
+                      additions += add;
+                      deletions += del;
+                    }
+                  }
+                } catch {
+                  // Ignore uncommitted diff errors
+                }
+              }
+            } catch {
+              // Ignore status errors
+            }
+
             // Get last commit date for stale detection
             let lastCommitDate: string | undefined;
             let daysSinceLastActivity: number | undefined;
@@ -1191,7 +1306,7 @@ export function registerWorktreeHandlers(
               }
             } catch {
               // Ignore date errors - worktree may have no commits
-            }            worktrees.push({
+            } worktrees.push({
               specName: entry,
               path: entryPath,
               branch,
