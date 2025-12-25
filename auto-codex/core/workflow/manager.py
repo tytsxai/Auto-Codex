@@ -50,6 +50,7 @@ class WorkflowManager:
         self.settings = settings or WorkflowSettings()
         self.change_tracker = ChangeTracker(project_dir)
         self.worktrees_dir = self.project_dir / ".worktrees"
+        self.base_branch = self._detect_base_branch()
     
     def stage_worktree(
         self,
@@ -85,8 +86,10 @@ class WorkflowManager:
             # Get the worktree branch
             branch = self._get_worktree_branch(worktree_path)
             
-            # Get changed files from worktree
-            files = self._get_changed_files(worktree_path, branch)
+            # Get changed files from worktree (committed + uncommitted)
+            committed_files = self._get_changed_files(worktree_path, branch)
+            status_files, status_deleted = self._get_status_changes(worktree_path)
+            files = sorted(set(committed_files) | status_files | status_deleted)
             if not files:
                 return StageResult(
                     success=True,
@@ -95,8 +98,8 @@ class WorkflowManager:
                     error="No changes to stage",
                 )
             
-            # Stage changes using git checkout from worktree branch
-            staged_files = self._stage_files_from_branch(branch, files)
+            # Stage changes using files from worktree working tree
+            staged_files = self._stage_files_from_worktree(worktree_path, files)
             
             # Track the changes
             self.change_tracker.track_changes(
@@ -334,14 +337,9 @@ class WorkflowManager:
     
     def _get_changed_files(self, worktree_path: Path, branch: str) -> list[str]:
         """Get list of changed files in worktree compared to main."""
-        # Get current branch in main project
-        main_branch_result = subprocess.run(
-            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
-            cwd=self.project_dir,
-            capture_output=True,
-            text=True,
-        )
-        main_branch = main_branch_result.stdout.strip() if main_branch_result.returncode == 0 else "main"
+        main_branch = self.base_branch
+        if not main_branch:
+            main_branch = self._get_current_branch() or "main"
         
         # Get diff
         result = subprocess.run(
@@ -365,44 +363,96 @@ class WorkflowManager:
         
         return [f.strip() for f in result.stdout.strip().split("\n") if f.strip()]
     
-    def _stage_files_from_branch(self, branch: str, files: list[str]) -> list[str]:
-        """Stage files from a branch into the main working directory."""
+    def _stage_files_from_worktree(
+        self, worktree_path: Path, files: list[str]
+    ) -> list[str]:
+        """Stage files from a worktree into the main working directory."""
         staged = []
         
         for file_path in files:
-            # Get file content from branch
-            result = subprocess.run(
-                ["git", "show", f"{branch}:{file_path}"],
-                cwd=self.project_dir,
-                capture_output=True,
-            )
-            
-            if result.returncode == 0:
-                # Write to working directory
-                target = self.project_dir / file_path
+            if self._is_ignored_path(file_path):
+                continue
+
+            source = worktree_path / file_path
+            target = self.project_dir / file_path
+
+            if source.exists():
+                if target.exists() and target.is_dir() and source.is_file():
+                    shutil.rmtree(target)
                 target.parent.mkdir(parents=True, exist_ok=True)
-                target.write_bytes(result.stdout)
-                
-                # Stage the file
+                shutil.copy2(source, target, follow_symlinks=False)
                 subprocess.run(
                     ["git", "add", file_path],
                     cwd=self.project_dir,
                     capture_output=True,
                 )
                 staged.append(file_path)
-            elif "does not exist" in result.stderr.decode():
-                # File was deleted in branch
-                target = self.project_dir / file_path
+            else:
+                # File was deleted in worktree
                 if target.exists():
-                    target.unlink()
-                    subprocess.run(
-                        ["git", "add", file_path],
-                        cwd=self.project_dir,
-                        capture_output=True,
-                    )
-                    staged.append(file_path)
+                    if target.is_dir():
+                        shutil.rmtree(target)
+                    else:
+                        target.unlink()
+                subprocess.run(
+                    ["git", "add", file_path],
+                    cwd=self.project_dir,
+                    capture_output=True,
+                )
+                staged.append(file_path)
         
         return staged
+
+    def _detect_base_branch(self) -> str:
+        """Detect the base branch for diffs and staging."""
+        env_branch = os.getenv("DEFAULT_BRANCH")
+        if env_branch and self._branch_exists(env_branch):
+            return env_branch
+
+        origin_head = self._get_origin_head()
+        if origin_head and self._branch_exists(origin_head):
+            return origin_head
+
+        for branch in ("main", "master"):
+            if self._branch_exists(branch):
+                return branch
+
+        current = self._get_current_branch()
+        return current or "main"
+
+    def _branch_exists(self, branch: str) -> bool:
+        result = subprocess.run(
+            ["git", "rev-parse", "--verify", branch],
+            cwd=self.project_dir,
+            capture_output=True,
+            text=True,
+        )
+        return result.returncode == 0
+
+    def _get_origin_head(self) -> str | None:
+        result = subprocess.run(
+            ["git", "rev-parse", "--abbrev-ref", "origin/HEAD"],
+            cwd=self.project_dir,
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode != 0:
+            return None
+        value = result.stdout.strip()
+        if value.startswith("origin/"):
+            return value.replace("origin/", "", 1)
+        return value or None
+
+    def _get_current_branch(self) -> str | None:
+        result = subprocess.run(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            cwd=self.project_dir,
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode != 0:
+            return None
+        return result.stdout.strip()
     
     def _get_days_since_activity(self, worktree_path: Path) -> int:
         """Get days since last commit in worktree."""
@@ -439,3 +489,45 @@ class WorkflowManager:
         except Exception:
             pass
         return total / (1024 * 1024)
+
+    def _get_status_changes(self, worktree_path: Path) -> tuple[set[str], set[str]]:
+        """Get changed and deleted files from worktree status."""
+        result = subprocess.run(
+            ["git", "status", "--porcelain"],
+            cwd=worktree_path,
+            capture_output=True,
+            text=True,
+        )
+
+        changed: set[str] = set()
+        deleted: set[str] = set()
+
+        if result.returncode != 0:
+            return changed, deleted
+
+        for line in result.stdout.splitlines():
+            if not line:
+                continue
+            status = line[:2]
+            path = line[3:].strip()
+            if not path:
+                continue
+            if " -> " in path:
+                old_path, new_path = [p.strip() for p in path.split(" -> ", 1)]
+                if old_path:
+                    deleted.add(old_path)
+                if new_path:
+                    changed.add(new_path)
+                continue
+            if "D" in status:
+                deleted.add(path)
+                continue
+            changed.add(path)
+
+        return changed, deleted
+
+    def _is_ignored_path(self, file_path: str) -> bool:
+        ignored_prefixes = (".auto-codex/", ".worktrees/", ".git/")
+        if file_path.startswith(ignored_prefixes):
+            return True
+        return False

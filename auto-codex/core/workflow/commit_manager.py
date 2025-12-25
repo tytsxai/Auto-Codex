@@ -6,6 +6,7 @@ Commit Manager
 Handles various commit modes for staged changes.
 """
 
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -290,6 +291,28 @@ class CommitManager:
                 cwd=self.project_dir,
                 capture_output=True,
             )
+
+        # Remove untracked files that were part of staged changes
+        if all_files:
+            result = subprocess.run(
+                ["git", "ls-files", "--others", "--exclude-standard", "--", *all_files],
+                cwd=self.project_dir,
+                capture_output=True,
+                text=True,
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                for rel_path in result.stdout.splitlines():
+                    rel_path = rel_path.strip()
+                    if not rel_path:
+                        continue
+                    target = self.project_dir / rel_path
+                    try:
+                        if target.is_dir():
+                            shutil.rmtree(target)
+                        elif target.exists():
+                            target.unlink()
+                    except OSError:
+                        pass
         
         # Clear change tracker
         self.change_tracker.clear_all()
