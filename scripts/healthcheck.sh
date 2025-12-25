@@ -215,6 +215,35 @@ else:
   fi
 }
 
+check_sandbox() {
+  local bypass="${AUTO_CODEX_BYPASS_CODEX_SANDBOX:-}"
+  if [[ -z "$bypass" ]]; then
+    bypass="$(get_env_value "AUTO_CODEX_BYPASS_CODEX_SANDBOX" "$ROOT_DIR/auto-codex/.env" || true)"
+  fi
+
+  local enforce="${AUTO_CODEX_ENFORCE_SANDBOX:-}"
+  local production="${AUTO_CODEX_PRODUCTION:-}"
+  if is_true "$production" || is_true "$enforce"; then
+    if [[ "$bypass" == "0" ]]; then
+      log_ok "Codex CLI sandbox enforced (AUTO_CODEX_BYPASS_CODEX_SANDBOX=0)"
+    else
+      log_fail "Codex CLI sandbox must be enforced (set AUTO_CODEX_BYPASS_CODEX_SANDBOX=0)"
+    fi
+    return
+  fi
+
+  if [[ -z "$bypass" ]]; then
+    log_warn "AUTO_CODEX_BYPASS_CODEX_SANDBOX not set (recommended: 0 for production)"
+    return
+  fi
+
+  if [[ "$bypass" == "0" ]]; then
+    log_ok "Codex CLI sandbox enforced (AUTO_CODEX_BYPASS_CODEX_SANDBOX=0)"
+  else
+    log_warn "Codex CLI sandbox bypass enabled (AUTO_CODEX_BYPASS_CODEX_SANDBOX=$bypass)"
+  fi
+}
+
 detect_compose_cmd() {
   if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
     echo "docker compose"
@@ -283,6 +312,46 @@ check_graphiti() {
   else
     log_fail "GRAPHITI_MCP_IMAGE_TAG not set (required for production)"
   fi
+
+  local falkor_password="${GRAPHITI_FALKORDB_PASSWORD:-}"
+  if [[ -z "$falkor_password" ]]; then
+    falkor_password="$(get_env_value "GRAPHITI_FALKORDB_PASSWORD" "$ROOT_DIR/auto-codex/.env" || true)"
+  fi
+  if [[ -z "$falkor_password" ]]; then
+    falkor_password="$(get_env_value "GRAPHITI_FALKORDB_PASSWORD" "$ROOT_DIR/.env" || true)"
+  fi
+
+  local falkor_args="${FALKORDB_ARGS:-}"
+  if [[ -z "$falkor_args" ]]; then
+    falkor_args="$(get_env_value "FALKORDB_ARGS" "$ROOT_DIR/.env" || true)"
+  fi
+
+  local enforce_auth="${AUTO_CODEX_ENFORCE_FALKORDB_AUTH:-}"
+  local production="${AUTO_CODEX_PRODUCTION:-}"
+
+  if is_true "$production" || is_true "$enforce_auth"; then
+    if [[ -n "$falkor_password" ]]; then
+      log_ok "GRAPHITI_FALKORDB_PASSWORD set"
+    else
+      log_fail "GRAPHITI_FALKORDB_PASSWORD not set (required for production)"
+    fi
+    if [[ "$falkor_args" == *"--requirepass"* ]]; then
+      log_ok "FALKORDB_ARGS includes --requirepass"
+    else
+      log_fail "FALKORDB_ARGS missing --requirepass (required for production)"
+    fi
+  else
+    if [[ -n "$falkor_password" ]]; then
+      log_ok "GRAPHITI_FALKORDB_PASSWORD set"
+    else
+      log_warn "GRAPHITI_FALKORDB_PASSWORD not set (recommended for production)"
+    fi
+    if [[ "$falkor_args" == *"--requirepass"* ]]; then
+      log_ok "FALKORDB_ARGS includes --requirepass"
+    else
+      log_warn "FALKORDB_ARGS missing --requirepass (recommended for production)"
+    fi
+  fi
 }
 
 echo "Auto-Codex health check"
@@ -295,6 +364,7 @@ check_cmd git "git"
 check_git_repo
 check_git_clean
 check_auth
+check_sandbox
 check_graphiti
 
 # Lockfiles (recommended for deterministic installs)

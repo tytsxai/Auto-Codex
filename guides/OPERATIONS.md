@@ -20,6 +20,21 @@ Auto-Codex is primarily a **desktop app**. Production readiness focuses on:
 - Prefer exporting secrets via your shell/CI secret store instead of writing them to disk.
 - For production, keep the Codex CLI sandbox enabled: set `AUTO_CODEX_BYPASS_CODEX_SANDBOX=0`.
 
+### Risk Policy (UI Settings)
+
+The desktop app reads `riskPolicy` from `<userData>/settings.json` to gate high-impact automation.
+
+- Values: `conservative` (default), `standard`, `permissive`
+- Behavior: competitor analysis in Roadmap generation is **blocked unless** `riskPolicy` is `permissive`
+
+Example snippet:
+
+```json
+{
+  "riskPolicy": "permissive"
+}
+```
+
 ## Preflight Readiness Check
 
 Run before a release or after changing dependencies/env:
@@ -27,6 +42,8 @@ Run before a release or after changing dependencies/env:
 `./scripts/healthcheck.sh`
 
 This validates Python/Node/Git/Codex auth, ensures the git working tree is clean, and if Graphiti is enabled it checks Docker/Compose and pinned image tags. A non-zero exit indicates a blocking issue.
+
+For strict production gating, set `AUTO_CODEX_PRODUCTION=true` (or `AUTO_CODEX_ENFORCE_SANDBOX=true` / `AUTO_CODEX_ENFORCE_FALKORDB_AUTH=true`) to turn warnings into failures.
 
 ## Dependency Locking (Production)
 
@@ -128,6 +145,13 @@ Example cron (daily at 2am, keep 14 days):
 
 `0 2 * * * BACKUP_RETENTION_DAYS=14 /path/to/Auto-Codex/scripts/backup-falkordb.sh`
 
+Consistency modes (recommended for production):
+
+- `FALKORDB_BACKUP_MODE=save ./scripts/backup-falkordb.sh` (triggers `SAVE` before backup)
+- `FALKORDB_BACKUP_MODE=stop ./scripts/backup-falkordb.sh` (temporarily stops FalkorDB for a consistent volume snapshot)
+
+If auth is enabled, set `GRAPHITI_FALKORDB_PASSWORD` so the `SAVE` command can authenticate.
+
 Restore (destructive; stops services first):
 
 `./scripts/restore-falkordb.sh backups/<your_backup>.tar.gz`
@@ -144,15 +168,36 @@ If you are migrating from an existing container, **back up first**, then:
 1. `docker-compose down`
 2. `./scripts/backup-falkordb.sh`
 3. Remove the old container (volume preserved): `docker rm -f auto-codex-falkordb`
-4. Restart with hardened settings (appendonly + localhost bind + persistent volume): `docker-compose up -d`
+4. Restart with hardened settings (appendonly + localhost bind + persistent volume + auth):
+   - Set `FALKORDB_ARGS=--appendonly yes --requirepass <password>` in `.env`
+   - Set `GRAPHITI_FALKORDB_PASSWORD=<password>` in `auto-codex/.env` (and for Graphiti MCP)
+   - `docker-compose up -d`
 
 ### Task Logs Backup
 
 Back up `.auto-codex/` in each target project (or at least `.auto-codex/specs/**/logs`).
 
+### Task Logs Retention
+
+`task_logs.json` grows over time in each spec. For long-running tasks, set:
+
+`AUTO_CODEX_TASK_LOG_MAX_ENTRIES=2000`
+
+Set to `0` to disable pruning. Consider periodic cleanup of old specs under `.auto-codex/specs/`.
+
 ### UI State Backup
 
 Back up the Electron userData directory noted above if you need to preserve UI settings and profiles.
+
+### UI State Backup (Script)
+
+macOS/Linux helper:
+
+`./scripts/backup-userdata.sh`
+
+Optional retention:
+
+`BACKUP_RETENTION_DAYS=14 ./scripts/backup-userdata.sh`
 
 Restore steps:
 
@@ -166,6 +211,36 @@ Validation checklist (UI):
 - Settings values are present
 - You can open a project
 - Create a small change and restart; it persists
+
+### UI State Backup (Scheduled)
+
+If you rely on UI settings/profiles, back up userData on a schedule.
+
+macOS/Linux example (daily tarball, keep 14 days):
+
+```bash
+USERDATA_DIR="$HOME/Library/Application Support/Auto Codex"
+BACKUP_DIR="/path/to/backups"
+mkdir -p "$BACKUP_DIR"
+ts="$(date +%Y%m%d-%H%M%S)"
+tar -czf "$BACKUP_DIR/userdata-$ts.tar.gz" -C "$USERDATA_DIR" .
+find "$BACKUP_DIR" -name "userdata-*.tar.gz" -mtime +14 -delete
+```
+
+Windows example (PowerShell):
+
+```powershell
+$UserData = "$env:APPDATA\\Auto Codex"
+$BackupDir = "C:\\backups"
+New-Item -ItemType Directory -Force -Path $BackupDir | Out-Null
+$Stamp = Get-Date -Format "yyyyMMdd-HHmmss"
+Compress-Archive -Path "$UserData\\*" -DestinationPath "$BackupDir\\userdata-$Stamp.zip"
+Get-ChildItem $BackupDir -Filter "userdata-*.zip" | Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-14) } | Remove-Item
+```
+
+Notes:
+- Backups can include sensitive tokens; store them securely.
+- If you restore onto a different machine/user, you may need to re-authenticate.
 
 ### Main Process Logs (Desktop UI)
 
@@ -194,10 +269,50 @@ Perform a restore drill quarterly on a non-production machine:
 
 See `RELEASE.md` for the packaging flow and tag/version validation.
 
+### Roadmap Evaluation (CLI)
+
+When running the Roadmap generator via CLI, you can evaluate output quality:
+
+```bash
+python3 auto-codex/runners/roadmap_runner.py --project /path/to/project --eval
+python3 auto-codex/runners/roadmap_runner.py --project /path/to/project --eval --judge
+```
+
+- `--eval` writes `.auto-codex/roadmap/roadmap_eval.json`
+- `--judge` enables LLM-based judging (requires `--eval`)
+
+### Source Update Integrity
+
+The source updater verifies `SHA256SUMS` release assets before applying updates.
+If you must bypass verification (not recommended), set `AUTO_CODEX_ALLOW_UNSIGNED_UPDATES=true`.
+
 ### Rollback (Desktop App)
 
 - Keep at least the last 1–2 releases available in GitHub Releases.
 - Roll back by installing a prior release artifact.
+
+### Rollback (Auto-Codex Source Updates)
+
+The Desktop UI can update the bundled `auto-codex/` source in-place (stored under userData as a source override).
+Each update now creates a local backup before applying changes.
+
+**Paths (relative to userData):**
+- `auto-codex-source/` - active override used by the app (if present)
+- `auto-codex-updates/backup/` - last-known-good backup (overwritten each update)
+
+**Fast rollback to bundled version:**
+1. Quit the app.
+2. Delete `<userData>/auto-codex-source/`.
+3. Restart the app (it will fall back to the bundled source).
+
+**Rollback to previous source (if you want to keep the override):**
+1. Quit the app.
+2. Replace `<userData>/auto-codex-source/` with `<userData>/auto-codex-updates/backup/`.
+3. Restart the app.
+
+Notes:
+- `.env` and `specs/` are preserved across updates/rollbacks (they live alongside the source override).
+- If rollback fails, delete `auto-codex-source/` to force the bundled fallback.
 
 ### Rollback (Docker Services)
 

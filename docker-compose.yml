@@ -31,7 +31,7 @@ services:
     volumes:
       - falkordb_data:/data
     environment:
-      - FALKORDB_ARGS=--appendonly yes
+      - FALKORDB_ARGS=${FALKORDB_ARGS:---appendonly yes}
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -59,6 +59,9 @@ services:
       # Note: The image uses FALKORDB_HOST/PORT (not GRAPHITI_FALKORDB_HOST/PORT)
       FALKORDB_HOST: falkordb
       FALKORDB_PORT: "6379"
+      # Optional: FalkorDB password (recommended in production)
+      FALKORDB_PASSWORD: ${GRAPHITI_FALKORDB_PASSWORD:-}
+      GRAPHITI_FALKORDB_PASSWORD: ${GRAPHITI_FALKORDB_PASSWORD:-}
       # Optional: Custom model settings (OPENAI_API_KEY comes from env_file)
       MODEL_NAME: ${GRAPHITI_MODEL_NAME:-gpt-4o-mini}
       EMBEDDING_MODEL: ${GRAPHITI_EMBEDDING_MODEL:-text-embedding-3-small}

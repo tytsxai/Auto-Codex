@@ -162,11 +162,27 @@ Use this checklist when creating a new release:
 - [ ] Review commit and tag
 - [ ] Push commit and tag to GitHub
 - [ ] Create GitHub Release with release notes
+- [ ] Upload `SHA256SUMS` asset for source updates (required by updater)
 - [ ] Verify version validation passed
 - [ ] Verify builds completed successfully
 - [ ] Test the updater shows correct version
 - [ ] (macOS) Notarization + signing configured (if distributing externally)
 - [ ] (Windows) Code signing configured (if distributing externally)
+
+## Source Update Checksums
+
+Auto-Codex source updates verify a `SHA256SUMS` release asset before applying updates.
+
+Example flow:
+
+```bash
+TAG=v2.5.6
+curl -L "https://api.github.com/repos/tytsxai/Auto-Codex/tarball/refs/tags/${TAG}" -o auto-codex-update.tar.gz
+shasum -a 256 auto-codex-update.tar.gz > SHA256SUMS
+gh release upload "${TAG}" SHA256SUMS
+```
+
+If you need to bypass verification for development, set `AUTO_CODEX_ALLOW_UNSIGNED_UPDATES=true`.
 
 ## What Gets Released
 

@@ -1,18 +1,35 @@
-<!-- OPENSPEC:START -->
-# OpenSpec Instructions
+# AGENTS.md
 
-These instructions are for AI assistants working in this project.
+This file is the lightweight working guide for Codex/LLM agents in this repo.
 
-Always open `@/openspec/AGENTS.md` when the request:
-- Mentions planning or proposals (words like proposal, spec, change, plan)
-- Introduces new capabilities, breaking changes, architecture shifts, or big performance/security work
-- Sounds ambiguous and you need the authoritative spec before coding
+## Project overview
+- **Auto-Codex** is a multi-agent coding framework.
+- **auto-codex/**: Python backend (spec runner, agents, memory, security).
+- **auto-codex-ui/**: Electron + React desktop UI.
+- **guides/**: user-facing docs (CLI, Docker, operations).
 
-Use `@/openspec/AGENTS.md` to learn:
-- How to create and apply change proposals
-- Spec format and conventions
-- Project structure and guidelines
+## Key paths
+- Specs for *user projects* live in `/.auto-codex/` inside the target project, not in this repo.
+- Worktrees live under `.worktrees/` in the target project.
+- `.kiro/` is legacy tooling; its specs are deprecated and **intentionally removed**.
 
-Keep this managed block so 'openspec update' can refresh the instructions.
+## Common commands
+### UI (auto-codex-ui/)
+- Install: `pnpm install`
+- Dev: `pnpm run dev`
+- Build + start: `pnpm run build && pnpm run start`
+- Tests: `pnpm run test` (coverage: `pnpm run test:coverage`)
+- Lint: `pnpm run lint`
+- Typecheck: `pnpm run typecheck`
 
-<!-- OPENSPEC:END -->
+### Python backend (auto-codex/)
+- Create env: `uv venv && uv pip install -r requirements.txt`
+- Tests: `auto-codex/.venv/bin/python -m pytest -v`
+
+## IPC + shared types
+- IPC channels live in `auto-codex-ui/src/shared/constants/ipc.ts`.
+- When adding/renaming IPC handlers, update preload APIs in `auto-codex-ui/src/preload/` and shared types in `auto-codex-ui/src/shared/types/`.
+
+## Repo hygiene
+- Avoid committing generated folders (`auto-codex-ui/dist`, `auto-codex-ui/out`, `auto-codex-ui/coverage`).
+- Do not recreate `.kiro/specs` — it is deprecated and intentionally deleted.

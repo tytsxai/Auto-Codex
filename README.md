@@ -160,7 +160,11 @@ cd auto-codex-ui
 pnpm install
 # or: npm install
 
-# Build and start the application
+# Dev mode (hot reload)
+pnpm run dev
+# or: npm run dev
+
+# Production build + start
 pnpm run build && pnpm run start
 # or: npm run build && npm run start
 ```
@@ -183,6 +187,12 @@ Auto-Codex automatically downloads prebuilt binaries for Windows. If prebuilts a
 2. Create a new task describing what you want to build
 3. Watch as Auto-Codex creates a spec, plans, and implements your feature
 4. Review changes and merge when satisfied
+
+---
+
+## Legacy Notes
+
+- `.kiro/` (including `.kiro/specs`) is deprecated legacy tooling and is intentionally removed/ignored. Use `.auto-codex/` for specs and task data.
 
 ---
 

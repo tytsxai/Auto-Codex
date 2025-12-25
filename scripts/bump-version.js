@@ -84,10 +84,34 @@ function bumpVersion(currentVersion, bumpType) {
 // Execute shell command
 function exec(command, options = {}) {
   try {
-    return execSync(command, { encoding: 'utf8', stdio: 'pipe', ...options }).trim();
+    const result = execSync(command, { encoding: 'utf8', stdio: 'pipe', ...options });
+    if (typeof result === 'string') {
+      return result.trim();
+    }
+    if (Buffer.isBuffer(result)) {
+      return result.toString('utf8').trim();
+    }
+    return '';
   } catch (err) {
     error(`Command failed: ${command}\n${err.message}`);
   }
+}
+
+function runHealthcheckIfRequired() {
+  const requireHealthcheck = process.env.AUTO_CODEX_REQUIRE_HEALTHCHECK === 'true'
+    || process.env.AUTO_CODEX_PRODUCTION === 'true';
+  if (!requireHealthcheck) {
+    return;
+  }
+
+  const scriptPath = path.join(__dirname, 'healthcheck.sh');
+  if (!fs.existsSync(scriptPath)) {
+    error(`healthcheck.sh not found at ${scriptPath}`);
+  }
+
+  info('Running preflight healthcheck...');
+  exec(`"${scriptPath}"`, { stdio: 'inherit' });
+  success('Healthcheck passed');
 }
 
 // Check if git working directory is clean
@@ -126,6 +150,9 @@ function main() {
   }
 
   log('\n🚀 Auto-Codex Version Bump\n', colors.cyan);
+
+  // 0. Optional preflight healthcheck
+  runHealthcheckIfRequired();
 
   // 1. Check git status
   info('Checking git status...');
