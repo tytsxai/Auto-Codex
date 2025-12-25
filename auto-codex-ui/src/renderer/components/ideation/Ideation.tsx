@@ -1,4 +1,6 @@
+import { useState, useRef, useEffect } from 'react';
 import { TabsContent } from '../ui/tabs';
+import { ScrollArea } from '../ui/scroll-area';
 import { EnvConfigModal } from '../EnvConfigModal';
 import { IDEATION_TYPE_DESCRIPTIONS } from '../../../shared/constants';
 import { IdeationEmptyState } from './IdeationEmptyState';
@@ -73,6 +75,17 @@ export function Ideation({ projectId, onGoToTask }: IdeationProps) {
     getIdeasByType
   } = useIdeation(projectId, { onGoToTask });
 
+  // Local state for logs panel
+  const [showLogs, setShowLogs] = useState(false);
+  const logsEndRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom when logs update
+  useEffect(() => {
+    if (logsEndRef.current && showLogs) {
+      logsEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [logs, showLogs]);
+
   // Show generation progress with streaming ideas
   if (generationStatus.phase !== 'idle' && generationStatus.phase !== 'complete' && generationStatus.phase !== 'error') {
     return (
@@ -140,8 +153,11 @@ export function Ideation({ projectId, onGoToTask }: IdeationProps) {
         showDismissed={showDismissed}
         showArchived={showArchived}
         selectedCount={selectedIds.size}
+        hasLogs={logs.length > 0}
+        showLogs={showLogs}
         onToggleShowDismissed={() => setShowDismissed(!showDismissed)}
         onToggleShowArchived={() => setShowArchived(!showArchived)}
+        onToggleShowLogs={() => setShowLogs(!showLogs)}
         onOpenConfig={() => setShowConfigDialog(true)}
         onOpenAddMore={() => {
           setTypesToAdd([]);
@@ -155,6 +171,25 @@ export function Ideation({ projectId, onGoToTask }: IdeationProps) {
         hasActiveIdeas={activeIdeas.length > 0}
         canAddMore={getAvailableTypesToAdd().length > 0}
       />
+
+      {/* Logs Panel (collapsible) */}
+      {showLogs && logs.length > 0 && (
+        <div className="shrink-0 border-b border-border p-4 bg-muted/20">
+          <ScrollArea className="h-32 rounded-md border border-border bg-muted/30">
+            <div className="p-3 space-y-1 font-mono text-xs">
+              {logs.map((log, index) => (
+                <div key={index} className="text-muted-foreground leading-relaxed">
+                  <span className="text-muted-foreground/50 mr-2 select-none">
+                    {String(index + 1).padStart(3, '0')}
+                  </span>
+                  {log}
+                </div>
+              ))}
+              <div ref={logsEndRef} />
+            </div>
+          </ScrollArea>
+        </div>
+      )}
 
       {/* Content */}
       <div className="flex-1 overflow-hidden">

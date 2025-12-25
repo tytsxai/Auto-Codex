@@ -1,4 +1,4 @@
-import { Lightbulb, Eye, EyeOff, Settings2, Plus, Trash2, RefreshCw, Archive, CheckSquare, X } from 'lucide-react';
+import { Lightbulb, Eye, EyeOff, Settings2, Plus, Trash2, RefreshCw, Archive, CheckSquare, X, FileCode } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
@@ -12,8 +12,11 @@ interface IdeationHeaderProps {
   showDismissed: boolean;
   showArchived: boolean;
   selectedCount: number;
+  hasLogs: boolean;
+  showLogs: boolean;
   onToggleShowDismissed: () => void;
   onToggleShowArchived: () => void;
+  onToggleShowLogs: () => void;
   onOpenConfig: () => void;
   onOpenAddMore: () => void;
   onDismissAll: () => void;
@@ -31,8 +34,11 @@ export function IdeationHeader({
   showDismissed,
   showArchived,
   selectedCount,
+  hasLogs,
+  showLogs,
   onToggleShowDismissed,
   onToggleShowArchived,
+  onToggleShowLogs,
   onOpenConfig,
   onOpenAddMore,
   onDismissAll,
@@ -102,6 +108,25 @@ export function IdeationHeader({
                 <TooltipContent>全选</TooltipContent>
               </Tooltip>
             )
+          )}
+
+          {/* 日志按钮 */}
+          {hasLogs && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant={showLogs ? 'secondary' : 'outline'}
+                  size="sm"
+                  onClick={onToggleShowLogs}
+                >
+                  <FileCode className="h-4 w-4 mr-1" />
+                  {showLogs ? '隐藏日志' : '显示日志'}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {showLogs ? '隐藏生成日志' : '查看生成日志'}
+              </TooltipContent>
+            </Tooltip>
           )}
 
           {/* 视图切换 */}
