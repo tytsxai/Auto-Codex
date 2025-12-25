@@ -110,7 +110,7 @@ export function registerRoadmapHandlers(
     async (_, projectId: string): Promise<IPCResult<Roadmap | null>> => {
       const project = projectStore.getProject(projectId);
       if (!project) {
-        return { success: false, error: 'Project not found' };
+        return { success: false, error: '未找到项目' };
       }
 
       const roadmapPath = path.join(
@@ -239,7 +239,7 @@ export function registerRoadmapHandlers(
       } catch (error) {
         return {
           success: false,
-          error: error instanceof Error ? error.message : 'Failed to read roadmap'
+          error: error instanceof Error ? error.message : '读取路线图失败'
         };
       }
     }
@@ -281,7 +281,7 @@ export function registerRoadmapHandlers(
         mainWindow.webContents.send(
           IPC_CHANNELS.ROADMAP_ERROR,
           projectId,
-          'Project not found'
+          '未找到项目'
         );
         return;
       }
@@ -305,7 +305,7 @@ export function registerRoadmapHandlers(
       if (!pythonEnvManager.isEnvReady()) {
         const status = await pythonEnvManager.initialize(autoBuildSource);
         if (!status.ready || !status.pythonPath) {
-          mainWindow.webContents.send(IPC_CHANNELS.ROADMAP_ERROR, projectId, status.error || 'Python environment not ready');
+          mainWindow.webContents.send(IPC_CHANNELS.ROADMAP_ERROR, projectId, status.error || 'Python 环境未就绪');
           return;
         }
         agentManager.configure(status.pythonPath, autoBuildSource);
@@ -377,7 +377,7 @@ export function registerRoadmapHandlers(
         mainWindow.webContents.send(
           IPC_CHANNELS.ROADMAP_ERROR,
           projectId,
-          'Project not found'
+          '未找到项目'
         );
         return;
       }
@@ -401,7 +401,7 @@ export function registerRoadmapHandlers(
       if (!pythonEnvManager.isEnvReady()) {
         const status = await pythonEnvManager.initialize(autoBuildSource);
         if (!status.ready || !status.pythonPath) {
-          mainWindow.webContents.send(IPC_CHANNELS.ROADMAP_ERROR, projectId, status.error || 'Python environment not ready');
+          mainWindow.webContents.send(IPC_CHANNELS.ROADMAP_ERROR, projectId, status.error || 'Python 环境未就绪');
           return;
         }
         agentManager.configure(status.pythonPath, autoBuildSource);
@@ -476,7 +476,7 @@ export function registerRoadmapHandlers(
     ): Promise<IPCResult> => {
       const project = projectStore.getProject(projectId);
       if (!project) {
-        return { success: false, error: 'Project not found' };
+        return { success: false, error: '未找到项目' };
       }
 
       const roadmapPath = path.join(
@@ -486,7 +486,7 @@ export function registerRoadmapHandlers(
       );
 
       if (!existsSync(roadmapPath)) {
-        return { success: false, error: 'Roadmap not found' };
+        return { success: false, error: '未找到路线图' };
       }
 
       try {
@@ -521,7 +521,7 @@ export function registerRoadmapHandlers(
       } catch (error) {
         return {
           success: false,
-          error: error instanceof Error ? error.message : 'Failed to save roadmap'
+          error: error instanceof Error ? error.message : '保存路线图失败'
         };
       }
     }
@@ -537,7 +537,7 @@ export function registerRoadmapHandlers(
     ): Promise<IPCResult> => {
       const project = projectStore.getProject(projectId);
       if (!project) {
-        return { success: false, error: 'Project not found' };
+        return { success: false, error: '未找到项目' };
       }
 
       const roadmapPath = path.join(
@@ -547,7 +547,7 @@ export function registerRoadmapHandlers(
       );
 
       if (!existsSync(roadmapPath)) {
-        return { success: false, error: 'Roadmap not found' };
+        return { success: false, error: '未找到路线图' };
       }
 
       try {
@@ -557,7 +557,7 @@ export function registerRoadmapHandlers(
         // Find and update the feature
         const feature = roadmap.features?.find((f: { id: string }) => f.id === featureId);
         if (!feature) {
-          return { success: false, error: 'Feature not found' };
+          return { success: false, error: '未找到功能' };
         }
 
         feature.status = status;
@@ -570,7 +570,7 @@ export function registerRoadmapHandlers(
       } catch (error) {
         return {
           success: false,
-          error: error instanceof Error ? error.message : 'Failed to update feature'
+          error: error instanceof Error ? error.message : '更新功能失败'
         };
       }
     }
@@ -585,7 +585,7 @@ export function registerRoadmapHandlers(
     ): Promise<IPCResult<Task>> => {
       const project = projectStore.getProject(projectId);
       if (!project) {
-        return { success: false, error: 'Project not found' };
+        return { success: false, error: '未找到项目' };
       }
 
       const roadmapPath = path.join(
@@ -595,7 +595,7 @@ export function registerRoadmapHandlers(
       );
 
       if (!existsSync(roadmapPath)) {
-        return { success: false, error: 'Roadmap not found' };
+        return { success: false, error: '未找到路线图' };
       }
 
       try {
