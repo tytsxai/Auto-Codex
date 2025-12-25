@@ -1,6 +1,6 @@
 import type { BrowserWindow } from 'electron';
 import path from 'path';
-import { existsSync, readFileSync, writeFileSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import { IPC_CHANNELS, getSpecsDir, AUTO_BUILD_PATHS } from '../../shared/constants';
 import type {
   SDKRateLimitInfo,
@@ -15,6 +15,7 @@ import { titleGenerator } from '../title-generator';
 import { fileWatcher } from '../file-watcher';
 import { projectStore } from '../project-store';
 import { notificationService } from '../notification-service';
+import { atomicWriteFileSync } from '../utils/atomic-write';
 
 
 /**
@@ -126,7 +127,7 @@ export function registerAgenteventsHandlers(
               plan.status = newStatus;
               plan.planStatus = 'review';
               plan.updated_at = new Date().toISOString();
-              writeFileSync(planPath, JSON.stringify(plan, null, 2));
+              atomicWriteFileSync(planPath, JSON.stringify(plan, null, 2), { encoding: 'utf-8' });
               console.warn(`[Task ${taskId}] Persisted status '${newStatus}' to implementation_plan.json`);
             }
           }

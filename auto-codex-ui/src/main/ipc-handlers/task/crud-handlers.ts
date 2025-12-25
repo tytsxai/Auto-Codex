@@ -7,6 +7,8 @@ import { projectStore } from '../../project-store';
 import { titleGenerator } from '../../title-generator';
 import { AgentManager } from '../../agent';
 import { findTaskAndProject } from './shared';
+import { atomicWriteFileSync } from '../../utils/atomic-write';
+import { mapCategoryToWorkflowType } from '../../utils/workflow-type';
 
 /**
  * Register task CRUD (Create, Read, Update, Delete) handlers
@@ -143,28 +145,34 @@ export function registerTaskCRUDHandlers(agentManager: AgentManager): void {
 
       // Create initial implementation_plan.json (task is created but not started)
       const now = new Date().toISOString();
+      const workflowType = mapCategoryToWorkflowType(taskMetadata?.category);
       const implementationPlan = {
         feature: finalTitle,
         description: description,
         created_at: now,
         updated_at: now,
-        status: 'pending',
-        phases: []
+        status: 'backlog',
+        planStatus: 'pending',
+        phases: [],
+        workflow_type: workflowType,
+        services_involved: [],
+        final_acceptance: [],
+        spec_file: 'spec.md'
       };
 
       const planPath = path.join(specDir, AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN);
-      writeFileSync(planPath, JSON.stringify(implementationPlan, null, 2));
+      atomicWriteFileSync(planPath, JSON.stringify(implementationPlan, null, 2), { encoding: 'utf-8' });
 
       // Save task metadata if provided
       if (taskMetadata) {
         const metadataPath = path.join(specDir, 'task_metadata.json');
-        writeFileSync(metadataPath, JSON.stringify(taskMetadata, null, 2));
+        atomicWriteFileSync(metadataPath, JSON.stringify(taskMetadata, null, 2), { encoding: 'utf-8' });
       }
 
       // Create requirements.json with attached images
       const requirements: Record<string, unknown> = {
         task_description: description,
-        workflow_type: taskMetadata.category || 'feature'
+        workflow_type: workflowType
       };
 
       // Add attached images to requirements if present
@@ -177,7 +185,7 @@ export function registerTaskCRUDHandlers(agentManager: AgentManager): void {
       }
 
       const requirementsPath = path.join(specDir, AUTO_BUILD_PATHS.REQUIREMENTS);
-      writeFileSync(requirementsPath, JSON.stringify(requirements, null, 2));
+      atomicWriteFileSync(requirementsPath, JSON.stringify(requirements, null, 2), { encoding: 'utf-8' });
 
       // Create the task object
       const task: Task = {
@@ -304,7 +312,7 @@ export function registerTaskCRUDHandlers(agentManager: AgentManager): void {
             }
             plan.updated_at = new Date().toISOString();
 
-            writeFileSync(planPath, JSON.stringify(plan, null, 2));
+            atomicWriteFileSync(planPath, JSON.stringify(plan, null, 2), { encoding: 'utf-8' });
           } catch {
             // Plan file might not be valid JSON, continue anyway
           }
@@ -333,7 +341,7 @@ export function registerTaskCRUDHandlers(agentManager: AgentManager): void {
               );
             }
 
-            writeFileSync(specPath, specContent);
+            atomicWriteFileSync(specPath, specContent, { encoding: 'utf-8' });
           } catch {
             // Spec file update failed, continue anyway
           }
@@ -381,7 +389,7 @@ export function registerTaskCRUDHandlers(agentManager: AgentManager): void {
           // Update task_metadata.json
           const metadataPath = path.join(specDir, 'task_metadata.json');
           try {
-            writeFileSync(metadataPath, JSON.stringify(updatedMetadata, null, 2));
+            atomicWriteFileSync(metadataPath, JSON.stringify(updatedMetadata, null, 2), { encoding: 'utf-8' });
           } catch (err) {
             console.error('Failed to update task_metadata.json:', err);
           }
@@ -397,10 +405,10 @@ export function registerTaskCRUDHandlers(agentManager: AgentManager): void {
                 requirements.task_description = updates.description;
               }
               if (updates.metadata.category) {
-                requirements.workflow_type = updates.metadata.category;
+                requirements.workflow_type = mapCategoryToWorkflowType(updates.metadata.category);
               }
 
-              writeFileSync(requirementsPath, JSON.stringify(requirements, null, 2));
+              atomicWriteFileSync(requirementsPath, JSON.stringify(requirements, null, 2), { encoding: 'utf-8' });
             } catch (err) {
               console.error('Failed to update requirements.json:', err);
             }

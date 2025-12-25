@@ -10,6 +10,7 @@ import { getEffectiveSourcePath } from '../../auto-codex-updater';
 import { getProfileEnv } from '../../rate-limit-detector';
 import { findTaskAndProject } from './shared';
 import { findPythonCommand, parsePythonCommand } from '../../python-detector';
+import { atomicWriteFileSync } from '../../utils/atomic-write';
 
 /** Maximum retries for tracking staged changes */
 const TRACK_CHANGES_MAX_RETRIES = 2;
@@ -496,6 +497,15 @@ export function registerWorktreeHandlers(
         try {
           const gitStatusBefore = execSync('git status --short', { cwd: project.path, encoding: 'utf-8' });
           debug('Git status BEFORE merge in main project:\n', gitStatusBefore || '(clean)');
+          const hasUntracked = gitStatusBefore
+            .split('\n')
+            .some((line) => line.trim().startsWith('??'));
+          if (hasUntracked) {
+            return {
+              success: false,
+              error: '工作区存在未跟踪文件，合并可能导致数据丢失。请先清理或提交这些文件后再合并。'
+            };
+          }
           const gitBranch = execSync('git branch --show-current', { cwd: project.path, encoding: 'utf-8' }).trim();
           debug('Current branch:', gitBranch);
         } catch (e) {
@@ -734,7 +744,7 @@ export function registerWorktreeHandlers(
               const planPath = path.join(specDir, AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN);
               try {
                 if (existsSync(planPath)) {
-                  const { readFileSync, writeFileSync } = require('fs');
+                  const { readFileSync } = require('fs');
                   const planContent = readFileSync(planPath, 'utf-8');
                   const plan = JSON.parse(planContent);
                   plan.status = newStatus;
@@ -744,7 +754,7 @@ export function registerWorktreeHandlers(
                     plan.stagedAt = new Date().toISOString();
                     plan.stagedInMainProject = true;
                   }
-                  writeFileSync(planPath, JSON.stringify(plan, null, 2));
+                  atomicWriteFileSync(planPath, JSON.stringify(plan, null, 2), { encoding: 'utf-8' });
                 }
               } catch (persistError) {
                 console.error('Failed to persist task status:', persistError);

@@ -21,6 +21,31 @@ import type {
   OAuthTokenEvent
 } from './types';
 
+const TEMP_TOKEN_TTL_MS = 10 * 60 * 1000;
+
+export function cleanupStaleTokenFiles(): void {
+  try {
+    const tempDir = os.tmpdir();
+    const now = Date.now();
+    const entries = fs.readdirSync(tempDir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (!entry.isFile()) continue;
+      if (!entry.name.startsWith('.codex-token-')) continue;
+      const filePath = path.join(tempDir, entry.name);
+      try {
+        const stats = fs.statSync(filePath);
+        if (now - stats.mtimeMs > TEMP_TOKEN_TTL_MS) {
+          fs.unlinkSync(filePath);
+        }
+      } catch {
+        // Best-effort cleanup
+      }
+    }
+  } catch {
+    // Ignore cleanup failures
+  }
+}
+
 function getSettingsPath(): string | null {
   try {
     if (!app.isReady()) {
@@ -348,6 +373,14 @@ export function invokeCodex(
       const tempFile = path.join(os.tmpdir(), `.codex-token-${Date.now()}`);
       debugLog('[CodexIntegration:invokeCodex] Writing token to temp file:', tempFile);
       fs.writeFileSync(tempFile, `export CODEX_CODE_OAUTH_TOKEN="${token}"\n`, { mode: 0o600 });
+      const cleanupTimer = setTimeout(() => {
+        try {
+          fs.unlinkSync(tempFile);
+        } catch {
+          // Best-effort cleanup
+        }
+      }, TEMP_TOKEN_TTL_MS);
+      cleanupTimer.unref?.();
 
       // Clear terminal and run command without adding to shell history:
       // - HISTFILE= disables history file writing for the current command

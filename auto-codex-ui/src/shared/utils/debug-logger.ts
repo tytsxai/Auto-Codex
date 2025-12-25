@@ -7,27 +7,76 @@
 const LOG_MAX_BYTES = 5 * 1024 * 1024;
 const LOG_FILES_TO_KEEP = 5;
 
+type RequireFn = (id: string) => unknown;
+
+const getRequire = (): RequireFn => {
+  if (typeof require === 'function') {
+    return require;
+  }
+  const globalRequire = (globalThis as { require?: RequireFn }).require;
+  if (globalRequire) return globalRequire;
+  throw new Error('require is not available');
+};
+
+const getProcessType = (): string | undefined => {
+  if (typeof process !== 'undefined') {
+    const type = (process as { type?: string }).type;
+    if (type) return type;
+  }
+  if (typeof globalThis !== 'undefined') {
+    return (globalThis as { process?: { type?: string } }).process?.type;
+  }
+  return undefined;
+};
+
+const normalizeDebugPath = (value: string | undefined): string | undefined => {
+  if (!value) return undefined;
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  const lowered = trimmed.toLowerCase();
+  if (lowered === 'undefined' || lowered === 'null') return undefined;
+  return trimmed;
+};
+
+const getDebugLogOverride = (): string | undefined => {
+  if (typeof process !== 'undefined' && process.env?.DEBUG_LOG_PATH) {
+    return normalizeDebugPath(process.env.DEBUG_LOG_PATH);
+  }
+  if (typeof globalThis !== 'undefined') {
+    return normalizeDebugPath(
+      (globalThis as { process?: { env?: { DEBUG_LOG_PATH?: string } } }).process?.env?.DEBUG_LOG_PATH
+    );
+  }
+  return undefined;
+};
+
 const isDebugEnabled = (): boolean => {
   if (typeof process !== 'undefined' && process.env) {
     return process.env.DEBUG === 'true';
+  }
+  if (typeof globalThis !== 'undefined') {
+    return (globalThis as { process?: { env?: { DEBUG?: string } } }).process?.env?.DEBUG === 'true';
   }
   return false;
 };
 
 const isMainProcess = (): boolean => {
-  return typeof process !== 'undefined' && (process as { type?: string }).type === 'browser';
+  if (getDebugLogOverride()) return true;
+  return getProcessType() === 'browser';
 };
 
 const getLogPath = (): string | null => {
   if (!isMainProcess()) return null;
+  const overridePath = getDebugLogOverride();
+  if (overridePath) return overridePath;
   try {
     // Lazy require to avoid bundling fs/electron into the renderer.
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { app } = require('electron') as typeof import('electron');
+    const { app } = getRequire()('electron') as typeof import('electron');
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const fs = require('fs') as typeof import('fs');
+    const fs = getRequire()('fs') as typeof import('fs');
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const path = require('path') as typeof import('path');
+    const path = getRequire()('path') as typeof import('path');
     const logDir = path.join(app.getPath('userData'), 'logs');
     if (!fs.existsSync(logDir)) {
       fs.mkdirSync(logDir, { recursive: true });
@@ -56,6 +105,7 @@ const redactValue = (value: unknown): unknown => {
   if (typeof value === 'string') {
     return value
       .replace(/(sk-[A-Za-z0-9_-]{10,})/g, '[REDACTED]')
+      .replace(/(codex_oauth_[A-Za-z0-9._-]{10,})/g, '[REDACTED]')
       .replace(/(ghp_[A-Za-z0-9]{10,})/g, '[REDACTED]')
       .replace(/(gho_[A-Za-z0-9]{10,})/g, '[REDACTED]')
       .replace(/(ya29\.[A-Za-z0-9._-]{10,})/g, '[REDACTED]');
@@ -80,9 +130,9 @@ const formatArgs = (args: unknown[]): string => {
 const rotateLogsIfNeeded = (logPath: string): void => {
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const fs = require('fs') as typeof import('fs');
+    const fs = getRequire()('fs') as typeof import('fs');
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const path = require('path') as typeof import('path');
+    const path = getRequire()('path') as typeof import('path');
     if (!fs.existsSync(logPath)) return;
     const size = fs.statSync(logPath).size;
     if (size < LOG_MAX_BYTES) return;
@@ -115,7 +165,7 @@ const appendToLog = (level: 'log' | 'warn' | 'error', args: unknown[]): void => 
 
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const fs = require('fs') as typeof import('fs');
+    const fs = getRequire()('fs') as typeof import('fs');
     rotateLogsIfNeeded(logPath);
     const line = `[${new Date().toISOString()}] [${level}] ${formatArgs(args)}\n`;
     fs.appendFileSync(logPath, line, 'utf8');

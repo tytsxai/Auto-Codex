@@ -3,8 +3,30 @@
  * Tests Zustand store for task state management
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { useTaskStore } from '../stores/task-store';
-import type { Task, TaskStatus, ImplementationPlan } from '../../shared/types';
+import {
+  useTaskStore,
+  loadTasks,
+  createTask,
+  deleteTask,
+  startTask,
+  stopTask,
+  submitReview,
+  persistTaskStatus,
+  persistUpdateTask,
+  checkTaskRunning,
+  recoverStuckTask,
+  archiveTasks,
+  saveDraft,
+  loadDraft,
+  clearDraft,
+  hasDraft,
+  isDraftEmpty,
+  getTaskByGitHubIssue,
+  isIncompleteHumanReview,
+  getCompletedSubtaskCount,
+  getTaskProgress
+} from '../stores/task-store';
+import type { Task, TaskStatus, ImplementationPlan, TaskDraft } from '../../shared/types';
 
 // Helper to create test tasks
 function createTestTask(overrides: Partial<Task> = {}): Task {
@@ -49,7 +71,58 @@ function createTestPlan(overrides: Partial<ImplementationPlan> = {}): Implementa
 }
 
 describe('Task Store', () => {
+  let electronAPI: {
+    getTasks: ReturnType<typeof vi.fn>;
+    createTask: ReturnType<typeof vi.fn>;
+    startTask: ReturnType<typeof vi.fn>;
+    stopTask: ReturnType<typeof vi.fn>;
+    submitReview: ReturnType<typeof vi.fn>;
+    updateTaskStatus: ReturnType<typeof vi.fn>;
+    updateTask: ReturnType<typeof vi.fn>;
+    checkTaskRunning: ReturnType<typeof vi.fn>;
+    recoverStuckTask: ReturnType<typeof vi.fn>;
+    deleteTask: ReturnType<typeof vi.fn>;
+    archiveTasks: ReturnType<typeof vi.fn>;
+  };
+  const localStorageMock = (() => {
+    let store: Record<string, string> = {};
+    return {
+      getItem: (key: string) => (key in store ? store[key] : null),
+      setItem: (key: string, value: string) => {
+        store[key] = value;
+      },
+      removeItem: (key: string) => {
+        delete store[key];
+      },
+      clear: () => {
+        store = {};
+      }
+    };
+  })();
+
   beforeEach(() => {
+    electronAPI = {
+      getTasks: vi.fn(),
+      createTask: vi.fn(),
+      startTask: vi.fn(),
+      stopTask: vi.fn(),
+      submitReview: vi.fn(),
+      updateTaskStatus: vi.fn(),
+      updateTask: vi.fn(),
+      checkTaskRunning: vi.fn(),
+      recoverStuckTask: vi.fn(),
+      deleteTask: vi.fn(),
+      archiveTasks: vi.fn()
+    };
+
+    if (!(globalThis as typeof globalThis & { window?: Window }).window) {
+      (globalThis as typeof globalThis & { window: Window }).window = {} as Window;
+    }
+
+    (window as Window & { electronAPI: typeof electronAPI }).electronAPI = electronAPI;
+    (globalThis as typeof globalThis & { localStorage?: Storage }).localStorage = localStorageMock as Storage;
+    localStorageMock.clear();
+
     // Reset store to initial state before each test
     useTaskStore.setState({
       tasks: [],
@@ -192,6 +265,27 @@ describe('Task Store', () => {
         originalDate.getTime()
       );
     });
+
+    it('should reset execution progress when status returns to backlog', () => {
+      useTaskStore.setState({
+        tasks: [
+          createTestTask({
+            id: 'task-1',
+            status: 'in_progress',
+            executionProgress: { phase: 'coding', phaseProgress: 50, overallProgress: 60 }
+          })
+        ]
+      });
+
+      useTaskStore.getState().updateTaskStatus('task-1', 'backlog');
+
+      expect(useTaskStore.getState().tasks[0].status).toBe('backlog');
+      expect(useTaskStore.getState().tasks[0].executionProgress).toEqual({
+        phase: 'idle',
+        phaseProgress: 0,
+        overallProgress: 0
+      });
+    });
   });
 
   describe('updateTaskFromPlan', () => {
@@ -330,6 +424,51 @@ describe('Task Store', () => {
       useTaskStore.getState().updateTaskFromPlan('task-1', plan);
 
       expect(useTaskStore.getState().tasks[0].title).toBe('New Feature Name');
+    });
+
+    it('should set human_review and reviewReason for manual tasks when all subtasks completed', () => {
+      useTaskStore.setState({
+        tasks: [
+          createTestTask({
+            id: 'task-1',
+            status: 'in_progress',
+            metadata: { sourceType: 'manual' }
+          })
+        ]
+      });
+
+      const plan = createTestPlan({
+        phases: [
+          {
+            phase: 1,
+            name: 'Phase 1',
+            type: 'implementation',
+            subtasks: [{ id: 'c1', description: 'Subtask 1', status: 'completed' }]
+          }
+        ]
+      });
+
+      useTaskStore.getState().updateTaskFromPlan('task-1', plan);
+
+      expect(useTaskStore.getState().tasks[0].status).toBe('human_review');
+      expect(useTaskStore.getState().tasks[0].reviewReason).toBe('completed');
+    });
+  });
+
+  describe('updateExecutionProgress', () => {
+    it('should initialize and merge execution progress updates', () => {
+      useTaskStore.setState({
+        tasks: [createTestTask({ id: 'task-1' })]
+      });
+
+      useTaskStore.getState().updateExecutionProgress('task-1', { phase: 'coding' });
+      useTaskStore.getState().updateExecutionProgress('task-1', { phaseProgress: 40 });
+
+      expect(useTaskStore.getState().tasks[0].executionProgress).toEqual({
+        phase: 'coding',
+        phaseProgress: 40,
+        overallProgress: 0
+      });
     });
   });
 
@@ -510,6 +649,449 @@ describe('Task Store', () => {
         expect(tasks).toHaveLength(1);
         expect(tasks[0].status).toBe(status);
       });
+    });
+  });
+
+  describe('task API operations', () => {
+    it('loadTasks should set tasks on success', async () => {
+      const tasks = [createTestTask({ id: 'task-1' })];
+      electronAPI.getTasks.mockResolvedValue({ success: true, data: tasks });
+
+      await loadTasks('project-1');
+
+      expect(electronAPI.getTasks).toHaveBeenCalledWith('project-1');
+      expect(useTaskStore.getState().tasks).toHaveLength(1);
+      expect(useTaskStore.getState().error).toBeNull();
+      expect(useTaskStore.getState().isLoading).toBe(false);
+    });
+
+    it('loadTasks should set error on failure response', async () => {
+      electronAPI.getTasks.mockResolvedValue({ success: false, error: 'nope' });
+
+      await loadTasks('project-1');
+
+      expect(useTaskStore.getState().tasks).toHaveLength(0);
+      expect(useTaskStore.getState().error).toBe('nope');
+      expect(useTaskStore.getState().isLoading).toBe(false);
+    });
+
+    it('loadTasks should set error on thrown exception', async () => {
+      electronAPI.getTasks.mockRejectedValue(new Error('boom'));
+
+      await loadTasks('project-1');
+
+      expect(useTaskStore.getState().error).toBe('boom');
+      expect(useTaskStore.getState().isLoading).toBe(false);
+    });
+
+    it('createTask should add task and return it on success', async () => {
+      const task = createTestTask({ id: 'task-1' });
+      electronAPI.createTask.mockResolvedValue({ success: true, data: task });
+
+      const result = await createTask('project-1', 'Title', 'Desc');
+
+      expect(result).toEqual(task);
+      expect(useTaskStore.getState().tasks).toHaveLength(1);
+      expect(useTaskStore.getState().tasks[0].id).toBe('task-1');
+    });
+
+    it('createTask should set error and return null on failure', async () => {
+      electronAPI.createTask.mockResolvedValue({ success: false, error: 'bad' });
+
+      const result = await createTask('project-1', 'Title', 'Desc');
+
+      expect(result).toBeNull();
+      expect(useTaskStore.getState().error).toBe('bad');
+    });
+
+    it('createTask should set error and return null on exception', async () => {
+      electronAPI.createTask.mockRejectedValue(new Error('explode'));
+
+      const result = await createTask('project-1', 'Title', 'Desc');
+
+      expect(result).toBeNull();
+      expect(useTaskStore.getState().error).toBe('explode');
+    });
+
+    it('deleteTask should remove task and clear selection on success', async () => {
+      useTaskStore.setState({
+        tasks: [
+          createTestTask({ id: 'task-1' }),
+          createTestTask({ id: 'task-2' })
+        ],
+        selectedTaskId: 'task-1'
+      });
+      electronAPI.deleteTask.mockResolvedValue({ success: true });
+
+      const result = await deleteTask('task-1');
+
+      expect(result.success).toBe(true);
+      expect(useTaskStore.getState().tasks).toHaveLength(1);
+      expect(useTaskStore.getState().tasks[0].id).toBe('task-2');
+      expect(useTaskStore.getState().selectedTaskId).toBeNull();
+    });
+
+    it('deleteTask should return error on failure', async () => {
+      electronAPI.deleteTask.mockResolvedValue({ success: false, error: 'nope' });
+
+      const result = await deleteTask('task-1');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('nope');
+    });
+
+    it('deleteTask should return error on exception', async () => {
+      electronAPI.deleteTask.mockRejectedValue(new Error('boom'));
+
+      const result = await deleteTask('task-1');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('boom');
+    });
+
+    it('startTask and stopTask should call electronAPI', () => {
+      startTask('task-1', { parallel: true, workers: 2 });
+      stopTask('task-1');
+
+      expect(electronAPI.startTask).toHaveBeenCalledWith('task-1', { parallel: true, workers: 2 });
+      expect(electronAPI.stopTask).toHaveBeenCalledWith('task-1');
+    });
+
+    it('submitReview should update status and return true on success', async () => {
+      const updateSpy = vi.spyOn(useTaskStore.getState(), 'updateTaskStatus');
+      electronAPI.submitReview.mockResolvedValue({ success: true });
+
+      const result = await submitReview('task-1', true, 'looks good');
+
+      expect(result).toBe(true);
+      expect(updateSpy).toHaveBeenCalledWith('task-1', 'done');
+    });
+
+    it('submitReview should return false on failure response', async () => {
+      electronAPI.submitReview.mockResolvedValue({ success: false });
+
+      const result = await submitReview('task-1', false, 'needs work');
+
+      expect(result).toBe(false);
+    });
+
+    it('submitReview should return false on exception', async () => {
+      electronAPI.submitReview.mockRejectedValue(new Error('fail'));
+
+      const result = await submitReview('task-1', true);
+
+      expect(result).toBe(false);
+    });
+
+    it('persistTaskStatus should revert on failure response', async () => {
+      const originalDate = new Date('2024-01-01');
+      useTaskStore.setState({
+        tasks: [
+          createTestTask({
+            id: 'task-1',
+            status: 'in_progress',
+            executionProgress: { phase: 'coding', phaseProgress: 10, overallProgress: 10 },
+            updatedAt: originalDate
+          })
+        ]
+      });
+      electronAPI.updateTaskStatus.mockResolvedValue({ success: false, error: 'nope' });
+
+      const result = await persistTaskStatus('task-1', 'backlog');
+
+      expect(result).toBe(false);
+      const task = useTaskStore.getState().tasks[0];
+      expect(task.status).toBe('in_progress');
+      expect(task.executionProgress).toEqual({
+        phase: 'coding',
+        phaseProgress: 10,
+        overallProgress: 10
+      });
+      expect(task.updatedAt).toEqual(originalDate);
+    });
+
+    it('persistTaskStatus should revert on exception', async () => {
+      const originalDate = new Date('2024-02-01');
+      useTaskStore.setState({
+        tasks: [
+          createTestTask({
+            id: 'task-1',
+            status: 'in_progress',
+            updatedAt: originalDate
+          })
+        ]
+      });
+      electronAPI.updateTaskStatus.mockRejectedValue(new Error('fail'));
+
+      const result = await persistTaskStatus('task-1', 'done');
+
+      expect(result).toBe(false);
+      expect(useTaskStore.getState().tasks[0].status).toBe('in_progress');
+      expect(useTaskStore.getState().tasks[0].updatedAt).toEqual(originalDate);
+    });
+
+    it('persistTaskStatus should return true on success', async () => {
+      useTaskStore.setState({
+        tasks: [createTestTask({ id: 'task-1', status: 'backlog' })]
+      });
+      electronAPI.updateTaskStatus.mockResolvedValue({ success: true });
+
+      const result = await persistTaskStatus('task-1', 'in_progress');
+
+      expect(result).toBe(true);
+      expect(useTaskStore.getState().tasks[0].status).toBe('in_progress');
+    });
+
+    it('persistUpdateTask should update local task when API succeeds', async () => {
+      useTaskStore.setState({
+        tasks: [createTestTask({ id: 'task-1', title: 'Old', description: 'Old' })]
+      });
+      electronAPI.updateTask.mockResolvedValue({
+        success: true,
+        data: {
+          title: 'New Title',
+          description: 'New Desc',
+          metadata: { priority: 'high' }
+        }
+      });
+
+      const result = await persistUpdateTask('task-1', { title: 'New Title' });
+
+      expect(result).toBe(true);
+      expect(useTaskStore.getState().tasks[0].title).toBe('New Title');
+      expect(useTaskStore.getState().tasks[0].description).toBe('New Desc');
+    });
+
+    it('persistUpdateTask should return false on failure', async () => {
+      electronAPI.updateTask.mockResolvedValue({ success: false, error: 'nope' });
+
+      const result = await persistUpdateTask('task-1', { title: 'New Title' });
+
+      expect(result).toBe(false);
+    });
+
+    it('persistUpdateTask should return false on exception', async () => {
+      electronAPI.updateTask.mockRejectedValue(new Error('boom'));
+
+      const result = await persistUpdateTask('task-1', { title: 'New Title' });
+
+      expect(result).toBe(false);
+    });
+
+    it('checkTaskRunning should return true when running', async () => {
+      electronAPI.checkTaskRunning.mockResolvedValue({ success: true, data: true });
+
+      const result = await checkTaskRunning('task-1');
+
+      expect(result).toBe(true);
+    });
+
+    it('checkTaskRunning should return false on failure', async () => {
+      electronAPI.checkTaskRunning.mockResolvedValue({ success: false, data: false });
+
+      const result = await checkTaskRunning('task-1');
+
+      expect(result).toBe(false);
+    });
+
+    it('checkTaskRunning should return false on exception', async () => {
+      electronAPI.checkTaskRunning.mockRejectedValue(new Error('boom'));
+
+      const result = await checkTaskRunning('task-1');
+
+      expect(result).toBe(false);
+    });
+
+    it('recoverStuckTask should update status and return success', async () => {
+      useTaskStore.setState({
+        tasks: [createTestTask({ id: 'task-1', status: 'in_progress' })]
+      });
+      electronAPI.recoverStuckTask.mockResolvedValue({
+        success: true,
+        data: { newStatus: 'backlog', message: 'Recovered', autoRestarted: true }
+      });
+
+      const result = await recoverStuckTask('task-1', { autoRestart: true });
+
+      expect(result.success).toBe(true);
+      expect(result.message).toBe('Recovered');
+      expect(result.autoRestarted).toBe(true);
+      expect(useTaskStore.getState().tasks[0].status).toBe('backlog');
+    });
+
+    it('recoverStuckTask should return error message on failure', async () => {
+      electronAPI.recoverStuckTask.mockResolvedValue({ success: false, error: 'nope' });
+
+      const result = await recoverStuckTask('task-1', { autoRestart: false });
+
+      expect(result.success).toBe(false);
+      expect(result.message).toBe('nope');
+    });
+
+    it('recoverStuckTask should return error message on exception', async () => {
+      electronAPI.recoverStuckTask.mockRejectedValue(new Error('boom'));
+
+      const result = await recoverStuckTask('task-1');
+
+      expect(result.success).toBe(false);
+      expect(result.message).toBe('boom');
+    });
+
+    it('archiveTasks should reload tasks on success', async () => {
+      const tasks = [createTestTask({ id: 'task-1' })];
+      electronAPI.archiveTasks.mockResolvedValue({ success: true });
+      electronAPI.getTasks.mockResolvedValue({ success: true, data: tasks });
+
+      const result = await archiveTasks('project-1', ['task-1'], '1.2.3');
+
+      expect(result.success).toBe(true);
+      expect(electronAPI.archiveTasks).toHaveBeenCalledWith('project-1', ['task-1'], '1.2.3');
+      expect(useTaskStore.getState().tasks).toHaveLength(1);
+    });
+
+    it('archiveTasks should return error on failure', async () => {
+      electronAPI.archiveTasks.mockResolvedValue({ success: false, error: 'nope' });
+
+      const result = await archiveTasks('project-1', ['task-1']);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('nope');
+    });
+
+    it('archiveTasks should return error on exception', async () => {
+      electronAPI.archiveTasks.mockRejectedValue(new Error('boom'));
+
+      const result = await archiveTasks('project-1', ['task-1']);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('boom');
+    });
+  });
+
+  describe('draft helpers and task utilities', () => {
+    it('saveDraft/loadDraft/clearDraft should round-trip draft data', () => {
+      const draft: TaskDraft = {
+        projectId: 'project-1',
+        title: 'Draft Title',
+        description: 'Draft description',
+        category: '',
+        priority: '',
+        complexity: '',
+        impact: '',
+        model: '',
+        thinkingLevel: '',
+        images: [
+          {
+            id: 'img-1',
+            filename: 'img.png',
+            mimeType: 'image/png',
+            size: 10,
+            data: 'data',
+            thumbnail: 'thumb'
+          }
+        ],
+        referencedFiles: [],
+        savedAt: new Date('2024-03-01')
+      };
+
+      saveDraft(draft);
+      expect(hasDraft('project-1')).toBe(true);
+
+      const loaded = loadDraft('project-1');
+      expect(loaded?.title).toBe('Draft Title');
+      expect(loaded?.savedAt).toBeInstanceOf(Date);
+      expect(loaded?.images[0].data).toBeUndefined();
+
+      clearDraft('project-1');
+      expect(hasDraft('project-1')).toBe(false);
+    });
+
+    it('loadDraft should return null on invalid JSON', () => {
+      localStorage.setItem('task-creation-draft-project-1', 'not-json');
+
+      const result = loadDraft('project-1');
+
+      expect(result).toBeNull();
+    });
+
+    it('isDraftEmpty should detect empty and non-empty drafts', () => {
+      expect(isDraftEmpty(null)).toBe(true);
+      expect(
+        isDraftEmpty({
+          projectId: 'project-1',
+          title: '',
+          description: '',
+          category: '',
+          priority: '',
+          complexity: '',
+          impact: '',
+          model: '',
+          thinkingLevel: '',
+          images: [],
+          referencedFiles: [],
+          savedAt: new Date()
+        })
+      ).toBe(true);
+      expect(
+        isDraftEmpty({
+          projectId: 'project-1',
+          title: 'Has title',
+          description: '',
+          category: '',
+          priority: '',
+          complexity: '',
+          impact: '',
+          model: '',
+          thinkingLevel: '',
+          images: [],
+          referencedFiles: [],
+          savedAt: new Date()
+        })
+      ).toBe(false);
+    });
+
+    it('getTaskByGitHubIssue should find matching task', () => {
+      useTaskStore.setState({
+        tasks: [
+          createTestTask({ id: 'task-1', metadata: { githubIssueNumber: 123 } }),
+          createTestTask({ id: 'task-2', metadata: { githubIssueNumber: 456 } })
+        ]
+      });
+
+      const task = getTaskByGitHubIssue(456);
+
+      expect(task?.id).toBe('task-2');
+    });
+
+    it('isIncompleteHumanReview should detect incomplete review states', () => {
+      expect(
+        isIncompleteHumanReview(createTestTask({ status: 'backlog', subtasks: [] }))
+      ).toBe(false);
+
+      expect(
+        isIncompleteHumanReview(createTestTask({ status: 'human_review', subtasks: [] }))
+      ).toBe(true);
+
+      expect(
+        isIncompleteHumanReview(
+          createTestTask({
+            status: 'human_review',
+            subtasks: [{ id: 's1', title: 't', description: 'd', status: 'completed', files: [] }]
+          })
+        )
+      ).toBe(false);
+    });
+
+    it('getCompletedSubtaskCount and getTaskProgress should compute progress', () => {
+      const task = createTestTask({
+        subtasks: [
+          { id: 's1', title: 't1', description: 'd', status: 'completed', files: [] },
+          { id: 's2', title: 't2', description: 'd', status: 'pending', files: [] }
+        ]
+      });
+
+      expect(getCompletedSubtaskCount(task)).toBe(1);
+      expect(getTaskProgress(task)).toEqual({ completed: 1, total: 2, percentage: 50 });
     });
   });
 });

@@ -3,7 +3,16 @@
  * Tests Zustand store for roadmap state management including drag-and-drop actions
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { useRoadmapStore, getFeaturesByPhase, getFeaturesByPriority, getFeatureStats } from '../stores/roadmap-store';
+import {
+  useRoadmapStore,
+  getFeaturesByPhase,
+  getFeaturesByPriority,
+  getFeatureStats,
+  loadRoadmap,
+  generateRoadmap,
+  refreshRoadmap,
+  stopRoadmap
+} from '../stores/roadmap-store';
 import type {
   Roadmap,
   RoadmapFeature,
@@ -70,8 +79,56 @@ function createTestRoadmap(overrides: Partial<Roadmap> = {}): Roadmap {
   };
 }
 
+function createTestCompetitorAnalysis() {
+  return {
+    projectContext: {
+      projectName: 'Test Project',
+      projectType: 'SaaS',
+      targetAudience: 'Developers'
+    },
+    competitors: [],
+    marketGaps: [],
+    insightsSummary: {
+      topPainPoints: [],
+      differentiatorOpportunities: [],
+      marketTrends: []
+    },
+    researchMetadata: {
+      searchQueriesUsed: [],
+      sourcesConsulted: [],
+      limitations: []
+    },
+    createdAt: new Date()
+  };
+}
+
 describe('Roadmap Store', () => {
+  let electronAPI: {
+    getRoadmapStatus: ReturnType<typeof vi.fn>;
+    getRoadmap: ReturnType<typeof vi.fn>;
+    saveRoadmap: ReturnType<typeof vi.fn>;
+    generateRoadmap: ReturnType<typeof vi.fn>;
+    refreshRoadmap: ReturnType<typeof vi.fn>;
+    stopRoadmap: ReturnType<typeof vi.fn>;
+  };
+
   beforeEach(() => {
+    electronAPI = {
+      getRoadmapStatus: vi.fn().mockResolvedValue({ success: true, data: { isRunning: false } }),
+      getRoadmap: vi.fn(),
+      saveRoadmap: vi.fn().mockResolvedValue({ success: true }),
+      generateRoadmap: vi.fn(),
+      refreshRoadmap: vi.fn(),
+      stopRoadmap: vi.fn()
+    };
+
+    if (!(globalThis as typeof globalThis & { window?: Window }).window) {
+      (globalThis as typeof globalThis & { window: Window }).window = {} as Window;
+    }
+
+    (window as Window & { electronAPI: typeof electronAPI }).electronAPI = electronAPI;
+    (window as Window & { DEBUG?: boolean }).DEBUG = false;
+
     // Reset store to initial state before each test
     useRoadmapStore.setState({
       roadmap: null,
@@ -80,7 +137,8 @@ describe('Roadmap Store', () => {
         phase: 'idle',
         progress: 0,
         message: ''
-      }
+      },
+      currentProjectId: null
     });
   });
 
@@ -516,6 +574,42 @@ describe('Roadmap Store', () => {
     });
   });
 
+  describe('markFeatureDoneBySpecId', () => {
+    it('should mark matching feature as done', () => {
+      const features = [
+        createTestFeature({ id: 'feature-1', linkedSpecId: 'spec-1', status: 'under_review' }),
+        createTestFeature({ id: 'feature-2', linkedSpecId: 'spec-2', status: 'planned' })
+      ];
+      const roadmap = createTestRoadmap({ features });
+
+      useRoadmapStore.setState({ roadmap });
+
+      useRoadmapStore.getState().markFeatureDoneBySpecId('spec-1');
+
+      const state = useRoadmapStore.getState();
+      expect(state.roadmap?.features.find((f) => f.id === 'feature-1')?.status).toBe('done');
+      expect(state.roadmap?.features.find((f) => f.id === 'feature-2')?.status).toBe('planned');
+    });
+  });
+
+  describe('deleteFeature', () => {
+    it('should remove feature by id', () => {
+      const features = [
+        createTestFeature({ id: 'feature-1' }),
+        createTestFeature({ id: 'feature-2' })
+      ];
+      const roadmap = createTestRoadmap({ features });
+
+      useRoadmapStore.setState({ roadmap });
+
+      useRoadmapStore.getState().deleteFeature('feature-1');
+
+      const state = useRoadmapStore.getState();
+      expect(state.roadmap?.features).toHaveLength(1);
+      expect(state.roadmap?.features[0].id).toBe('feature-2');
+    });
+  });
+
   describe('clearRoadmap', () => {
     it('should clear roadmap and reset status', () => {
       useRoadmapStore.setState({
@@ -533,6 +627,140 @@ describe('Roadmap Store', () => {
       expect(state.roadmap).toBeNull();
       expect(state.generationStatus.phase).toBe('idle');
       expect(state.generationStatus.progress).toBe(0);
+    });
+  });
+
+  describe('loadRoadmap', () => {
+    it('should set running status, migrate roadmap, and persist changes', async () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      (window as Window & { DEBUG?: boolean }).DEBUG = true;
+
+      const roadmap = createTestRoadmap({
+        features: [
+          createTestFeature({ id: 'feature-1', status: 'idea' as RoadmapFeatureStatus, source: undefined })
+        ],
+        competitorAnalysis: createTestCompetitorAnalysis()
+      });
+
+      electronAPI.getRoadmapStatus.mockResolvedValue({ success: true, data: { isRunning: true } });
+      electronAPI.getRoadmap.mockResolvedValue({ success: true, data: roadmap });
+
+      await loadRoadmap('project-1');
+
+      const state = useRoadmapStore.getState();
+      expect(state.currentProjectId).toBe('project-1');
+      expect(state.generationStatus.phase).toBe('analyzing');
+      expect(state.generationStatus.message).toBe('Roadmap generation in progress...');
+      expect(state.roadmap?.features[0].status).toBe('under_review');
+      expect(state.roadmap?.features[0].source?.provider).toBe('internal');
+      expect(state.competitorAnalysis?.projectContext.projectName).toBe('Test Project');
+      expect(electronAPI.saveRoadmap).toHaveBeenCalledTimes(1);
+      expect(warnSpy).toHaveBeenCalled();
+
+      warnSpy.mockRestore();
+    });
+
+    it('should reset to idle and avoid save when no migration needed', async () => {
+      const roadmap = createTestRoadmap({
+        features: [
+          createTestFeature({
+            id: 'feature-1',
+            status: 'under_review' as RoadmapFeatureStatus,
+            source: { provider: 'canny' }
+          })
+        ]
+      });
+
+      electronAPI.getRoadmapStatus.mockResolvedValue({ success: false });
+      electronAPI.getRoadmap.mockResolvedValue({ success: true, data: roadmap });
+
+      await loadRoadmap('project-2');
+
+      const state = useRoadmapStore.getState();
+      expect(state.generationStatus.phase).toBe('idle');
+      expect(state.roadmap).toBe(roadmap);
+      expect(state.competitorAnalysis).toBeNull();
+      expect(electronAPI.saveRoadmap).not.toHaveBeenCalled();
+    });
+
+    it('should clear roadmap when fetch fails', async () => {
+      useRoadmapStore.setState({ roadmap: createTestRoadmap(), competitorAnalysis: createTestCompetitorAnalysis() });
+      electronAPI.getRoadmap.mockResolvedValue({ success: false });
+
+      await loadRoadmap('project-3');
+
+      const state = useRoadmapStore.getState();
+      expect(state.roadmap).toBeNull();
+      expect(state.competitorAnalysis).toBeNull();
+    });
+
+    it('should log error when saving migrated roadmap fails', async () => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const roadmap = createTestRoadmap({
+        features: [createTestFeature({ id: 'feature-1', status: 'idea' as RoadmapFeatureStatus })]
+      });
+
+      electronAPI.getRoadmap.mockResolvedValue({ success: true, data: roadmap });
+      electronAPI.saveRoadmap.mockRejectedValue(new Error('save failed'));
+
+      await loadRoadmap('project-4');
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(errorSpy).toHaveBeenCalled();
+      errorSpy.mockRestore();
+    });
+  });
+
+  describe('generateRoadmap', () => {
+    it('should set generation status and call electron API', () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      (window as Window & { DEBUG?: boolean }).DEBUG = true;
+
+      generateRoadmap('project-5', true, false);
+
+      const state = useRoadmapStore.getState();
+      expect(state.generationStatus.phase).toBe('analyzing');
+      expect(state.generationStatus.message).toBe('Starting roadmap generation...');
+      expect(electronAPI.generateRoadmap).toHaveBeenCalledWith('project-5', true, false);
+      expect(warnSpy).toHaveBeenCalled();
+
+      warnSpy.mockRestore();
+    });
+  });
+
+  describe('refreshRoadmap', () => {
+    it('should set generation status and call electron API', () => {
+      refreshRoadmap('project-6', false, true);
+
+      const state = useRoadmapStore.getState();
+      expect(state.generationStatus.phase).toBe('analyzing');
+      expect(state.generationStatus.message).toBe('Refreshing roadmap...');
+      expect(electronAPI.refreshRoadmap).toHaveBeenCalledWith('project-6', false, true);
+    });
+  });
+
+  describe('stopRoadmap', () => {
+    it('should reset status and return success when stop succeeds', async () => {
+      electronAPI.stopRoadmap.mockResolvedValue({ success: true });
+
+      const result = await stopRoadmap('project-7');
+
+      const state = useRoadmapStore.getState();
+      expect(result).toBe(true);
+      expect(state.generationStatus.phase).toBe('idle');
+      expect(state.generationStatus.message).toBe('Generation stopped');
+    });
+
+    it('should log warning when stop fails', async () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      (window as Window & { DEBUG?: boolean }).DEBUG = true;
+      electronAPI.stopRoadmap.mockResolvedValue({ success: false });
+
+      const result = await stopRoadmap('project-8');
+
+      expect(result).toBe(false);
+      expect(warnSpy).toHaveBeenCalled();
+      warnSpy.mockRestore();
     });
   });
 

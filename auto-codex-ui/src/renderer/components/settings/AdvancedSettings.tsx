@@ -12,6 +12,7 @@ import {
 import { Button } from '../ui/button';
 import { Label } from '../ui/label';
 import { Switch } from '../ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Progress } from '../ui/progress';
 import { cn } from '../../lib/utils';
 import { SettingsSection } from './SettingsSection';
@@ -482,6 +483,33 @@ export function AdvancedSettings({ settings, onSettingsChange, section, version 
               onSettingsChange({ ...settings, codexTerminalBypassApprovalsAndSandbox: checked })
             }
           />
+        </div>
+
+        <div className="flex items-center justify-between p-4 rounded-lg border border-border">
+          <div className="space-y-1">
+            <Label className="font-medium text-foreground">风险策略</Label>
+            <p className="text-sm text-muted-foreground">
+              控制高风险自动化（如竞品分析的联网检索）。保守模式会拦截此类动作。
+            </p>
+          </div>
+          <Select
+            value={settings.riskPolicy ?? 'conservative'}
+            onValueChange={(value) =>
+              onSettingsChange({
+                ...settings,
+                riskPolicy: value as 'conservative' | 'standard' | 'permissive'
+              })
+            }
+          >
+            <SelectTrigger className="w-44 h-9">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="conservative">保守（拦截高风险）</SelectItem>
+              <SelectItem value="standard">标准（部分拦截）</SelectItem>
+              <SelectItem value="permissive">宽松（允许高风险）</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="flex items-center justify-between p-4 rounded-lg border border-border">

@@ -1,13 +1,15 @@
 import { ipcMain } from 'electron';
 import type { BrowserWindow } from 'electron';
 import path from 'path';
-import { existsSync, readdirSync, mkdirSync, writeFileSync } from 'fs';
+import { existsSync, readdirSync, mkdirSync } from 'fs';
 import { IPC_CHANNELS, getSpecsDir, AUTO_BUILD_PATHS } from '../../shared/constants';
 import type { IPCResult, InsightsSession, InsightsSessionSummary, InsightsModelConfig, Task, TaskMetadata } from '../../shared/types';
 import { projectStore } from '../project-store';
 import { insightsService } from '../insights-service';
 import type { PythonEnvManager } from '../python-env-manager';
 import { getAutoBuildSourcePath } from './context/utils';
+import { atomicWriteFileSync } from '../utils/atomic-write';
+import { mapCategoryToWorkflowType } from '../utils/workflow-type';
 
 /**
  * Register all insights-related IPC handlers
@@ -113,7 +115,7 @@ export function registerInsightsHandlers(
       try {
         // Generate a unique spec ID based on existing specs
         // Get specs directory path
-                const specsBaseDir = getSpecsDir(project.autoBuildPath);
+        const specsBaseDir = getSpecsDir(project.autoBuildPath);
         const specsDir = path.join(project.path, specsBaseDir);
 
         // Find next available spec number
@@ -155,21 +157,38 @@ export function registerInsightsHandlers(
 
         // Create initial implementation_plan.json
         const now = new Date().toISOString();
+        const workflowType = mapCategoryToWorkflowType(taskMetadata.category);
         const implementationPlan = {
           feature: title,
           description: description,
           created_at: now,
           updated_at: now,
-          status: 'pending',
-          phases: []
+          status: 'backlog',
+          planStatus: 'pending',
+          phases: [],
+          workflow_type: workflowType,
+          services_involved: [],
+          final_acceptance: [],
+          spec_file: 'spec.md'
         };
 
         const planPath = path.join(specDir, AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN);
-        writeFileSync(planPath, JSON.stringify(implementationPlan, null, 2));
+        atomicWriteFileSync(planPath, JSON.stringify(implementationPlan, null, 2), { encoding: 'utf-8' });
+
+        // Create requirements.json
+        const requirements = {
+          task_description: description,
+          workflow_type: workflowType
+        };
+        atomicWriteFileSync(
+          path.join(specDir, AUTO_BUILD_PATHS.REQUIREMENTS),
+          JSON.stringify(requirements, null, 2),
+          { encoding: 'utf-8' }
+        );
 
         // Save task metadata
         const metadataPath = path.join(specDir, 'task_metadata.json');
-        writeFileSync(metadataPath, JSON.stringify(taskMetadata, null, 2));
+        atomicWriteFileSync(metadataPath, JSON.stringify(taskMetadata, null, 2), { encoding: 'utf-8' });
 
         // Create the task object
         const task: Task = {

@@ -1,5 +1,5 @@
 import { spawn, ChildProcess } from 'child_process';
-import { existsSync, writeFileSync, unlinkSync } from 'fs';
+import { existsSync, unlinkSync } from 'fs';
 import path from 'path';
 import os from 'os';
 import { EventEmitter } from 'events';
@@ -13,6 +13,7 @@ import type {
 import { MODEL_ID_MAP } from '../../shared/constants';
 import { InsightsConfig } from './config';
 import { detectRateLimit, createSDKRateLimitInfo } from '../rate-limit-detector';
+import { atomicWriteFileSync } from '../utils/atomic-write';
 
 /**
  * Message processor result
@@ -95,7 +96,7 @@ export class InsightsExecutor extends EventEmitter {
 
     let historyFileCreated = false;
     try {
-      writeFileSync(historyFile, JSON.stringify(conversationHistory), 'utf-8');
+      atomicWriteFileSync(historyFile, JSON.stringify(conversationHistory), { encoding: 'utf-8' });
       historyFileCreated = true;
     } catch (err) {
       console.error('[Insights] Failed to write history file:', err);

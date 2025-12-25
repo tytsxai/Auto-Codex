@@ -2,17 +2,94 @@
  * Update installation and application
  */
 
-import { existsSync, mkdirSync, writeFileSync, rmSync, readdirSync } from 'fs';
+import { createReadStream, existsSync, mkdirSync, rmSync, readdirSync } from 'fs';
+import { createHash } from 'crypto';
 import path from 'path';
 import { app } from 'electron';
-import { GITHUB_CONFIG, PRESERVE_FILES } from './config';
-import { downloadFile, fetchJson } from './http-client';
-import { parseVersionFromTag } from './version-manager';
+import { GITHUB_CONFIG, PRESERVE_FILES, CHECKSUM_ASSET_NAMES } from './config';
+import { downloadFile, fetchJson, fetchText } from './http-client';
+import { compareVersions, getBundledVersion, parseVersionFromTag } from './version-manager';
 import { getUpdateCachePath, getUpdateTargetPath } from './path-resolver';
 import { extractTarball, copyDirectoryRecursive, preserveFiles, restoreFiles, cleanTargetDirectory } from './file-operations';
 import { getCachedRelease, setCachedRelease, clearCachedRelease } from './update-checker';
-import { GitHubRelease, AutoBuildUpdateResult, UpdateProgressCallback, UpdateMetadata } from './types';
+import { GitHubRelease, GitHubReleaseAsset, AutoBuildUpdateResult, UpdateProgressCallback, UpdateMetadata } from './types';
 import { debugLog } from '../../shared/utils/debug-logger';
+import { atomicWriteFileSync } from '../utils/atomic-write';
+
+const allowUnsignedUpdates = (): boolean => process.env.AUTO_CODEX_ALLOW_UNSIGNED_UPDATES === 'true';
+
+const normalizeHash = (value: string): string => value.trim().toLowerCase();
+
+function findChecksumAsset(release: GitHubRelease): GitHubReleaseAsset | null {
+  const assets = release.assets || [];
+  for (const name of CHECKSUM_ASSET_NAMES) {
+    const match = assets.find((asset) => asset.name === name);
+    if (match) {
+      return match;
+    }
+  }
+  return null;
+}
+
+function parseChecksumFile(content: string): Array<{ hash: string; label?: string }> {
+  const entries: Array<{ hash: string; label?: string }> = [];
+  const lines = content.split(/\r?\n/);
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) {
+      continue;
+    }
+
+    let match = trimmed.match(/^([a-fA-F0-9]{64})\s+\*?(.+)?$/);
+    if (match) {
+      const label = match[2] ? match[2].trim() : undefined;
+      entries.push({ hash: normalizeHash(match[1]), label });
+      continue;
+    }
+
+    match = trimmed.match(/^SHA256\s*\((.+)\)\s*=\s*([a-fA-F0-9]{64})$/i);
+    if (match) {
+      entries.push({ hash: normalizeHash(match[2]), label: match[1].trim() });
+    }
+  }
+
+  return entries;
+}
+
+async function calculateSha256(filePath: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const hash = createHash('sha256');
+    const stream = createReadStream(filePath);
+
+    stream.on('error', reject);
+    stream.on('data', (chunk) => hash.update(chunk));
+    stream.on('end', () => resolve(hash.digest('hex')));
+  });
+}
+
+async function verifyChecksum(tarballPath: string, release: GitHubRelease): Promise<void> {
+  const asset = findChecksumAsset(release);
+  if (!asset) {
+    if (allowUnsignedUpdates()) {
+      debugLog('[Update] Checksum asset not found; proceeding due to AUTO_CODEX_ALLOW_UNSIGNED_UPDATES=true');
+      return;
+    }
+    throw new Error('Checksum file missing in release assets. Upload SHA256SUMS or set AUTO_CODEX_ALLOW_UNSIGNED_UPDATES=true to bypass.');
+  }
+
+  const checksumText = await fetchText(asset.browser_download_url);
+  const entries = parseChecksumFile(checksumText);
+  if (entries.length === 0) {
+    throw new Error(`Checksum file ${asset.name} is empty or invalid.`);
+  }
+
+  const actual = await calculateSha256(tarballPath);
+  const matched = entries.some((entry) => entry.hash === actual);
+  if (!matched) {
+    throw new Error(`Checksum verification failed for ${asset.name}.`);
+  }
+}
 
 /**
  * Download and apply the latest auto-codex update from GitHub Releases
@@ -25,6 +102,10 @@ export async function downloadAndApplyUpdate(
   onProgress?: UpdateProgressCallback
 ): Promise<AutoBuildUpdateResult> {
   const cachePath = getUpdateCachePath();
+  const backupPath = path.join(cachePath, 'backup');
+  let backupCreated = false;
+  let tarballPath: string | null = null;
+  let extractPath: string | null = null;
 
   debugLog('[Update] Starting update process...');
   debugLog('[Update] Cache path:', cachePath);
@@ -56,11 +137,17 @@ export async function downloadAndApplyUpdate(
     // See: https://github.com/tytsxai/Auto-Codex/issues/78
     const tarballUrl = `https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/tarball/refs/tags/${release.tag_name}`;
     const releaseVersion = parseVersionFromTag(release.tag_name);
+    const bundledVersion = getBundledVersion();
     debugLog('[Update] Release version:', releaseVersion);
+    debugLog('[Update] Bundled app version:', bundledVersion);
     debugLog('[Update] Tarball URL:', tarballUrl);
 
-    const tarballPath = path.join(cachePath, 'auto-codex-update.tar.gz');
-    const extractPath = path.join(cachePath, 'extracted');
+    if (compareVersions(releaseVersion, bundledVersion) > 0) {
+      throw new Error(`请先更新应用到 ${releaseVersion} 或更高版本，再更新源代码。`);
+    }
+
+    tarballPath = path.join(cachePath, 'auto-codex-update.tar.gz');
+    extractPath = path.join(cachePath, 'extracted');
 
     // Clean up previous extraction
     if (existsSync(extractPath)) {
@@ -86,6 +173,15 @@ export async function downloadAndApplyUpdate(
     });
 
     debugLog('[Update] Download complete');
+
+    onProgress?.({
+      stage: 'checking',
+      message: 'Verifying update integrity...'
+    });
+
+    debugLog('[Update] Verifying update checksum');
+    await verifyChecksum(tarballPath, release);
+    debugLog('[Update] Checksum verification passed');
 
     onProgress?.({
       stage: 'extracting',
@@ -117,21 +213,33 @@ export async function downloadAndApplyUpdate(
     const targetPath = getUpdateTargetPath();
     debugLog('[Update] Target install path:', targetPath);
 
-    // Backup existing source (if in dev mode)
-    const backupPath = path.join(cachePath, 'backup');
-    if (!app.isPackaged && existsSync(targetPath)) {
+    // Backup existing source (always, for rollback safety)
+    if (existsSync(targetPath)) {
       if (existsSync(backupPath)) {
         rmSync(backupPath, { recursive: true, force: true });
       }
-      // Simple copy for backup
       debugLog('[Update] Creating backup at:', backupPath);
       copyDirectoryRecursive(targetPath, backupPath);
+      backupCreated = true;
     }
 
-    // Apply the update
-    debugLog('[Update] Applying update...');
-    await applyUpdate(targetPath, autoBuildSource);
-    debugLog('[Update] Update applied successfully');
+    try {
+      // Apply the update
+      debugLog('[Update] Applying update...');
+      await applyUpdate(targetPath, autoBuildSource);
+      debugLog('[Update] Update applied successfully');
+    } catch (applyError) {
+      debugLog('[Update] Apply failed, attempting rollback...');
+      if (backupCreated && existsSync(backupPath)) {
+        try {
+          restoreBackup(targetPath, backupPath);
+          debugLog('[Update] Rollback complete');
+        } catch (rollbackError) {
+          debugLog('[Update] Rollback failed:', rollbackError);
+        }
+      }
+      throw applyError;
+    }
 
     // Write update metadata
     const metadata: UpdateMetadata = {
@@ -172,6 +280,18 @@ export async function downloadAndApplyUpdate(
     debugLog('[Update] Error:', errorMessage);
     debugLog('[Update] ============================================');
 
+    // Best-effort cleanup of temp files
+    try {
+      if (tarballPath && existsSync(tarballPath)) {
+        rmSync(tarballPath, { force: true });
+      }
+      if (extractPath && existsSync(extractPath)) {
+        rmSync(extractPath, { recursive: true, force: true });
+      }
+    } catch {
+      // Ignore cleanup failures
+    }
+
     onProgress?.({
       stage: 'error',
       message: errorMessage
@@ -211,5 +331,22 @@ async function applyUpdate(targetPath: string, sourcePath: string): Promise<void
  */
 function writeUpdateMetadata(targetPath: string, metadata: UpdateMetadata): void {
   const metadataPath = path.join(targetPath, '.update-metadata.json');
-  writeFileSync(metadataPath, JSON.stringify(metadata, null, 2));
+  atomicWriteFileSync(metadataPath, JSON.stringify(metadata, null, 2), { encoding: 'utf-8' });
+}
+
+/**
+ * Restore from a backup directory after a failed update.
+ * Keeps preserved files (like .env/specs) intact.
+ */
+function restoreBackup(targetPath: string, backupPath: string): void {
+  if (!existsSync(backupPath)) {
+    return;
+  }
+
+  if (!existsSync(targetPath)) {
+    mkdirSync(targetPath, { recursive: true });
+  }
+
+  cleanTargetDirectory(targetPath, PRESERVE_FILES);
+  copyDirectoryRecursive(backupPath, targetPath, false);
 }

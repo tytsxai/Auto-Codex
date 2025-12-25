@@ -3,7 +3,7 @@
  */
 
 import path from 'path';
-import { existsSync, mkdirSync, readdirSync, writeFileSync } from 'fs';
+import { existsSync, mkdirSync, readdirSync } from 'fs';
 import type { IpcMainInvokeEvent } from 'electron';
 import { AUTO_BUILD_PATHS, getSpecsDir } from '../../../shared/constants';
 import type {
@@ -19,6 +19,8 @@ import type {
 import { projectStore } from '../../project-store';
 import { readIdeationFile, writeIdeationFile, updateIdeationTimestamp } from './file-utils';
 import type { RawIdea } from './types';
+import { atomicWriteFileSync } from '../../utils/atomic-write';
+import { mapCategoryToWorkflowType } from '../../utils/workflow-type';
 
 /**
  * Find the next available spec number
@@ -160,7 +162,8 @@ function buildTaskMetadata(idea: RawIdea): TaskMetadata {
 function createSpecFiles(
   specDir: string,
   idea: RawIdea,
-  _taskDescription: string
+  taskDescription: string,
+  workflowType: string
 ): void {
   // Create the spec directory
   mkdirSync(specDir, { recursive: true });
@@ -174,14 +177,26 @@ function createSpecFiles(
     status: 'backlog',
     planStatus: 'pending',
     phases: [],
-    workflow_type: 'development',
+    workflow_type: workflowType,
     services_involved: [],
     final_acceptance: [],
     spec_file: 'spec.md'
   };
-  writeFileSync(
+  atomicWriteFileSync(
     path.join(specDir, AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN),
-    JSON.stringify(initialPlan, null, 2)
+    JSON.stringify(initialPlan, null, 2),
+    { encoding: 'utf-8' }
+  );
+
+  // Create requirements.json
+  const requirements = {
+    task_description: taskDescription,
+    workflow_type: workflowType
+  };
+  atomicWriteFileSync(
+    path.join(specDir, AUTO_BUILD_PATHS.REQUIREMENTS),
+    JSON.stringify(requirements, null, 2),
+    { encoding: 'utf-8' }
   );
 
   // Create initial spec.md
@@ -198,7 +213,7 @@ ${idea.rationale}
 ---
 *This spec was created from ideation and is pending detailed specification.*
 `;
-  writeFileSync(path.join(specDir, AUTO_BUILD_PATHS.SPEC_FILE), specContent);
+  atomicWriteFileSync(path.join(specDir, AUTO_BUILD_PATHS.SPEC_FILE), specContent, { encoding: 'utf-8' });
 }
 
 /**
@@ -250,13 +265,14 @@ export async function convertIdeaToTask(
     // Build task description and metadata
     const taskDescription = buildTaskDescription(idea);
     const metadata = buildTaskMetadata(idea);
+    const workflowType = mapCategoryToWorkflowType(metadata.category);
 
     // Create spec files
-    createSpecFiles(specDir, idea, taskDescription);
+    createSpecFiles(specDir, idea, taskDescription, workflowType);
 
     // Save metadata
     const metadataPath = path.join(specDir, 'task_metadata.json');
-    writeFileSync(metadataPath, JSON.stringify(metadata, null, 2));
+    atomicWriteFileSync(metadataPath, JSON.stringify(metadata, null, 2), { encoding: 'utf-8' });
 
     // Update idea status to archived (converted ideas are archived)
     idea.status = 'archived';

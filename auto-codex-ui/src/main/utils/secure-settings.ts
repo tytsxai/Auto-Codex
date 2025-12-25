@@ -2,7 +2,7 @@ import { safeStorage } from 'electron';
 import { readFileSync, existsSync } from 'fs';
 import { DEFAULT_APP_SETTINGS } from '../../shared/constants';
 import type { AppSettings } from '../../shared/types';
-import { decryptToken, encryptToken, isTokenEncrypted } from '../codex-profile/token-encryption';
+import { decryptToken, encryptToken, isTokenEncrypted, isInsecureTokenStorageAllowed } from '../codex-profile/token-encryption';
 
 export const SENSITIVE_SETTINGS_FIELDS = [
   'globalCodexOAuthToken',
@@ -41,6 +41,7 @@ export function loadSettingsWithDecryptedSecrets(settingsPath: string): SecureSe
   }
 
   const encryptionAvailable = safeStorage.isEncryptionAvailable();
+  const allowInsecure = isInsecureTokenStorageAllowed();
 
   for (const field of SENSITIVE_SETTINGS_FIELDS) {
     const value = settings[field];
@@ -64,7 +65,7 @@ export function loadSettingsWithDecryptedSecrets(settingsPath: string): SecureSe
     }
 
     hadPlaintextSecrets = true;
-    if (encryptionAvailable) {
+    if (encryptionAvailable || !allowInsecure) {
       settings[field] = undefined;
       requiresReauth = true;
     }
@@ -82,12 +83,13 @@ export function loadSettingsWithDecryptedSecrets(settingsPath: string): SecureSe
 export interface SecureSettingsSaveResult {
   settings: AppSettings;
   wrotePlaintext: boolean;
+  blockedSecrets: boolean;
 }
 
 export function prepareSettingsForSave(settings: AppSettings): SecureSettingsSaveResult {
-  const encryptionAvailable = safeStorage.isEncryptionAvailable();
   const nextSettings: AppSettings = { ...settings };
   let wrotePlaintext = false;
+  let blockedSecrets = false;
 
   for (const field of SENSITIVE_SETTINGS_FIELDS) {
     const value = nextSettings[field];
@@ -97,16 +99,18 @@ export function prepareSettingsForSave(settings: AppSettings): SecureSettingsSav
       continue;
     }
 
-    if (encryptionAvailable) {
-      const encrypted = encryptToken(value);
-      nextSettings[field] = encrypted as AppSettings[SensitiveSettingsField];
-      if (!isTokenEncrypted(encrypted)) {
-        wrotePlaintext = true;
-      }
-    } else {
+    const encrypted = encryptToken(value);
+    if (!encrypted) {
+      nextSettings[field] = undefined;
+      blockedSecrets = true;
+      continue;
+    }
+
+    nextSettings[field] = encrypted as AppSettings[SensitiveSettingsField];
+    if (!isTokenEncrypted(encrypted)) {
       wrotePlaintext = true;
     }
   }
 
-  return { settings: nextSettings, wrotePlaintext };
+  return { settings: nextSettings, wrotePlaintext, blockedSecrets };
 }

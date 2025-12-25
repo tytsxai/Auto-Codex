@@ -3,9 +3,11 @@
  */
 
 import path from 'path';
-import { existsSync, mkdirSync, readdirSync, writeFileSync } from 'fs';
+import { existsSync, mkdirSync, readdirSync } from 'fs';
 import { AUTO_BUILD_PATHS, getSpecsDir } from '../../../shared/constants';
 import type { Project, TaskMetadata } from '../../../shared/types';
+import { atomicWriteFileSync } from '../../utils/atomic-write';
+import { mapCategoryToWorkflowType } from '../../utils/workflow-type';
 
 export interface SpecCreationData {
   specId: string;
@@ -133,32 +135,40 @@ export function createSpecForIssue(
   // Create initial files
   const now = new Date().toISOString();
 
+  // Determine category from GitHub issue labels
+  const category = determineCategoryFromLabels(labels);
+
   // implementation_plan.json
+  const workflowType = mapCategoryToWorkflowType(category);
   const implementationPlan = {
     feature: issueTitle,
     description: taskDescription,
     created_at: now,
     updated_at: now,
-    status: 'pending',
-    phases: []
+    status: 'backlog',
+    planStatus: 'pending',
+    phases: [],
+    workflow_type: workflowType,
+    services_involved: [],
+    final_acceptance: [],
+    spec_file: 'spec.md'
   };
-  writeFileSync(
+  atomicWriteFileSync(
     path.join(specDir, AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN),
-    JSON.stringify(implementationPlan, null, 2)
+    JSON.stringify(implementationPlan, null, 2),
+    { encoding: 'utf-8' }
   );
 
   // requirements.json
   const requirements = {
     task_description: taskDescription,
-    workflow_type: 'feature'
+    workflow_type: workflowType
   };
-  writeFileSync(
+  atomicWriteFileSync(
     path.join(specDir, AUTO_BUILD_PATHS.REQUIREMENTS),
-    JSON.stringify(requirements, null, 2)
+    JSON.stringify(requirements, null, 2),
+    { encoding: 'utf-8' }
   );
-
-  // Determine category from GitHub issue labels
-  const category = determineCategoryFromLabels(labels);
 
   // task_metadata.json
   const metadata: TaskMetadata = {
@@ -167,9 +177,10 @@ export function createSpecForIssue(
     githubUrl,
     category
   };
-  writeFileSync(
+  atomicWriteFileSync(
     path.join(specDir, 'task_metadata.json'),
-    JSON.stringify(metadata, null, 2)
+    JSON.stringify(metadata, null, 2),
+    { encoding: 'utf-8' }
   );
 
   return {

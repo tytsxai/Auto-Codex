@@ -1,12 +1,17 @@
-import { IPC_CHANNELS } from '../../../shared/constants';
+import { IPC_CHANNELS } from "../../../shared/constants";
 import type {
   Roadmap,
   RoadmapFeatureStatus,
   RoadmapGenerationStatus,
   Task,
-  IPCResult
-} from '../../../shared/types';
-import { createIpcListener, invokeIpc, sendIpc, IpcListenerCleanup } from './ipc-utils';
+  IPCResult,
+} from "../../../shared/types";
+import {
+  createIpcListener,
+  invokeIpcResult,
+  sendIpc,
+  IpcListenerCleanup,
+} from "./ipc-utils";
 
 /**
  * Roadmap API operations
@@ -14,33 +19,43 @@ import { createIpcListener, invokeIpc, sendIpc, IpcListenerCleanup } from './ipc
 export interface RoadmapAPI {
   // Operations
   getRoadmap: (projectId: string) => Promise<IPCResult<Roadmap | null>>;
-  getRoadmapStatus: (projectId: string) => Promise<IPCResult<{ isRunning: boolean }>>;
+  getRoadmapStatus: (
+    projectId: string,
+  ) => Promise<IPCResult<{ isRunning: boolean }>>;
   saveRoadmap: (projectId: string, roadmap: Roadmap) => Promise<IPCResult>;
-  generateRoadmap: (projectId: string, enableCompetitorAnalysis?: boolean, refreshCompetitorAnalysis?: boolean) => void;
-  refreshRoadmap: (projectId: string, enableCompetitorAnalysis?: boolean, refreshCompetitorAnalysis?: boolean) => void;
+  generateRoadmap: (
+    projectId: string,
+    enableCompetitorAnalysis?: boolean,
+    refreshCompetitorAnalysis?: boolean,
+  ) => void;
+  refreshRoadmap: (
+    projectId: string,
+    enableCompetitorAnalysis?: boolean,
+    refreshCompetitorAnalysis?: boolean,
+  ) => void;
   stopRoadmap: (projectId: string) => Promise<IPCResult>;
   updateFeatureStatus: (
     projectId: string,
     featureId: string,
-    status: RoadmapFeatureStatus
+    status: RoadmapFeatureStatus,
   ) => Promise<IPCResult>;
   convertFeatureToSpec: (
     projectId: string,
-    featureId: string
+    featureId: string,
   ) => Promise<IPCResult<Task>>;
 
   // Event Listeners
   onRoadmapProgress: (
-    callback: (projectId: string, status: RoadmapGenerationStatus) => void
+    callback: (projectId: string, status: RoadmapGenerationStatus) => void,
   ) => IpcListenerCleanup;
   onRoadmapComplete: (
-    callback: (projectId: string, roadmap: Roadmap) => void
+    callback: (projectId: string, roadmap: Roadmap) => void,
   ) => IpcListenerCleanup;
   onRoadmapError: (
-    callback: (projectId: string, error: string) => void
+    callback: (projectId: string, error: string) => void,
   ) => IpcListenerCleanup;
   onRoadmapStopped: (
-    callback: (projectId: string) => void
+    callback: (projectId: string) => void,
   ) => IpcListenerCleanup;
 }
 
@@ -50,54 +65,79 @@ export interface RoadmapAPI {
 export const createRoadmapAPI = (): RoadmapAPI => ({
   // Operations
   getRoadmap: (projectId: string): Promise<IPCResult<Roadmap | null>> =>
-    invokeIpc(IPC_CHANNELS.ROADMAP_GET, projectId),
+    invokeIpcResult(IPC_CHANNELS.ROADMAP_GET, projectId),
 
-  getRoadmapStatus: (projectId: string): Promise<IPCResult<{ isRunning: boolean }>> =>
-    invokeIpc(IPC_CHANNELS.ROADMAP_GET_STATUS, projectId),
+  getRoadmapStatus: (
+    projectId: string,
+  ): Promise<IPCResult<{ isRunning: boolean }>> =>
+    invokeIpcResult(IPC_CHANNELS.ROADMAP_GET_STATUS, projectId),
 
   saveRoadmap: (projectId: string, roadmap: Roadmap): Promise<IPCResult> =>
-    invokeIpc(IPC_CHANNELS.ROADMAP_SAVE, projectId, roadmap),
+    invokeIpcResult(IPC_CHANNELS.ROADMAP_SAVE, projectId, roadmap),
 
-  generateRoadmap: (projectId: string, enableCompetitorAnalysis?: boolean, refreshCompetitorAnalysis?: boolean): void =>
-    sendIpc(IPC_CHANNELS.ROADMAP_GENERATE, projectId, enableCompetitorAnalysis, refreshCompetitorAnalysis),
+  generateRoadmap: (
+    projectId: string,
+    enableCompetitorAnalysis?: boolean,
+    refreshCompetitorAnalysis?: boolean,
+  ): void =>
+    sendIpc(
+      IPC_CHANNELS.ROADMAP_GENERATE,
+      projectId,
+      enableCompetitorAnalysis,
+      refreshCompetitorAnalysis,
+    ),
 
-  refreshRoadmap: (projectId: string, enableCompetitorAnalysis?: boolean, refreshCompetitorAnalysis?: boolean): void =>
-    sendIpc(IPC_CHANNELS.ROADMAP_REFRESH, projectId, enableCompetitorAnalysis, refreshCompetitorAnalysis),
+  refreshRoadmap: (
+    projectId: string,
+    enableCompetitorAnalysis?: boolean,
+    refreshCompetitorAnalysis?: boolean,
+  ): void =>
+    sendIpc(
+      IPC_CHANNELS.ROADMAP_REFRESH,
+      projectId,
+      enableCompetitorAnalysis,
+      refreshCompetitorAnalysis,
+    ),
 
   stopRoadmap: (projectId: string): Promise<IPCResult> =>
-    invokeIpc(IPC_CHANNELS.ROADMAP_STOP, projectId),
+    invokeIpcResult(IPC_CHANNELS.ROADMAP_STOP, projectId),
 
   updateFeatureStatus: (
     projectId: string,
     featureId: string,
-    status: RoadmapFeatureStatus
+    status: RoadmapFeatureStatus,
   ): Promise<IPCResult> =>
-    invokeIpc(IPC_CHANNELS.ROADMAP_UPDATE_FEATURE, projectId, featureId, status),
+    invokeIpcResult(
+      IPC_CHANNELS.ROADMAP_UPDATE_FEATURE,
+      projectId,
+      featureId,
+      status,
+    ),
 
   convertFeatureToSpec: (
     projectId: string,
-    featureId: string
+    featureId: string,
   ): Promise<IPCResult<Task>> =>
-    invokeIpc(IPC_CHANNELS.ROADMAP_CONVERT_TO_SPEC, projectId, featureId),
+    invokeIpcResult(IPC_CHANNELS.ROADMAP_CONVERT_TO_SPEC, projectId, featureId),
 
   // Event Listeners
   onRoadmapProgress: (
-    callback: (projectId: string, status: RoadmapGenerationStatus) => void
+    callback: (projectId: string, status: RoadmapGenerationStatus) => void,
   ): IpcListenerCleanup =>
     createIpcListener(IPC_CHANNELS.ROADMAP_PROGRESS, callback),
 
   onRoadmapComplete: (
-    callback: (projectId: string, roadmap: Roadmap) => void
+    callback: (projectId: string, roadmap: Roadmap) => void,
   ): IpcListenerCleanup =>
     createIpcListener(IPC_CHANNELS.ROADMAP_COMPLETE, callback),
 
   onRoadmapError: (
-    callback: (projectId: string, error: string) => void
+    callback: (projectId: string, error: string) => void,
   ): IpcListenerCleanup =>
     createIpcListener(IPC_CHANNELS.ROADMAP_ERROR, callback),
 
   onRoadmapStopped: (
-    callback: (projectId: string) => void
+    callback: (projectId: string) => void,
   ): IpcListenerCleanup =>
-    createIpcListener(IPC_CHANNELS.ROADMAP_STOPPED, callback)
+    createIpcListener(IPC_CHANNELS.ROADMAP_STOPPED, callback),
 });

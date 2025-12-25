@@ -32,6 +32,8 @@ export const DEFAULT_APP_SETTINGS = {
   changelogFormat: 'keep-a-changelog' as const,
   changelogAudience: 'user-facing' as const,
   changelogEmojiLevel: 'none' as const,
+  // Risk policy for high-impact automation (conservative blocks risky automation)
+  riskPolicy: 'conservative' as const,
   // 安全默认：不绕过 Codex CLI 审批与沙盒（终端集成可单独开启）
   codexTerminalBypassApprovalsAndSandbox: false
 };

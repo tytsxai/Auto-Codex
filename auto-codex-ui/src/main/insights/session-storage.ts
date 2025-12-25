@@ -1,7 +1,8 @@
-import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync, unlinkSync } from 'fs';
+import { existsSync, readFileSync, mkdirSync, readdirSync, unlinkSync } from 'fs';
 import path from 'path';
 import type { InsightsSession, InsightsSessionSummary } from '../../shared/types';
 import { InsightsPaths } from './paths';
+import { atomicWriteFileSync } from '../utils/atomic-write';
 
 /**
  * Session storage manager
@@ -61,7 +62,7 @@ export class SessionStorage {
     }
 
     const sessionPath = this.paths.getSessionPath(projectPath, session.id);
-    writeFileSync(sessionPath, JSON.stringify(session, null, 2));
+    atomicWriteFileSync(sessionPath, JSON.stringify(session, null, 2), { encoding: 'utf-8' });
   }
 
   /**
@@ -152,7 +153,7 @@ export class SessionStorage {
     }
 
     const currentPath = this.paths.getCurrentSessionPath(projectPath);
-    writeFileSync(currentPath, JSON.stringify({ currentSessionId: sessionId }, null, 2));
+    atomicWriteFileSync(currentPath, JSON.stringify({ currentSessionId: sessionId }, null, 2), { encoding: 'utf-8' });
   }
 
   /**

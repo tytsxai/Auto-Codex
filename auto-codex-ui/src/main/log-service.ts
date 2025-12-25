@@ -15,6 +15,24 @@ export interface LogEntry {
   content: string;
 }
 
+const REDACTION_RULES: Array<{ pattern: RegExp; replacement: string }> = [
+  { pattern: /(sk-[A-Za-z0-9_-]{10,})/g, replacement: '[REDACTED]' },
+  { pattern: /(codex_oauth_[A-Za-z0-9._-]{10,})/g, replacement: '[REDACTED]' },
+  { pattern: /(ghp_[A-Za-z0-9]{10,})/g, replacement: '[REDACTED]' },
+  { pattern: /(gho_[A-Za-z0-9]{10,})/g, replacement: '[REDACTED]' },
+  { pattern: /(ya29\.[A-Za-z0-9._-]{10,})/g, replacement: '[REDACTED]' },
+  { pattern: /(Bearer\s+)(\S+)/gi, replacement: '$1[REDACTED]' },
+  { pattern: /((?:api[_-]?key|token|secret|password)\s*[:=]\s*)([^\s]+)/gi, replacement: '$1[REDACTED]' }
+];
+
+function redactLogLine(line: string): string {
+  let redacted = line;
+  for (const rule of REDACTION_RULES) {
+    redacted = redacted.replace(rule.pattern, rule.replacement);
+  }
+  return redacted;
+}
+
 /**
  * Service for persisting and retrieving task execution logs
  *
@@ -110,7 +128,7 @@ export class LogService {
     // Add timestamp prefix for each line
     const timestamp = new Date().toISOString();
     const lines = content.split('\n').filter(line => line.length > 0);
-    const timestampedLines = lines.map(line => `[${timestamp}] ${line}`);
+    const timestampedLines = lines.map(line => `[${timestamp}] ${redactLogLine(line)}`);
 
     // Add to buffer
     const buffer = this.logBuffers.get(taskId) || [];
@@ -160,6 +178,26 @@ export class LogService {
     } catch (error) {
       console.error(`[LogService] Failed to flush logs for task ${taskId}:`, error);
     }
+  }
+
+  /**
+   * Flush all buffers to disk
+   */
+  flushAll(): void {
+    for (const taskId of this.logBuffers.keys()) {
+      this.flushBuffer(taskId);
+    }
+  }
+
+  /**
+   * Stop timers and flush logs (call on app shutdown)
+   */
+  shutdown(): void {
+    this.flushAll();
+    for (const interval of this.flushIntervals.values()) {
+      clearInterval(interval);
+    }
+    this.flushIntervals.clear();
   }
 
   /**
@@ -303,7 +341,22 @@ export class LogService {
       return [];
     }
 
-    const lines = content.split('\n');
+    const isMetaLine = (line: string): boolean => {
+      const trimmed = line.trim();
+      if (!trimmed) return true;
+      if (/^=+$/.test(trimmed)) return true;
+      return (
+        trimmed.startsWith('LOG SESSION:') ||
+        trimmed.startsWith('Task:') ||
+        trimmed.startsWith('Started:') ||
+        trimmed.startsWith('Spec Directory:') ||
+        trimmed.startsWith('SESSION ENDED:') ||
+        trimmed.startsWith('Duration:') ||
+        trimmed.startsWith('Exit Code:')
+      );
+    };
+
+    const lines = content.split('\n').filter(line => !isMetaLine(line));
     return lines.slice(-maxLines);
   }
 

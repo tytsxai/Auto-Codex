@@ -21,6 +21,8 @@ export const PRESERVE_FILES = ['.env', 'specs'] as const;
  */
 export const SKIP_FILES = ['__pycache__', '.DS_Store', '.git', 'specs', '.env'] as const;
 
+export const CHECKSUM_ASSET_NAMES = ['SHA256SUMS', 'SHA256SUMS.txt', 'checksums.txt'] as const;
+
 /**
  * Update-related timeouts (in milliseconds)
  */

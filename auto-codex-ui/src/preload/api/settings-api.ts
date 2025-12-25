@@ -1,11 +1,12 @@
-import { ipcRenderer } from 'electron';
-import { IPC_CHANNELS } from '../../shared/constants';
+import { IPC_CHANNELS } from "../../shared/constants";
 import type {
   AppSettings,
+  AppProtocolInfo,
   IPCResult,
   SourceEnvConfig,
-  SourceEnvCheckResult
-} from '../../shared/types';
+  SourceEnvCheckResult,
+} from "../../shared/types";
+import { invokeIpc, invokeIpcResult } from "./modules/ipc-utils";
 
 export interface SettingsAPI {
   // App Settings
@@ -14,6 +15,7 @@ export interface SettingsAPI {
 
   // App Info
   getAppVersion: () => Promise<string>;
+  getProtocolInfo: () => Promise<IPCResult<AppProtocolInfo>>;
 
   // Auto-Build Source Environment
   getSourceEnv: () => Promise<IPCResult<SourceEnvConfig>>;
@@ -24,22 +26,24 @@ export interface SettingsAPI {
 export const createSettingsAPI = (): SettingsAPI => ({
   // App Settings
   getSettings: (): Promise<IPCResult<AppSettings>> =>
-    ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_GET),
+    invokeIpcResult(IPC_CHANNELS.SETTINGS_GET),
 
   saveSettings: (settings: Partial<AppSettings>): Promise<IPCResult> =>
-    ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_SAVE, settings),
+    invokeIpcResult(IPC_CHANNELS.SETTINGS_SAVE, settings),
 
   // App Info
-  getAppVersion: (): Promise<string> =>
-    ipcRenderer.invoke(IPC_CHANNELS.APP_VERSION),
+  getAppVersion: (): Promise<string> => invokeIpc(IPC_CHANNELS.APP_VERSION),
+
+  getProtocolInfo: (): Promise<IPCResult<AppProtocolInfo>> =>
+    invokeIpcResult(IPC_CHANNELS.APP_PROTOCOL_INFO),
 
   // Auto-Build Source Environment
   getSourceEnv: (): Promise<IPCResult<SourceEnvConfig>> =>
-    ipcRenderer.invoke(IPC_CHANNELS.AUTOBUILD_SOURCE_ENV_GET),
+    invokeIpcResult(IPC_CHANNELS.AUTOBUILD_SOURCE_ENV_GET),
 
   updateSourceEnv: (config: { codexOAuthToken?: string }): Promise<IPCResult> =>
-    ipcRenderer.invoke(IPC_CHANNELS.AUTOBUILD_SOURCE_ENV_UPDATE, config),
+    invokeIpcResult(IPC_CHANNELS.AUTOBUILD_SOURCE_ENV_UPDATE, config),
 
   checkSourceToken: (): Promise<IPCResult<SourceEnvCheckResult>> =>
-    ipcRenderer.invoke(IPC_CHANNELS.AUTOBUILD_SOURCE_ENV_CHECK_TOKEN)
+    invokeIpcResult(IPC_CHANNELS.AUTOBUILD_SOURCE_ENV_CHECK_TOKEN),
 });

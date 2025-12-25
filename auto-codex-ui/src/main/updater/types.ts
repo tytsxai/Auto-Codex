@@ -2,6 +2,11 @@
  * Type definitions for Auto Codex updater system
  */
 
+export interface GitHubReleaseAsset {
+  name: string;
+  browser_download_url: string;
+}
+
 /**
  * GitHub Release API response (partial)
  */
@@ -14,6 +19,7 @@ export interface GitHubRelease {
   published_at: string;
   prerelease: boolean;
   draft: boolean;
+  assets?: GitHubReleaseAsset[];
 }
 
 /**

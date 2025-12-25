@@ -4,8 +4,9 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { EventEmitter } from 'events';
-import { mkdirSync, writeFileSync, rmSync, existsSync } from 'fs';
+import { mkdirSync, writeFileSync, rmSync, existsSync, readFileSync } from 'fs';
 import path from 'path';
+import { IPC_CHANNELS } from '../../shared/constants';
 
 // Test data directory
 const TEST_DIR = '/tmp/ipc-handlers-test';
@@ -522,6 +523,117 @@ describe('IPC Handlers', () => {
         'task-1',
         'human_review'
       );
+    });
+  });
+
+  describe('conversion flows', () => {
+    it('converts ideation idea to task spec', async () => {
+      const { setupIpcHandlers } = await import('../ipc-handlers');
+      setupIpcHandlers(mockAgentManager as never, mockTerminalManager as never, () => mockMainWindow as never, mockPythonEnvManager as never);
+
+      const autoCodexDir = path.join(TEST_PROJECT_PATH, '.auto-codex');
+      mkdirSync(path.join(autoCodexDir, 'ideation'), { recursive: true });
+
+      const addResult = await ipcMain.invokeHandler(IPC_CHANNELS.PROJECT_ADD, {}, TEST_PROJECT_PATH);
+      const projectId = (addResult as { data: { id: string } }).data.id;
+
+      const ideationPath = path.join(autoCodexDir, 'ideation', 'ideation.json');
+      writeFileSync(ideationPath, JSON.stringify({
+        ideas: [
+          {
+            id: 'idea-1',
+            type: 'code_improvements',
+            title: 'Improve Error Handling',
+            description: 'Add safer error handling',
+            rationale: 'Reduce crashes',
+            status: 'draft'
+          }
+        ]
+      }, null, 2));
+
+      const result = await ipcMain.invokeHandler(
+        IPC_CHANNELS.IDEATION_CONVERT_TO_TASK,
+        {},
+        projectId,
+        'idea-1'
+      );
+
+      expect((result as { success: boolean }).success).toBe(true);
+      const task = (result as { data: { id: string } }).data;
+      const specDir = path.join(autoCodexDir, 'specs', task.id);
+      expect(existsSync(specDir)).toBe(true);
+
+      const updatedIdeation = JSON.parse(readFileSync(ideationPath, 'utf-8'));
+      expect(updatedIdeation.ideas[0].status).toBe('archived');
+      expect(updatedIdeation.ideas[0].linked_task_id).toBe(task.id);
+    });
+
+    it('converts roadmap feature to spec', async () => {
+      const { setupIpcHandlers } = await import('../ipc-handlers');
+      setupIpcHandlers(mockAgentManager as never, mockTerminalManager as never, () => mockMainWindow as never, mockPythonEnvManager as never);
+
+      const autoCodexDir = path.join(TEST_PROJECT_PATH, '.auto-codex');
+      mkdirSync(path.join(autoCodexDir, 'roadmap'), { recursive: true });
+
+      const addResult = await ipcMain.invokeHandler(IPC_CHANNELS.PROJECT_ADD, {}, TEST_PROJECT_PATH);
+      const projectId = (addResult as { data: { id: string } }).data.id;
+
+      const roadmapPath = path.join(autoCodexDir, 'roadmap', 'roadmap.json');
+      writeFileSync(roadmapPath, JSON.stringify({
+        features: [
+          {
+            id: 'feature-1',
+            title: 'Add Search',
+            description: 'Introduce search UI',
+            rationale: 'Improve discoverability',
+            user_stories: ['User can search items'],
+            acceptance_criteria: ['Search returns results']
+          }
+        ],
+        metadata: { created_at: new Date().toISOString() }
+      }, null, 2));
+
+      const result = await ipcMain.invokeHandler(
+        IPC_CHANNELS.ROADMAP_CONVERT_TO_SPEC,
+        {},
+        projectId,
+        'feature-1'
+      );
+
+      expect((result as { success: boolean }).success).toBe(true);
+      const task = (result as { data: { id: string } }).data;
+      const specDir = path.join(autoCodexDir, 'specs', task.id);
+      expect(existsSync(specDir)).toBe(true);
+
+      const updatedRoadmap = JSON.parse(readFileSync(roadmapPath, 'utf-8'));
+      expect(updatedRoadmap.features[0].linked_spec_id).toBe(task.id);
+      expect(updatedRoadmap.features[0].status).toBe('planned');
+    });
+
+    it('creates task from insights suggestion', async () => {
+      const { setupIpcHandlers } = await import('../ipc-handlers');
+      setupIpcHandlers(mockAgentManager as never, mockTerminalManager as never, () => mockMainWindow as never, mockPythonEnvManager as never);
+
+      const autoCodexDir = path.join(TEST_PROJECT_PATH, '.auto-codex');
+      mkdirSync(autoCodexDir, { recursive: true });
+
+      const addResult = await ipcMain.invokeHandler(IPC_CHANNELS.PROJECT_ADD, {}, TEST_PROJECT_PATH);
+      const projectId = (addResult as { data: { id: string } }).data.id;
+
+      const result = await ipcMain.invokeHandler(
+        IPC_CHANNELS.INSIGHTS_CREATE_TASK,
+        {},
+        projectId,
+        'New Task',
+        'Generated from insights',
+        { category: 'feature' }
+      );
+
+      expect((result as { success: boolean }).success).toBe(true);
+      const task = (result as { data: { id: string } }).data;
+      const specDir = path.join(autoCodexDir, 'specs', task.id);
+      expect(existsSync(specDir)).toBe(true);
+      expect(task.metadata.sourceType).toBe('insights');
     });
   });
 });

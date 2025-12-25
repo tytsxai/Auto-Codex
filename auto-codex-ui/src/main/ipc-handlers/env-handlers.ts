@@ -4,9 +4,10 @@ import { IPC_CHANNELS } from '../../shared/constants';
 import type { IPCResult, ProjectEnvConfig, CodexAuthResult, AppSettings } from '../../shared/types';
 import path from 'path';
 import { app } from 'electron';
-import { existsSync, readFileSync, writeFileSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import { spawn } from 'child_process';
 import { projectStore } from '../project-store';
+import { atomicWriteFileSync } from '../utils/atomic-write';
 import { parseEnvFile } from './utils';
 import { loadSettingsWithDecryptedSecrets } from '../utils/secure-settings';
 import { getCodexProfileManager } from '../codex-profile-manager';
@@ -409,7 +410,7 @@ ${existingVars['GRAPHITI_DATABASE'] ? `GRAPHITI_DATABASE=${existingVars['GRAPHIT
         const newContent = generateEnvContent(config, existingContent);
 
         // Write to file
-        writeFileSync(envPath, newContent);
+        atomicWriteFileSync(envPath, newContent, { encoding: 'utf-8' });
 
         return { success: true };
       } catch (error) {

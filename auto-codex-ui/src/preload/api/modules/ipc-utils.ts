@@ -1,4 +1,5 @@
-import { ipcRenderer } from 'electron';
+import { ipcRenderer } from "electron";
+import type { IPCResult } from "../../../shared/types";
 
 /**
  * Utility type for IPC event listener cleanup function
@@ -14,7 +15,7 @@ export type IpcListenerCleanup = () => void;
  */
 export function createIpcListener<T extends unknown[]>(
   channel: string,
-  callback: (...args: T) => void
+  callback: (...args: T) => void,
 ): IpcListenerCleanup {
   const handler = (_event: Electron.IpcRendererEvent, ...args: T): void => {
     callback(...args);
@@ -34,6 +35,56 @@ export function createIpcListener<T extends unknown[]>(
  */
 export function invokeIpc<T>(channel: string, ...args: unknown[]): Promise<T> {
   return ipcRenderer.invoke(channel, ...args);
+}
+
+const isIpcResult = (value: unknown): value is IPCResult => {
+  return !!value && typeof value === "object" && "success" in value;
+};
+
+const normalizeIpcResult = <T>(
+  result: IPCResult<T>,
+  channel: string,
+): IPCResult<T> => {
+  if (result.success) {
+    return { success: true, data: result.data };
+  }
+
+  return {
+    success: false,
+    error: result.error || "IPC request failed",
+    errorCode: result.errorCode || "ipc_error",
+    errorDetails: result.errorDetails ?? { channel },
+  };
+};
+
+const buildIpcError = <T>(channel: string, error: unknown): IPCResult<T> => {
+  const message = error instanceof Error ? error.message : "IPC invoke failed";
+  return {
+    success: false,
+    error: message,
+    errorCode: "ipc_invoke_failed",
+    errorDetails: { channel },
+  };
+};
+
+export async function invokeIpcResult<T>(
+  channel: string,
+  ...args: unknown[]
+): Promise<IPCResult<T>> {
+  try {
+    const result = await ipcRenderer.invoke(channel, ...args);
+    if (isIpcResult(result)) {
+      return normalizeIpcResult(result as IPCResult<T>, channel);
+    }
+    return {
+      success: false,
+      error: "Invalid IPC response",
+      errorCode: "invalid_ipc_response",
+      errorDetails: { channel },
+    };
+  } catch (error) {
+    return buildIpcError(channel, error);
+  }
 }
 
 /**

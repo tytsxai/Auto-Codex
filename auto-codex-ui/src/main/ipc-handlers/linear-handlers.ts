@@ -3,9 +3,11 @@ import type { BrowserWindow } from 'electron';
 import { IPC_CHANNELS, getSpecsDir, AUTO_BUILD_PATHS } from '../../shared/constants';
 import type { IPCResult, LinearIssue, LinearTeam, LinearProject, LinearImportResult, LinearSyncStatus, Project, TaskMetadata } from '../../shared/types';
 import path from 'path';
-import { existsSync, readFileSync, mkdirSync, writeFileSync, readdirSync } from 'fs';
+import { existsSync, readFileSync, mkdirSync, readdirSync } from 'fs';
 import { projectStore } from '../project-store';
 import { parseEnvFile } from './utils';
+import { atomicWriteFileSync } from '../utils/atomic-write';
+import { mapCategoryToWorkflowType } from '../utils/workflow-type';
 
 
 import { AgentManager } from '../agent';
@@ -469,22 +471,36 @@ ${issue.description || 'No description provided.'}
 
             // Create initial implementation_plan.json
             const now = new Date().toISOString();
+            const workflowType = mapCategoryToWorkflowType(metadata.category);
             const implementationPlan = {
               feature: issue.title,
               description: description,
               created_at: now,
               updated_at: now,
-              status: 'pending',
-              phases: []
+              status: 'backlog',
+              planStatus: 'pending',
+              phases: [],
+              workflow_type: workflowType,
+              services_involved: [],
+              final_acceptance: [],
+              spec_file: 'spec.md'
             };
-            writeFileSync(path.join(specDir, AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN), JSON.stringify(implementationPlan, null, 2));
+            atomicWriteFileSync(
+              path.join(specDir, AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN),
+              JSON.stringify(implementationPlan, null, 2),
+              { encoding: 'utf-8' }
+            );
 
             // Create requirements.json
             const requirements = {
               task_description: description,
-              workflow_type: 'feature'
+              workflow_type: workflowType
             };
-            writeFileSync(path.join(specDir, AUTO_BUILD_PATHS.REQUIREMENTS), JSON.stringify(requirements, null, 2));
+            atomicWriteFileSync(
+              path.join(specDir, AUTO_BUILD_PATHS.REQUIREMENTS),
+              JSON.stringify(requirements, null, 2),
+              { encoding: 'utf-8' }
+            );
 
             // Build metadata
             const metadata: TaskMetadata = {
@@ -494,7 +510,11 @@ ${issue.description || 'No description provided.'}
               linearUrl: issue.url,
               category: 'feature'
             };
-            writeFileSync(path.join(specDir, 'task_metadata.json'), JSON.stringify(metadata, null, 2));
+            atomicWriteFileSync(
+              path.join(specDir, 'task_metadata.json'),
+              JSON.stringify(metadata, null, 2),
+              { encoding: 'utf-8' }
+            );
 
             // Start spec creation with the existing spec directory
             agentManager.startSpecCreation(specId, project.path, description, specDir, metadata);

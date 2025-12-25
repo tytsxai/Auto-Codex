@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 vi.mock('../updater/version-manager', () => ({
   getEffectiveVersion: vi.fn(() => '3.0.0'),
+  getBundledVersion: vi.fn(() => '3.0.0'),
   parseVersionFromTag: vi.fn((tag: string) => tag.replace(/^v/, '')),
   compareVersions: vi.fn((a: string, b: string) => (a === b ? 0 : 1))
 }));

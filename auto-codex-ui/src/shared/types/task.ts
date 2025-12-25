@@ -259,6 +259,9 @@ export interface ImplementationPlan {
   created_at: string;
   updated_at: string;
   spec_file: string;
+  // Execution trace metadata
+  run_id?: string;
+  run_started_at?: string;
   // Added for UI status persistence
   status?: TaskStatus;
   planStatus?: string;

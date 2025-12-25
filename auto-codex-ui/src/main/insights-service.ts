@@ -10,6 +10,7 @@ import { InsightsPaths } from './insights/paths';
 import { SessionStorage } from './insights/session-storage';
 import { SessionManager } from './insights/session-manager';
 import { InsightsExecutor } from './insights/insights-executor';
+import { createRunId } from './utils/run-id';
 
 /**
  * Service for AI-powered codebase insights chat
@@ -139,12 +140,15 @@ export class InsightsService extends EventEmitter {
       session.title = this.storage.generateTitle(message);
     }
 
+    const runId = createRunId();
+
     // Add user message
     const userMessage: InsightsChatMessage = {
       id: `msg-${Date.now()}`,
       role: 'user',
       content: message,
-      timestamp: new Date()
+      timestamp: new Date(),
+      runId
     };
     session.messages.push(userMessage);
     session.updatedAt = new Date();
@@ -175,6 +179,7 @@ export class InsightsService extends EventEmitter {
         role: 'assistant',
         content: result.fullResponse,
         timestamp: new Date(),
+        runId,
         suggestedTask: result.suggestedTask,
         toolsUsed: result.toolsUsed.length > 0 ? result.toolsUsed : undefined
       };

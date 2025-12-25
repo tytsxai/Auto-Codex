@@ -8,6 +8,10 @@ import { pythonEnvManager } from './python-env-manager';
 import { getUsageMonitor } from './codex-profile/usage-monitor';
 import { initializeUsageMonitorForwarding } from './ipc-handlers/terminal-handlers';
 import { initializeAppUpdater } from './app-updater';
+import { debugError, debugWarn } from '../shared/utils/debug-logger';
+import { logService } from './log-service';
+import { cleanupStaleTokenFiles } from './terminal/codex-integration-handler';
+import { compareVersions, getBundledVersion, getEffectiveVersion } from './updater/version-manager';
 
 // Get icon path based on platform
 function getIconPath(): string {
@@ -129,6 +133,22 @@ app.whenReady().then(() => {
   // Create window
   createWindow();
 
+  // Cleanup stale temp token files
+  cleanupStaleTokenFiles();
+
+  // Warn if source override is ahead of the packaged app
+  try {
+    const bundledVersion = getBundledVersion();
+    const effectiveVersion = getEffectiveVersion();
+    if (compareVersions(effectiveVersion, bundledVersion) > 0) {
+      debugWarn(
+        `[main] Source version ${effectiveVersion} is newer than app version ${bundledVersion}. Please update the app to avoid incompatibility.`
+      );
+    }
+  } catch (error) {
+    debugWarn('[main] Version consistency check failed:', error);
+  }
+
   // Initialize usage monitoring after window is created
   if (mainWindow) {
     // Setup event forwarding from usage monitor to renderer
@@ -187,6 +207,9 @@ app.on('before-quit', async () => {
   usageMonitor.stop();
   console.warn('[main] Usage monitor stopped');
 
+  // Flush pending task logs
+  logService.shutdown();
+
   // Kill all running agent processes
   if (agentManager) {
     await agentManager.killAll();
@@ -199,9 +222,9 @@ app.on('before-quit', async () => {
 
 // Handle uncaught exceptions
 process.on('uncaughtException', (error) => {
-  console.error('Uncaught exception:', error);
+  debugError('Uncaught exception:', error);
 });
 
 process.on('unhandledRejection', (reason) => {
-  console.error('Unhandled rejection:', reason);
+  debugError('Unhandled rejection:', reason);
 });

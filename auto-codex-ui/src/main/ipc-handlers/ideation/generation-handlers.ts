@@ -4,13 +4,45 @@
 
 import type { IpcMainEvent, IpcMainInvokeEvent, BrowserWindow } from 'electron';
 import { app } from 'electron';
-import { existsSync, readFileSync } from 'fs';
+import { existsSync, readFileSync, mkdirSync } from 'fs';
 import path from 'path';
 import { IPC_CHANNELS, DEFAULT_APP_SETTINGS, DEFAULT_FEATURE_MODELS, DEFAULT_FEATURE_THINKING } from '../../../shared/constants';
 import type { IPCResult, IdeationConfig, IdeationGenerationStatus, AppSettings } from '../../../shared/types';
 import { projectStore } from '../../project-store';
 import type { AgentManager } from '../../agent';
 import { debugLog, debugError } from '../../../shared/utils/debug-logger';
+import { createRunId } from '../../utils/run-id';
+import { atomicWriteFileSync } from '../../utils/atomic-write';
+
+function writeIdeationRunState(projectPath: string, runId: string, config: IdeationConfig, refresh: boolean): void {
+  try {
+    const ideationDir = path.join(projectPath, '.auto-codex', 'ideation');
+    if (!existsSync(ideationDir)) {
+      mkdirSync(ideationDir, { recursive: true });
+    }
+    const state = {
+      run_id: runId,
+      run_started_at: new Date().toISOString(),
+      refresh,
+      config: {
+        enabledTypes: config.enabledTypes,
+        includeRoadmapContext: config.includeRoadmapContext,
+        includeKanbanContext: config.includeKanbanContext,
+        maxIdeasPerType: config.maxIdeasPerType,
+        append: config.append ?? false,
+        model: config.model,
+        thinkingLevel: config.thinkingLevel
+      }
+    };
+    atomicWriteFileSync(
+      path.join(ideationDir, 'run_state.json'),
+      JSON.stringify(state, null, 2),
+      { encoding: 'utf-8' }
+    );
+  } catch (error) {
+    debugError('[Ideation Handler] Failed to write run_state.json:', error);
+  }
+}
 
 /**
  * Read ideation feature settings from the settings file
@@ -89,6 +121,9 @@ export function startIdeationGeneration(
     thinkingLevel: configWithSettings.thinkingLevel
   });
 
+  const runId = createRunId();
+  writeIdeationRunState(project.path, runId, configWithSettings, false);
+
   // Start ideation generation via agent manager
   agentManager.startIdeationGeneration(projectId, project.path, configWithSettings, false);
 
@@ -139,6 +174,9 @@ export function refreshIdeationSession(
     );
     return;
   }
+
+  const runId = createRunId();
+  writeIdeationRunState(project.path, runId, configWithSettings, true);
 
   // Start ideation regeneration with refresh flag
   agentManager.startIdeationGeneration(projectId, project.path, configWithSettings, true);

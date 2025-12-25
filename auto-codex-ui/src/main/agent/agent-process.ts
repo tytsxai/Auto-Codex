@@ -189,6 +189,8 @@ export class AgentProcessManager {
     let phaseProgress = 0;
     let currentSubtask: string | undefined;
     let lastMessage: string | undefined;
+    let stdoutBuffer = '';
+    let stderrBuffer = '';
     // Collect all output for rate limit detection
     let allOutput = '';
 
@@ -200,50 +202,189 @@ export class AgentProcessManager {
       message: isSpecRunner ? 'Starting spec creation...' : 'Starting build process...'
     });
 
-    const processLog = (log: string) => {
+    const emitProgress = (options: {
+      phase?: ExecutionProgressData['phase'];
+      message?: string;
+      currentSubtask?: string;
+      phaseProgress?: number;
+      increment?: number;
+    }) => {
+      const phaseChanged = options.phase && options.phase !== currentPhase;
+      if (options.phase) {
+        currentPhase = options.phase;
+      }
+      if (options.currentSubtask) {
+        currentSubtask = options.currentSubtask;
+      }
+      if (options.message) {
+        lastMessage = options.message;
+      }
+
+      if (phaseChanged) {
+        phaseProgress = options.phaseProgress ?? 10;
+      } else if (typeof options.phaseProgress === 'number') {
+        phaseProgress = options.phaseProgress;
+      } else if (options.increment) {
+        phaseProgress = Math.min(90, phaseProgress + options.increment);
+      }
+
+      const overallProgress = this.events.calculateOverallProgress(currentPhase, phaseProgress);
+
+      this.emitter.emit('execution-progress', taskId, {
+        phase: currentPhase,
+        phaseProgress,
+        overallProgress,
+        currentSubtask,
+        message: lastMessage
+      });
+    };
+
+    const handleTaskLogMarker = (markerType: string, data: Record<string, unknown>) => {
+      const phaseRaw = typeof data.phase === 'string' ? data.phase : undefined;
+      const mappedPhase = phaseRaw ? this.events.mapTaskLogPhaseToExecutionPhase(phaseRaw) : null;
+
+      if (markerType === 'PHASE_START') {
+        if (mappedPhase) {
+          emitProgress({
+            phase: mappedPhase,
+            message: `Starting ${mappedPhase}...`,
+            phaseProgress: 10
+          });
+        }
+        return;
+      }
+
+      if (markerType === 'PHASE_END') {
+        const success = data.success === undefined ? true : Boolean(data.success);
+        if (!success) {
+          emitProgress({
+            phase: 'failed',
+            message: `Phase ${phaseRaw || 'unknown'} failed`,
+            phaseProgress: 0
+          });
+          return;
+        }
+        if (mappedPhase) {
+          emitProgress({
+            phase: mappedPhase,
+            message: `Completed ${mappedPhase} phase`,
+            phaseProgress: 100
+          });
+        }
+        return;
+      }
+
+      if (markerType === 'TEXT') {
+        const content = typeof data.content === 'string' ? data.content : undefined;
+        const subtaskId = typeof data.subtask_id === 'string' ? data.subtask_id : undefined;
+        emitProgress({
+          phase: mappedPhase || currentPhase,
+          message: content,
+          currentSubtask: subtaskId,
+          increment: 2
+        });
+        return;
+      }
+
+      if (markerType === 'TOOL_START' || markerType === 'TOOL_END') {
+        const toolName = typeof data.name === 'string' ? data.name : 'tool';
+        emitProgress({
+          message: `Tool: ${toolName}`,
+          increment: 1
+        });
+        return;
+      }
+
+      if (markerType === 'SUBPHASE_START') {
+        const subphase = typeof data.subphase === 'string' ? data.subphase : 'subphase';
+        emitProgress({
+          message: `Starting ${subphase}`,
+          increment: 2
+        });
+        return;
+      }
+    };
+
+    const processLogChunk = (log: string, source: 'stdout' | 'stderr'): string => {
       // Collect output for rate limit detection (keep last 10KB)
       allOutput = (allOutput + log).slice(-10000);
-      // Parse for phase transitions
-      const phaseUpdate = this.events.parseExecutionPhase(log, currentPhase, isSpecRunner);
 
-      if (phaseUpdate) {
-        const phaseChanged = phaseUpdate.phase !== currentPhase;
-        currentPhase = phaseUpdate.phase;
+      const buffer = source === 'stdout' ? stdoutBuffer : stderrBuffer;
+      const combined = buffer + log;
+      const hasNewline = combined.includes('\n');
+      const lines = combined.split('\n');
+      let remainder = lines.pop() ?? '';
 
-        if (phaseUpdate.currentSubtask) {
-          currentSubtask = phaseUpdate.currentSubtask;
-        }
-        if (phaseUpdate.message) {
-          lastMessage = phaseUpdate.message;
-        }
+      const cleanedLines: string[] = [];
 
-        // Reset phase progress on phase change, otherwise increment
-        if (phaseChanged) {
-          phaseProgress = 10; // Start new phase at 10%
-        } else {
-          phaseProgress = Math.min(90, phaseProgress + 5); // Increment within phase
+      const processLine = (line: string): void => {
+        const trimmed = line.trim();
+        if (!trimmed) {
+          cleanedLines.push(line);
+          return;
         }
 
-        const overallProgress = this.events.calculateOverallProgress(currentPhase, phaseProgress);
+        const marker = this.events.parseTaskLogMarker(trimmed);
+        if (marker) {
+          handleTaskLogMarker(marker.markerType, marker.data);
+          return;
+        }
 
-        this.emitter.emit('execution-progress', taskId, {
-          phase: currentPhase,
-          phaseProgress,
-          overallProgress,
-          currentSubtask,
-          message: lastMessage
-        });
+        cleanedLines.push(line);
+
+        // Parse for phase transitions using legacy heuristics
+        const phaseUpdate = this.events.parseExecutionPhase(trimmed, currentPhase, isSpecRunner);
+        if (phaseUpdate) {
+          const phaseChanged = phaseUpdate.phase !== currentPhase;
+          emitProgress({
+            phase: phaseUpdate.phase,
+            currentSubtask: phaseUpdate.currentSubtask,
+            message: phaseUpdate.message,
+            phaseProgress: phaseChanged ? 10 : undefined,
+            increment: phaseChanged ? undefined : 5
+          });
+        }
+      };
+
+      for (const line of lines) {
+        processLine(line);
       }
+
+      if (!hasNewline && remainder) {
+        const trimmed = remainder.trim();
+        if (!trimmed) {
+          remainder = '';
+        } else {
+          const marker = this.events.parseTaskLogMarker(trimmed);
+          if (marker) {
+            handleTaskLogMarker(marker.markerType, marker.data);
+            remainder = '';
+          } else if (!trimmed.startsWith('__TASK_LOG_')) {
+            processLine(remainder);
+            remainder = '';
+          }
+        }
+      }
+
+      if (source === 'stdout') {
+        stdoutBuffer = remainder;
+      } else {
+        stderrBuffer = remainder;
+      }
+
+      return cleanedLines.join('\n');
     };
 
     // Handle stdout - explicitly decode as UTF-8 for cross-platform Unicode support
     childProcess.stdout?.on('data', (data: Buffer) => {
       const log = data.toString('utf8');
-      this.emitter.emit('log', taskId, log);
-      processLog(log);
+      const cleaned = processLogChunk(log, 'stdout');
+      if (cleaned.trim()) {
+        this.emitter.emit('log', taskId, cleaned);
+      }
       // Print to console when DEBUG is enabled (visible in pnpm dev terminal)
       if (['true', '1', 'yes', 'on'].includes(process.env.DEBUG?.toLowerCase() ?? '')) {
-        console.warn(`[Agent:${taskId}] ${log.trim()}`);
+        console.warn(`[Agent:${taskId}] ${cleaned.trim()}`);
       }
     });
 
@@ -252,11 +393,13 @@ export class AgentProcessManager {
       const log = data.toString('utf8');
       // Some Python output goes to stderr (like progress bars)
       // so we treat it as log, not error
-      this.emitter.emit('log', taskId, log);
-      processLog(log);
+      const cleaned = processLogChunk(log, 'stderr');
+      if (cleaned.trim()) {
+        this.emitter.emit('log', taskId, cleaned);
+      }
       // Print to console when DEBUG is enabled (visible in pnpm dev terminal)
       if (['true', '1', 'yes', 'on'].includes(process.env.DEBUG?.toLowerCase() ?? '')) {
-        console.warn(`[Agent:${taskId}] ${log.trim()}`);
+        console.warn(`[Agent:${taskId}] ${cleaned.trim()}`);
       }
     });
 
@@ -269,6 +412,20 @@ export class AgentProcessManager {
       if (this.state.wasSpawnKilled(spawnId)) {
         this.state.clearKilledSpawn(spawnId);
         return;
+      }
+
+      // Flush any buffered stdout/stderr lines that didn't end with a newline
+      if (stdoutBuffer) {
+        const cleaned = processLogChunk('\n', 'stdout');
+        if (cleaned.trim()) {
+          this.emitter.emit('log', taskId, cleaned);
+        }
+      }
+      if (stderrBuffer) {
+        const cleaned = processLogChunk('\n', 'stderr');
+        if (cleaned.trim()) {
+          this.emitter.emit('log', taskId, cleaned);
+        }
       }
 
       // Check for rate limit if process failed

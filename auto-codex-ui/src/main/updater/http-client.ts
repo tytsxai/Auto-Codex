@@ -64,6 +64,59 @@ export function fetchJson<T>(url: string): Promise<T> {
 }
 
 /**
+ * Fetch plain text from a URL using https
+ */
+export function fetchText(url: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const headers = {
+      'User-Agent': 'Auto-Codex-UI',
+      'Accept': 'text/plain, application/octet-stream'
+    };
+
+    const request = https.get(url, { headers }, (response) => {
+      // Handle redirects
+      if (response.statusCode === 301 || response.statusCode === 302) {
+        const redirectUrl = response.headers.location;
+        if (redirectUrl) {
+          fetchText(redirectUrl).then(resolve).catch(reject);
+          return;
+        }
+      }
+
+      if (response.statusCode !== 200) {
+        // Collect response body for error details (limit to 10KB)
+        const maxErrorSize = 10 * 1024;
+        let errorData = '';
+        response.on('data', chunk => {
+          if (errorData.length < maxErrorSize) {
+            errorData += chunk.toString().slice(0, maxErrorSize - errorData.length);
+          }
+        });
+        response.on('end', () => {
+          const errorMsg = `HTTP ${response.statusCode}: ${errorData || response.statusMessage || 'No error details'}`;
+          reject(new Error(errorMsg));
+        });
+        response.on('error', reject);
+        return;
+      }
+
+      let data = '';
+      response.on('data', chunk => data += chunk);
+      response.on('end', () => {
+        resolve(data);
+      });
+      response.on('error', reject);
+    });
+
+    request.on('error', reject);
+    request.setTimeout(TIMEOUTS.requestTimeout, () => {
+      request.destroy();
+      reject(new Error('Request timeout'));
+    });
+  });
+}
+
+/**
  * Download a file with progress tracking
  */
 export function downloadFile(

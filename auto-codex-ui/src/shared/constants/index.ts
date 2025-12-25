@@ -4,28 +4,31 @@
  */
 
 // IPC 通道常量
-export * from './ipc';
+export * from "./ipc";
 
 // 任务相关常量
-export * from './task';
+export * from "./task";
 
 // 路线图常量
-export * from './roadmap';
+export * from "./roadmap";
 
 // 创意常量
-export * from './ideation';
+export * from "./ideation";
 
 // 变更日志常量
-export * from './changelog';
+export * from "./changelog";
 
 // 模型与代理配置常量
-export * from './models';
+export * from "./models";
 
 // 主题常量
-export * from './themes';
+export * from "./themes";
 
 // GitHub 集成常量
-export * from './github';
+export * from "./github";
 
 // 配置与路径
-export * from './config';
+export * from "./config";
+
+// 协议版本
+export * from "./protocol";

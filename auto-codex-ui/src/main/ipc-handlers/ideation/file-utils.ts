@@ -2,8 +2,9 @@
  * File system utilities for ideation operations
  */
 
-import { existsSync, readFileSync, writeFileSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import type { RawIdeationData } from './types';
+import { atomicWriteFileSync } from '../../utils/atomic-write';
 
 /**
  * Read ideation data from file
@@ -28,7 +29,7 @@ export function readIdeationFile(ideationPath: string): RawIdeationData | null {
  */
 export function writeIdeationFile(ideationPath: string, data: RawIdeationData): void {
   try {
-    writeFileSync(ideationPath, JSON.stringify(data, null, 2));
+    atomicWriteFileSync(ideationPath, JSON.stringify(data, null, 2), { encoding: 'utf-8' });
   } catch (error) {
     throw new Error(
       error instanceof Error ? error.message : 'Failed to write ideation file'

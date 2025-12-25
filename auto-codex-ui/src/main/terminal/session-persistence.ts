@@ -13,6 +13,7 @@ import type {
   TerminalSessionsFile,
   TerminalRecoveryInfo,
 } from '../../shared/types/terminal-session';
+import { atomicWriteFileSync } from '../utils/atomic-write';
 
 const SESSIONS_FILE = path.join(app.getPath('userData'), 'terminal-sessions.json');
 const BUFFERS_DIR = path.join(app.getPath('userData'), 'terminal-buffers');
@@ -265,7 +266,7 @@ class SessionPersistence {
     };
 
     try {
-      fs.writeFileSync(SESSIONS_FILE, JSON.stringify(data, null, 2), 'utf8');
+      atomicWriteFileSync(SESSIONS_FILE, JSON.stringify(data, null, 2), { encoding: 'utf-8' });
       console.warn(`[SessionPersistence] Saved ${data.sessions.length} sessions to disk`);
     } catch (error) {
       console.error('[SessionPersistence] Failed to save sessions:', error);

@@ -1,7 +1,56 @@
 import path from 'path';
 import { existsSync, readFileSync, watchFile } from 'fs';
 import { EventEmitter } from 'events';
-import type { TaskLogs, TaskLogPhase, TaskLogStreamChunk, TaskPhaseLog } from '../shared/types';
+import type { TaskLogs, TaskLogPhase, TaskLogStreamChunk, TaskPhaseLog, TaskLogEntry } from '../shared/types';
+
+const LOG_REDACTION_RULES: Array<{ pattern: RegExp; replacement: string }> = [
+  { pattern: /(sk-[A-Za-z0-9_-]{10,})/g, replacement: '[REDACTED]' },
+  { pattern: /(codex_oauth_[A-Za-z0-9._-]{10,})/g, replacement: '[REDACTED]' },
+  { pattern: /(ghp_[A-Za-z0-9]{10,})/g, replacement: '[REDACTED]' },
+  { pattern: /(gho_[A-Za-z0-9]{10,})/g, replacement: '[REDACTED]' },
+  { pattern: /(ya29\.[A-Za-z0-9._-]{10,})/g, replacement: '[REDACTED]' },
+  { pattern: /(Bearer\s+)(\S+)/gi, replacement: '$1[REDACTED]' },
+  { pattern: /((?:api[_-]?key|token|secret|password)\s*[:=]\s*)([^\s]+)/gi, replacement: '$1[REDACTED]' }
+];
+
+const redactText = (value: string): string => {
+  let redacted = value;
+  for (const rule of LOG_REDACTION_RULES) {
+    redacted = redacted.replace(rule.pattern, rule.replacement);
+  }
+  return redacted;
+};
+
+const redactLogs = (logs: TaskLogs): TaskLogs => {
+  const redactEntry = (entry: Record<string, unknown>): Record<string, unknown> => {
+    const redacted: Record<string, unknown> = { ...entry };
+    for (const key of ['content', 'tool_input', 'detail']) {
+      const value = redacted[key];
+      if (typeof value === 'string') {
+        redacted[key] = redactText(value);
+      }
+    }
+    return redacted;
+  };
+
+  const redactPhase = (phase?: TaskPhaseLog | null): TaskPhaseLog | undefined => {
+    if (!phase) return undefined;
+    const entries: TaskLogEntry[] = phase.entries.map((entry) => {
+      const redacted = redactEntry(entry as unknown as Record<string, unknown>);
+      return redacted as unknown as TaskLogEntry;
+    });
+    return { ...phase, entries };
+  };
+
+  return {
+    ...logs,
+    phases: {
+      planning: redactPhase(logs.phases?.planning) as TaskPhaseLog,
+      coding: redactPhase(logs.phases?.coding) as TaskPhaseLog,
+      validation: redactPhase(logs.phases?.validation) as TaskPhaseLog
+    }
+  };
+};
 
 /**
  * Service for loading and watching phase-based task logs (task_logs.json)
@@ -44,8 +93,9 @@ export class TaskLogService extends EventEmitter {
     try {
       const content = readFileSync(logFile, 'utf-8');
       const logs = JSON.parse(content) as TaskLogs;
-      this.logCache.set(specDir, logs);
-      return logs;
+      const redacted = redactLogs(logs);
+      this.logCache.set(specDir, redacted);
+      return redacted;
     } catch (error) {
       // JSON parse error - file may be mid-write, return cached version if available
       const cached = this.logCache.get(specDir);

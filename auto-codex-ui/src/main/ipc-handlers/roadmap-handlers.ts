@@ -4,13 +4,16 @@ import { IPC_CHANNELS, AUTO_BUILD_PATHS, getSpecsDir, DEFAULT_APP_SETTINGS, DEFA
 import type { IPCResult, Roadmap, RoadmapFeatureStatus, RoadmapGenerationStatus, Task, TaskMetadata, CompetitorAnalysis, AppSettings } from '../../shared/types';
 import type { RoadmapConfig } from '../agent/types';
 import path from 'path';
-import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync } from 'fs';
+import { existsSync, readFileSync, mkdirSync, readdirSync } from 'fs';
 import { projectStore } from '../project-store';
+import { atomicWriteFileSync } from '../utils/atomic-write';
 import { AgentManager } from '../agent';
 import { debugLog, debugError } from '../../shared/utils/debug-logger';
 import type { PythonEnvManager } from '../python-env-manager';
 import { getAutoBuildSourcePath } from './context/utils';
 import type { ModelTypeShort, ThinkingLevel } from '../../shared/types/settings';
+import { createRunId } from '../utils/run-id';
+import { mapCategoryToWorkflowType } from '../utils/workflow-type';
 
 /**
  * Read feature settings from the settings file
@@ -41,6 +44,52 @@ function getFeatureSettings(): { model?: ModelTypeShort; thinkingLevel?: Thinkin
     model: DEFAULT_FEATURE_MODELS.roadmap,
     thinkingLevel: DEFAULT_FEATURE_THINKING.roadmap
   };
+}
+
+/**
+ * Read risk policy from settings.
+ */
+function getRiskPolicy(): 'conservative' | 'standard' | 'permissive' {
+  const settingsPath = path.join(app.getPath('userData'), 'settings.json');
+
+  try {
+    if (existsSync(settingsPath)) {
+      const content = readFileSync(settingsPath, 'utf-8');
+      const settings: AppSettings = { ...DEFAULT_APP_SETTINGS, ...JSON.parse(content) };
+      return (settings.riskPolicy as 'conservative' | 'standard' | 'permissive') || 'conservative';
+    }
+  } catch (error) {
+    debugError('[Roadmap Handler] Failed to read risk policy:', error);
+  }
+
+  return 'conservative';
+}
+
+function writeRoadmapRunState(projectPath: string, runId: string, options: {
+  enableCompetitorAnalysis?: boolean;
+  refreshCompetitorAnalysis?: boolean;
+  refresh?: boolean;
+}): void {
+  const roadmapDir = path.join(projectPath, AUTO_BUILD_PATHS.ROADMAP_DIR);
+  try {
+    if (!existsSync(roadmapDir)) {
+      mkdirSync(roadmapDir, { recursive: true });
+    }
+    const state = {
+      run_id: runId,
+      run_started_at: new Date().toISOString(),
+      enable_competitor_analysis: options.enableCompetitorAnalysis ?? false,
+      refresh_competitor_analysis: options.refreshCompetitorAnalysis ?? false,
+      refresh: options.refresh ?? false
+    };
+    atomicWriteFileSync(
+      path.join(roadmapDir, 'run_state.json'),
+      JSON.stringify(state, null, 2),
+      { encoding: 'utf-8' }
+    );
+  } catch (error) {
+    debugError('[Roadmap Handler] Failed to write run_state.json:', error);
+  }
 }
 
 
@@ -237,6 +286,16 @@ export function registerRoadmapHandlers(
         return;
       }
 
+      const riskPolicy = getRiskPolicy();
+      if (enableCompetitorAnalysis && riskPolicy !== 'permissive') {
+        mainWindow.webContents.send(
+          IPC_CHANNELS.ROADMAP_ERROR,
+          projectId,
+          'Competitor analysis is blocked by risk policy. Set riskPolicy to "permissive" in settings.json to allow.'
+        );
+        return;
+      }
+
       const autoBuildSource = getAutoBuildSourcePath();
       if (!autoBuildSource) {
         mainWindow.webContents.send(IPC_CHANNELS.ROADMAP_ERROR, projectId, 'Auto Codex source not found');
@@ -261,6 +320,13 @@ export function registerRoadmapHandlers(
         projectId,
         projectPath: project.path,
         config
+      });
+
+      const runId = createRunId();
+      writeRoadmapRunState(project.path, runId, {
+        enableCompetitorAnalysis,
+        refreshCompetitorAnalysis,
+        refresh: false
       });
 
       // Start roadmap generation via agent manager
@@ -316,6 +382,16 @@ export function registerRoadmapHandlers(
         return;
       }
 
+      const riskPolicy = getRiskPolicy();
+      if (enableCompetitorAnalysis && riskPolicy !== 'permissive') {
+        mainWindow.webContents.send(
+          IPC_CHANNELS.ROADMAP_ERROR,
+          projectId,
+          'Competitor analysis is blocked by risk policy. Set riskPolicy to "permissive" in settings.json to allow.'
+        );
+        return;
+      }
+
       const autoBuildSource = getAutoBuildSourcePath();
       if (!autoBuildSource) {
         mainWindow.webContents.send(IPC_CHANNELS.ROADMAP_ERROR, projectId, 'Auto Codex source not found');
@@ -337,6 +413,13 @@ export function registerRoadmapHandlers(
       }
 
       // Start roadmap regeneration with refresh flag
+      const runId = createRunId();
+      writeRoadmapRunState(project.path, runId, {
+        enableCompetitorAnalysis,
+        refreshCompetitorAnalysis,
+        refresh: true
+      });
+
       agentManager.startRoadmapGeneration(
         projectId,
         project.path,
@@ -432,7 +515,7 @@ export function registerRoadmapHandlers(
         existingRoadmap.metadata = existingRoadmap.metadata || {};
         existingRoadmap.metadata.updated_at = new Date().toISOString();
 
-        writeFileSync(roadmapPath, JSON.stringify(existingRoadmap, null, 2));
+        atomicWriteFileSync(roadmapPath, JSON.stringify(existingRoadmap, null, 2), { encoding: 'utf-8' });
 
         return { success: true };
       } catch (error) {
@@ -481,7 +564,7 @@ export function registerRoadmapHandlers(
         roadmap.metadata = roadmap.metadata || {};
         roadmap.metadata.updated_at = new Date().toISOString();
 
-        writeFileSync(roadmapPath, JSON.stringify(roadmap, null, 2));
+        atomicWriteFileSync(roadmapPath, JSON.stringify(roadmap, null, 2), { encoding: 'utf-8' });
 
         return { success: true };
       } catch (error) {
@@ -541,7 +624,7 @@ ${(feature.acceptance_criteria || []).map((c: string) => `- [ ] ${c}`).join('\n'
 `;
 
         // Generate proper spec directory (like task creation)
-                const specsBaseDir = getSpecsDir(project.autoBuildPath);
+        const specsBaseDir = getSpecsDir(project.autoBuildPath);
         const specsDir = path.join(project.path, specsBaseDir);
 
         // Ensure specs directory exists
@@ -578,32 +661,52 @@ ${(feature.acceptance_criteria || []).map((c: string) => `- [ ] ${c}`).join('\n'
         const specDir = path.join(specsDir, specId);
         mkdirSync(specDir, { recursive: true });
 
+        const featureCategory = typeof feature.category === 'string' ? feature.category : 'feature';
+
         // Create initial implementation_plan.json
         const now = new Date().toISOString();
+        const workflowType = mapCategoryToWorkflowType(featureCategory);
         const implementationPlan = {
           feature: feature.title,
           description: taskDescription,
           created_at: now,
           updated_at: now,
-          status: 'pending',
-          phases: []
+          status: 'backlog',
+          planStatus: 'pending',
+          phases: [],
+          workflow_type: workflowType,
+          services_involved: [],
+          final_acceptance: [],
+          spec_file: 'spec.md'
         };
-        writeFileSync(path.join(specDir, AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN), JSON.stringify(implementationPlan, null, 2));
+        atomicWriteFileSync(
+          path.join(specDir, AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN),
+          JSON.stringify(implementationPlan, null, 2),
+          { encoding: 'utf-8' }
+        );
 
         // Create requirements.json
         const requirements = {
           task_description: taskDescription,
-          workflow_type: 'feature'
+          workflow_type: workflowType
         };
-        writeFileSync(path.join(specDir, AUTO_BUILD_PATHS.REQUIREMENTS), JSON.stringify(requirements, null, 2));
+        atomicWriteFileSync(
+          path.join(specDir, AUTO_BUILD_PATHS.REQUIREMENTS),
+          JSON.stringify(requirements, null, 2),
+          { encoding: 'utf-8' }
+        );
 
         // Build metadata
         const metadata: TaskMetadata = {
           sourceType: 'roadmap',
           featureId: feature.id,
-          category: 'feature'
+          category: featureCategory
         };
-        writeFileSync(path.join(specDir, 'task_metadata.json'), JSON.stringify(metadata, null, 2));
+        atomicWriteFileSync(
+          path.join(specDir, 'task_metadata.json'),
+          JSON.stringify(metadata, null, 2),
+          { encoding: 'utf-8' }
+        );
 
         // NOTE: We do NOT auto-start spec creation here - user should explicitly start the task
         // from the kanban board when they're ready
@@ -613,7 +716,7 @@ ${(feature.acceptance_criteria || []).map((c: string) => `- [ ] ${c}`).join('\n'
         feature.linked_spec_id = specId;
         roadmap.metadata = roadmap.metadata || {};
         roadmap.metadata.updated_at = new Date().toISOString();
-        writeFileSync(roadmapPath, JSON.stringify(roadmap, null, 2));
+        atomicWriteFileSync(roadmapPath, JSON.stringify(roadmap, null, 2), { encoding: 'utf-8' });
 
         // Create task object
         const task: Task = {

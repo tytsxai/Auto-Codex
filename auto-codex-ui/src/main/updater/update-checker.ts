@@ -4,7 +4,7 @@
 
 import { GITHUB_CONFIG } from './config';
 import { fetchJson } from './http-client';
-import { getEffectiveVersion, parseVersionFromTag, compareVersions } from './version-manager';
+import { getBundledVersion, getEffectiveVersion, parseVersionFromTag, compareVersions } from './version-manager';
 import { GitHubRelease, AutoBuildUpdateCheck } from './types';
 import { debugLog } from '../../shared/utils/debug-logger';
 
@@ -38,7 +38,19 @@ export function clearCachedRelease(): void {
 export async function checkForUpdates(): Promise<AutoBuildUpdateCheck> {
   // Use effective version which accounts for source updates
   const currentVersion = getEffectiveVersion();
+  const bundledVersion = getBundledVersion();
   debugLog('[UpdateCheck] Current effective version:', currentVersion);
+  debugLog('[UpdateCheck] Bundled app version:', bundledVersion);
+
+  // If source override is ahead of the app, warn and block further source updates.
+  if (compareVersions(currentVersion, bundledVersion) > 0) {
+    return {
+      updateAvailable: false,
+      currentVersion,
+      latestVersion: currentVersion,
+      error: `检测到源代码版本 ${currentVersion} 高于应用版本 ${bundledVersion}，请先更新应用以避免不兼容。`
+    };
+  }
 
   try {
     // Fetch latest release from GitHub Releases API
@@ -51,6 +63,17 @@ export async function checkForUpdates(): Promise<AutoBuildUpdateCheck> {
     // Parse version from tag (e.g., "v1.2.0" -> "1.2.0")
     const latestVersion = parseVersionFromTag(release.tag_name);
     debugLog('[UpdateCheck] Latest version:', latestVersion);
+
+    // Prevent source updates that are newer than the packaged app.
+    // This avoids API/contract drift between the UI and backend source.
+    if (compareVersions(latestVersion, bundledVersion) > 0) {
+      return {
+        updateAvailable: false,
+        currentVersion,
+        latestVersion,
+        error: `需要先更新应用到 ${latestVersion} 或更高版本，才能更新源代码。`
+      };
+    }
 
     // Compare versions
     const updateAvailable = compareVersions(latestVersion, currentVersion) > 0;

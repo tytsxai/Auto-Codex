@@ -107,6 +107,8 @@ export interface AppSettings {
   changelogFormat?: ChangelogFormat;
   changelogAudience?: ChangelogAudience;
   changelogEmojiLevel?: ChangelogEmojiLevel;
+  // Risk policy for high-impact automation
+  riskPolicy?: 'conservative' | 'standard' | 'permissive';
   // Migration flags (internal use)
   _migratedAgentProfileToAuto?: boolean;
 

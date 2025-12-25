@@ -1,5 +1,5 @@
 import { spawn } from 'child_process';
-import { existsSync } from 'fs';
+import { existsSync, writeFileSync } from 'fs';
 import path from 'path';
 import { EventEmitter } from 'events';
 import { app } from 'electron';
@@ -355,6 +355,97 @@ export class PythonEnvManager extends EventEmitter {
     });
   }
 
+  private getPythonVersionInfo(pythonPath: string): { major: number; minor: number; version: string } | null {
+    try {
+      const { spawnSync } = require('child_process');
+      const result = spawnSync(pythonPath, ['--version'], {
+        stdio: 'pipe',
+        timeout: 5000
+      });
+
+      if (result.error || result.status !== 0) {
+        return null;
+      }
+
+      const output = (result.stdout?.toString() || result.stderr?.toString() || '').trim();
+      const match = output.match(/Python\s+(\d+)\.(\d+)(?:\.(\d+))?/i);
+      if (!match) {
+        return null;
+      }
+
+      return {
+        major: parseInt(match[1], 10),
+        minor: parseInt(match[2], 10),
+        version: output
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  private selectRequirementsFile(pythonPath: string): {
+    path: string;
+    source: 'lock' | 'requirements';
+    label: string;
+    pythonVersion?: string;
+  } | null {
+    if (!this.autoBuildSourcePath) return null;
+
+    const requirementsPath = path.join(this.autoBuildSourcePath, 'requirements.txt');
+    const versionInfo = this.getPythonVersionInfo(pythonPath);
+
+    if (versionInfo) {
+      const lockName = `requirements-py${versionInfo.major}${versionInfo.minor}.lock`;
+      const lockPath = path.join(this.autoBuildSourcePath, lockName);
+
+      if (existsSync(lockPath)) {
+        return {
+          path: lockPath,
+          source: 'lock',
+          label: lockName,
+          pythonVersion: versionInfo.version
+        };
+      }
+
+      console.warn(`[PythonEnvManager] Lockfile ${lockName} not found; falling back to requirements.txt`);
+    }
+
+    if (existsSync(requirementsPath)) {
+      return {
+        path: requirementsPath,
+        source: 'requirements',
+        label: 'requirements.txt',
+        pythonVersion: versionInfo?.version
+      };
+    }
+
+    return null;
+  }
+
+  private recordDependencyInstall(selection: {
+    path: string;
+    source: 'lock' | 'requirements';
+    label: string;
+    pythonVersion?: string;
+  }): void {
+    const venvDir = this.getVenvDir();
+    if (!venvDir) return;
+
+    const record = {
+      installedAt: new Date().toISOString(),
+      pythonVersion: selection.pythonVersion || 'unknown',
+      requirementsFile: selection.label,
+      requirementsPath: selection.path,
+      source: selection.source
+    };
+
+    try {
+      writeFileSync(path.join(venvDir, '.auto-codex-deps.json'), JSON.stringify(record, null, 2));
+    } catch (err) {
+      console.warn('[PythonEnvManager] Failed to write dependency record:', err);
+    }
+  }
+
   /**
    * Install dependencies from requirements.txt using python -m pip
    */
@@ -362,27 +453,27 @@ export class PythonEnvManager extends EventEmitter {
     if (!this.autoBuildSourcePath) return false;
 
     const venvPython = this.getVenvPythonPath();
-    const requirementsPath = path.join(this.autoBuildSourcePath, 'requirements.txt');
+    const selection = venvPython ? this.selectRequirementsFile(venvPython) : null;
 
     if (!venvPython || !existsSync(venvPython)) {
       this.emit('error', 'Python not found in virtual environment');
       return false;
     }
 
-    if (!existsSync(requirementsPath)) {
-      this.emit('error', 'requirements.txt not found');
+    if (!selection) {
+      this.emit('error', 'Requirements file not found');
       return false;
     }
 
     // Bootstrap pip first if needed
     await this.bootstrapPip();
 
-    this.emit('status', 'Installing Python dependencies (this may take a minute)...');
-    console.warn('[PythonEnvManager] Installing dependencies from:', requirementsPath);
+    this.emit('status', `Installing Python dependencies from ${selection.label} (this may take a minute)...`);
+    console.warn('[PythonEnvManager] Installing dependencies from:', selection.path);
 
     return new Promise((resolve) => {
       // Use python -m pip for better compatibility across Python versions
-      const proc = spawn(venvPython, ['-m', 'pip', 'install', '-r', requirementsPath], {
+      const proc = spawn(venvPython, ['-m', 'pip', 'install', '-r', selection.path], {
         cwd: this.autoBuildSourcePath!,
         stdio: 'pipe'
       });
@@ -409,6 +500,7 @@ export class PythonEnvManager extends EventEmitter {
         if (code === 0) {
           console.warn('[PythonEnvManager] Dependencies installed successfully');
           this.emit('status', 'Dependencies installed successfully');
+          this.recordDependencyInstall(selection);
           resolve(true);
         } else {
           console.error('[PythonEnvManager] Failed to install deps:', stderr || stdout);

@@ -1,4 +1,4 @@
-import { IPC_CHANNELS } from '../../../shared/constants';
+import { IPC_CHANNELS } from "../../../shared/constants";
 import type {
   GitHubRepository,
   GitHubIssue,
@@ -7,53 +7,97 @@ import type {
   GitHubInvestigationStatus,
   GitHubInvestigationResult,
   IPCResult,
-  VersionSuggestion
-} from '../../../shared/types';
-import { createIpcListener, invokeIpc, sendIpc, IpcListenerCleanup } from './ipc-utils';
+  VersionSuggestion,
+} from "../../../shared/types";
+import {
+  createIpcListener,
+  invokeIpcResult,
+  sendIpc,
+  IpcListenerCleanup,
+} from "./ipc-utils";
 
 /**
  * GitHub Integration API operations
  */
 export interface GitHubAPI {
   // Operations
-  getGitHubRepositories: (projectId: string) => Promise<IPCResult<GitHubRepository[]>>;
-  getGitHubIssues: (projectId: string, state?: 'open' | 'closed' | 'all') => Promise<IPCResult<GitHubIssue[]>>;
-  getGitHubIssue: (projectId: string, issueNumber: number) => Promise<IPCResult<GitHubIssue>>;
-  getIssueComments: (projectId: string, issueNumber: number) => Promise<IPCResult<unknown[]>>;
-  checkGitHubConnection: (projectId: string) => Promise<IPCResult<GitHubSyncStatus>>;
-  investigateGitHubIssue: (projectId: string, issueNumber: number, selectedCommentIds?: number[]) => void;
-  importGitHubIssues: (projectId: string, issueNumbers: number[]) => Promise<IPCResult<GitHubImportResult>>;
+  getGitHubRepositories: (
+    projectId: string,
+  ) => Promise<IPCResult<GitHubRepository[]>>;
+  getGitHubIssues: (
+    projectId: string,
+    state?: "open" | "closed" | "all",
+  ) => Promise<IPCResult<GitHubIssue[]>>;
+  getGitHubIssue: (
+    projectId: string,
+    issueNumber: number,
+  ) => Promise<IPCResult<GitHubIssue>>;
+  getIssueComments: (
+    projectId: string,
+    issueNumber: number,
+  ) => Promise<IPCResult<unknown[]>>;
+  checkGitHubConnection: (
+    projectId: string,
+  ) => Promise<IPCResult<GitHubSyncStatus>>;
+  investigateGitHubIssue: (
+    projectId: string,
+    issueNumber: number,
+    selectedCommentIds?: number[],
+  ) => void;
+  importGitHubIssues: (
+    projectId: string,
+    issueNumbers: number[],
+  ) => Promise<IPCResult<GitHubImportResult>>;
   createGitHubRelease: (
     projectId: string,
     version: string,
     releaseNotes: string,
-    options?: { draft?: boolean; prerelease?: boolean }
+    options?: { draft?: boolean; prerelease?: boolean },
   ) => Promise<IPCResult<{ url: string }>>;
 
   /** AI-powered version suggestion based on commits since last release */
-  suggestReleaseVersion: (projectId: string) => Promise<IPCResult<VersionSuggestion>>;
+  suggestReleaseVersion: (
+    projectId: string,
+  ) => Promise<IPCResult<VersionSuggestion>>;
 
   // OAuth operations (gh CLI)
-  checkGitHubCli: () => Promise<IPCResult<{ installed: boolean; version?: string }>>;
-  checkGitHubAuth: () => Promise<IPCResult<{ authenticated: boolean; username?: string }>>;
-  startGitHubAuth: () => Promise<IPCResult<{ success: boolean; message?: string }>>;
+  checkGitHubCli: () => Promise<
+    IPCResult<{ installed: boolean; version?: string }>
+  >;
+  checkGitHubAuth: () => Promise<
+    IPCResult<{ authenticated: boolean; username?: string }>
+  >;
+  startGitHubAuth: () => Promise<
+    IPCResult<{ success: boolean; message?: string }>
+  >;
   getGitHubToken: () => Promise<IPCResult<{ token: string }>>;
   getGitHubUser: () => Promise<IPCResult<{ username: string; name?: string }>>;
-  listGitHubUserRepos: () => Promise<IPCResult<{ repos: Array<{ fullName: string; description: string | null; isPrivate: boolean }> }>>;
+  listGitHubUserRepos: () => Promise<
+    IPCResult<{
+      repos: Array<{
+        fullName: string;
+        description: string | null;
+        isPrivate: boolean;
+      }>;
+    }>
+  >;
 
   // Repository detection
   detectGitHubRepo: (projectPath: string) => Promise<IPCResult<string>>;
-  getGitHubBranches: (repo: string, token: string) => Promise<IPCResult<string[]>>;
+  getGitHubBranches: (
+    repo: string,
+    token: string,
+  ) => Promise<IPCResult<string[]>>;
 
   // Event Listeners
   onGitHubInvestigationProgress: (
-    callback: (projectId: string, status: GitHubInvestigationStatus) => void
+    callback: (projectId: string, status: GitHubInvestigationStatus) => void,
   ) => IpcListenerCleanup;
   onGitHubInvestigationComplete: (
-    callback: (projectId: string, result: GitHubInvestigationResult) => void
+    callback: (projectId: string, result: GitHubInvestigationResult) => void,
   ) => IpcListenerCleanup;
   onGitHubInvestigationError: (
-    callback: (projectId: string, error: string) => void
+    callback: (projectId: string, error: string) => void,
   ) => IpcListenerCleanup;
 }
 
@@ -62,77 +106,127 @@ export interface GitHubAPI {
  */
 export const createGitHubAPI = (): GitHubAPI => ({
   // Operations
-  getGitHubRepositories: (projectId: string): Promise<IPCResult<GitHubRepository[]>> =>
-    invokeIpc(IPC_CHANNELS.GITHUB_GET_REPOSITORIES, projectId),
+  getGitHubRepositories: (
+    projectId: string,
+  ): Promise<IPCResult<GitHubRepository[]>> =>
+    invokeIpcResult(IPC_CHANNELS.GITHUB_GET_REPOSITORIES, projectId),
 
-  getGitHubIssues: (projectId: string, state?: 'open' | 'closed' | 'all'): Promise<IPCResult<GitHubIssue[]>> =>
-    invokeIpc(IPC_CHANNELS.GITHUB_GET_ISSUES, projectId, state),
+  getGitHubIssues: (
+    projectId: string,
+    state?: "open" | "closed" | "all",
+  ): Promise<IPCResult<GitHubIssue[]>> =>
+    invokeIpcResult(IPC_CHANNELS.GITHUB_GET_ISSUES, projectId, state),
 
-  getGitHubIssue: (projectId: string, issueNumber: number): Promise<IPCResult<GitHubIssue>> =>
-    invokeIpc(IPC_CHANNELS.GITHUB_GET_ISSUE, projectId, issueNumber),
+  getGitHubIssue: (
+    projectId: string,
+    issueNumber: number,
+  ): Promise<IPCResult<GitHubIssue>> =>
+    invokeIpcResult(IPC_CHANNELS.GITHUB_GET_ISSUE, projectId, issueNumber),
 
-  getIssueComments: (projectId: string, issueNumber: number): Promise<IPCResult<unknown[]>> =>
-    invokeIpc(IPC_CHANNELS.GITHUB_GET_ISSUE_COMMENTS, projectId, issueNumber),
+  getIssueComments: (
+    projectId: string,
+    issueNumber: number,
+  ): Promise<IPCResult<unknown[]>> =>
+    invokeIpcResult(
+      IPC_CHANNELS.GITHUB_GET_ISSUE_COMMENTS,
+      projectId,
+      issueNumber,
+    ),
 
-  checkGitHubConnection: (projectId: string): Promise<IPCResult<GitHubSyncStatus>> =>
-    invokeIpc(IPC_CHANNELS.GITHUB_CHECK_CONNECTION, projectId),
+  checkGitHubConnection: (
+    projectId: string,
+  ): Promise<IPCResult<GitHubSyncStatus>> =>
+    invokeIpcResult(IPC_CHANNELS.GITHUB_CHECK_CONNECTION, projectId),
 
-  investigateGitHubIssue: (projectId: string, issueNumber: number, selectedCommentIds?: number[]): void =>
-    sendIpc(IPC_CHANNELS.GITHUB_INVESTIGATE_ISSUE, projectId, issueNumber, selectedCommentIds),
+  investigateGitHubIssue: (
+    projectId: string,
+    issueNumber: number,
+    selectedCommentIds?: number[],
+  ): void =>
+    sendIpc(
+      IPC_CHANNELS.GITHUB_INVESTIGATE_ISSUE,
+      projectId,
+      issueNumber,
+      selectedCommentIds,
+    ),
 
-  importGitHubIssues: (projectId: string, issueNumbers: number[]): Promise<IPCResult<GitHubImportResult>> =>
-    invokeIpc(IPC_CHANNELS.GITHUB_IMPORT_ISSUES, projectId, issueNumbers),
+  importGitHubIssues: (
+    projectId: string,
+    issueNumbers: number[],
+  ): Promise<IPCResult<GitHubImportResult>> =>
+    invokeIpcResult(IPC_CHANNELS.GITHUB_IMPORT_ISSUES, projectId, issueNumbers),
 
   createGitHubRelease: (
     projectId: string,
     version: string,
     releaseNotes: string,
-    options?: { draft?: boolean; prerelease?: boolean }
+    options?: { draft?: boolean; prerelease?: boolean },
   ): Promise<IPCResult<{ url: string }>> =>
-    invokeIpc(IPC_CHANNELS.GITHUB_CREATE_RELEASE, projectId, version, releaseNotes, options),
+    invokeIpcResult(
+      IPC_CHANNELS.GITHUB_CREATE_RELEASE,
+      projectId,
+      version,
+      releaseNotes,
+      options,
+    ),
 
-  suggestReleaseVersion: (projectId: string): Promise<IPCResult<VersionSuggestion>> =>
-    invokeIpc(IPC_CHANNELS.RELEASE_SUGGEST_VERSION, projectId),
+  suggestReleaseVersion: (
+    projectId: string,
+  ): Promise<IPCResult<VersionSuggestion>> =>
+    invokeIpcResult(IPC_CHANNELS.RELEASE_SUGGEST_VERSION, projectId),
 
   // OAuth operations (gh CLI)
-  checkGitHubCli: (): Promise<IPCResult<{ installed: boolean; version?: string }>> =>
-    invokeIpc(IPC_CHANNELS.GITHUB_CHECK_CLI),
+  checkGitHubCli: (): Promise<
+    IPCResult<{ installed: boolean; version?: string }>
+  > => invokeIpcResult(IPC_CHANNELS.GITHUB_CHECK_CLI),
 
-  checkGitHubAuth: (): Promise<IPCResult<{ authenticated: boolean; username?: string }>> =>
-    invokeIpc(IPC_CHANNELS.GITHUB_CHECK_AUTH),
+  checkGitHubAuth: (): Promise<
+    IPCResult<{ authenticated: boolean; username?: string }>
+  > => invokeIpcResult(IPC_CHANNELS.GITHUB_CHECK_AUTH),
 
-  startGitHubAuth: (): Promise<IPCResult<{ success: boolean; message?: string }>> =>
-    invokeIpc(IPC_CHANNELS.GITHUB_START_AUTH),
+  startGitHubAuth: (): Promise<
+    IPCResult<{ success: boolean; message?: string }>
+  > => invokeIpcResult(IPC_CHANNELS.GITHUB_START_AUTH),
 
   getGitHubToken: (): Promise<IPCResult<{ token: string }>> =>
-    invokeIpc(IPC_CHANNELS.GITHUB_GET_TOKEN),
+    invokeIpcResult(IPC_CHANNELS.GITHUB_GET_TOKEN),
 
   getGitHubUser: (): Promise<IPCResult<{ username: string; name?: string }>> =>
-    invokeIpc(IPC_CHANNELS.GITHUB_GET_USER),
+    invokeIpcResult(IPC_CHANNELS.GITHUB_GET_USER),
 
-  listGitHubUserRepos: (): Promise<IPCResult<{ repos: Array<{ fullName: string; description: string | null; isPrivate: boolean }> }>> =>
-    invokeIpc(IPC_CHANNELS.GITHUB_LIST_USER_REPOS),
+  listGitHubUserRepos: (): Promise<
+    IPCResult<{
+      repos: Array<{
+        fullName: string;
+        description: string | null;
+        isPrivate: boolean;
+      }>;
+    }>
+  > => invokeIpcResult(IPC_CHANNELS.GITHUB_LIST_USER_REPOS),
 
   // Repository detection
   detectGitHubRepo: (projectPath: string): Promise<IPCResult<string>> =>
-    invokeIpc(IPC_CHANNELS.GITHUB_DETECT_REPO, projectPath),
+    invokeIpcResult(IPC_CHANNELS.GITHUB_DETECT_REPO, projectPath),
 
-  getGitHubBranches: (repo: string, token: string): Promise<IPCResult<string[]>> =>
-    invokeIpc(IPC_CHANNELS.GITHUB_GET_BRANCHES, repo, token),
+  getGitHubBranches: (
+    repo: string,
+    token: string,
+  ): Promise<IPCResult<string[]>> =>
+    invokeIpcResult(IPC_CHANNELS.GITHUB_GET_BRANCHES, repo, token),
 
   // Event Listeners
   onGitHubInvestigationProgress: (
-    callback: (projectId: string, status: GitHubInvestigationStatus) => void
+    callback: (projectId: string, status: GitHubInvestigationStatus) => void,
   ): IpcListenerCleanup =>
     createIpcListener(IPC_CHANNELS.GITHUB_INVESTIGATION_PROGRESS, callback),
 
   onGitHubInvestigationComplete: (
-    callback: (projectId: string, result: GitHubInvestigationResult) => void
+    callback: (projectId: string, result: GitHubInvestigationResult) => void,
   ): IpcListenerCleanup =>
     createIpcListener(IPC_CHANNELS.GITHUB_INVESTIGATION_COMPLETE, callback),
 
   onGitHubInvestigationError: (
-    callback: (projectId: string, error: string) => void
+    callback: (projectId: string, error: string) => void,
   ): IpcListenerCleanup =>
-    createIpcListener(IPC_CHANNELS.GITHUB_INVESTIGATION_ERROR, callback)
+    createIpcListener(IPC_CHANNELS.GITHUB_INVESTIGATION_ERROR, callback),
 });

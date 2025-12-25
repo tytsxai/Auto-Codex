@@ -14,6 +14,8 @@ export interface CodexProviderEnvInfo {
   provider?: string;
   envKey?: string;
   preferredAuthMethod?: string;
+  baseUrl?: string;
+  bearerToken?: string;
 }
 
 export interface CodexAuthJson {
@@ -118,7 +120,15 @@ export function getProviderEnvInfoFromConfigToml(configDir: string): CodexProvid
 
   const envKeyMatch = sectionBody.match(/^\s*env_key\s*=\s*"(.*?)"\s*$/m);
   const envKey = envKeyMatch?.[1]?.trim();
-  return { provider, envKey, preferredAuthMethod };
+
+  // Read base_url and experimental_bearer_token for third-party providers (e.g., yunyi)
+  const baseUrlMatch = sectionBody.match(/^\s*base_url\s*=\s*"(.*?)"\s*$/m);
+  const baseUrl = baseUrlMatch?.[1]?.trim();
+
+  const bearerTokenMatch = sectionBody.match(/^\s*experimental_bearer_token\s*=\s*"(.*?)"\s*$/m);
+  const bearerToken = bearerTokenMatch?.[1]?.trim();
+
+  return { provider, envKey, preferredAuthMethod, baseUrl, bearerToken };
 }
 
 export function configPrefersApiKey(configDir: string): boolean {
@@ -164,25 +174,28 @@ export function buildAuthEnvFromConfig(
 
   const env: Record<string, string> = {};
   const authJson = readAuthJson(dir);
+  const providerInfo = getProviderEnvInfoFromConfigToml(dir);
 
   // 1) Provider-specific env_key (e.g. YUNYI_KEY) when declared by config.toml.
   Object.assign(env, buildProviderEnvFromConfig(dir, existingEnv));
 
-  // 2) OpenAI-compatible API key - some subprocesses/tools expect OPENAI_API_KEY explicitly.
+  // 2) OpenAI-compatible API key - try auth.json first, then config.toml bearer_token
   if (!(existingEnv.OPENAI_API_KEY || '').trim()) {
-    const apiKey = getCredentialFromAuthJson(authJson);
+    const apiKey = getCredentialFromAuthJson(authJson) || providerInfo.bearerToken;
     if (apiKey) {
       env.OPENAI_API_KEY = apiKey;
     }
   }
 
-  // 3) OpenAI-compatible base URL for gateway/proxy setups.
-  // Codex CLI reads config.toml directly, but SDK clients and other tools may rely on env vars.
-  const baseUrl = (typeof authJson?.api_base_url === 'string' ? authJson.api_base_url : '').trim();
+  // 3) OpenAI-compatible base URL - try auth.json first, then config.toml base_url
+  const baseUrl = (
+    (typeof authJson?.api_base_url === 'string' ? authJson.api_base_url : '') ||
+    providerInfo.baseUrl ||
+    ''
+  ).trim();
   if (baseUrl && !(existingEnv.OPENAI_BASE_URL || '').trim()) {
     env.OPENAI_BASE_URL = baseUrl;
   }
-  // Back-compat for some tooling that uses OPENAI_API_BASE.
   if (baseUrl && !(existingEnv.OPENAI_API_BASE || '').trim()) {
     env.OPENAI_API_BASE = baseUrl;
   }

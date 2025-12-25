@@ -88,7 +88,66 @@ export function getEffectiveVersion(): string {
  */
 export function parseVersionFromTag(tag: string): string {
   // Remove leading 'v' if present
-  return tag.replace(/^v/, '');
+  return tag.trim().replace(/^v/, '');
+}
+
+type Semver = {
+  major: number;
+  minor: number;
+  patch: number;
+  prerelease: string[];
+};
+
+function normalizeVersion(version: string): string {
+  return version.trim().replace(/^v/, '').split('+')[0] || '0.0.0';
+}
+
+function parseSemver(version: string): Semver | null {
+  const normalized = normalizeVersion(version);
+  const [core, pre = ''] = normalized.split('-', 2);
+  const parts = core.split('.');
+
+  const major = Number(parts[0] ?? 0);
+  const minor = Number(parts[1] ?? 0);
+  const patch = Number(parts[2] ?? 0);
+
+  if ([major, minor, patch].some((n) => Number.isNaN(n))) {
+    return null;
+  }
+
+  const prerelease = pre ? pre.split('.').filter(Boolean) : [];
+  return { major, minor, patch, prerelease };
+}
+
+function comparePrerelease(a: string[], b: string[]): number {
+  if (a.length === 0 && b.length === 0) return 0;
+  if (a.length === 0) return 1;
+  if (b.length === 0) return -1;
+
+  const maxLen = Math.max(a.length, b.length);
+  for (let i = 0; i < maxLen; i++) {
+    const ai = a[i];
+    const bi = b[i];
+    if (ai === undefined) return -1;
+    if (bi === undefined) return 1;
+
+    const aNum = /^\d+$/.test(ai) ? Number(ai) : null;
+    const bNum = /^\d+$/.test(bi) ? Number(bi) : null;
+
+    if (aNum !== null && bNum !== null) {
+      if (aNum > bNum) return 1;
+      if (aNum < bNum) return -1;
+      continue;
+    }
+
+    if (aNum !== null && bNum === null) return -1;
+    if (aNum === null && bNum !== null) return 1;
+
+    if (ai > bi) return 1;
+    if (ai < bi) return -1;
+  }
+
+  return 0;
 }
 
 /**
@@ -96,8 +155,19 @@ export function parseVersionFromTag(tag: string): string {
  * Returns: 1 if a > b, -1 if a < b, 0 if equal
  */
 export function compareVersions(a: string, b: string): number {
-  const partsA = a.split('.').map(Number);
-  const partsB = b.split('.').map(Number);
+  const semA = parseSemver(a);
+  const semB = parseSemver(b);
+
+  if (semA && semB) {
+    if (semA.major !== semB.major) return semA.major > semB.major ? 1 : -1;
+    if (semA.minor !== semB.minor) return semA.minor > semB.minor ? 1 : -1;
+    if (semA.patch !== semB.patch) return semA.patch > semB.patch ? 1 : -1;
+    return comparePrerelease(semA.prerelease, semB.prerelease);
+  }
+
+  // Fallback to legacy numeric comparison if parsing fails
+  const partsA = normalizeVersion(a).split('.').map((part) => Number(part));
+  const partsB = normalizeVersion(b).split('.').map((part) => Number(part));
 
   for (let i = 0; i < Math.max(partsA.length, partsB.length); i++) {
     const numA = partsA[i] || 0;

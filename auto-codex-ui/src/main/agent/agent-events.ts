@@ -5,6 +5,48 @@ import { ExecutionProgressData } from './types';
  */
 export class AgentEvents {
   /**
+   * Parse structured task log markers emitted by task_logger (Python).
+   * Format: __TASK_LOG_<TYPE>__:<json>
+   */
+  parseTaskLogMarker(line: string): { markerType: string; data: Record<string, unknown> } | null {
+    if (!line.startsWith('__TASK_LOG_')) {
+      return null;
+    }
+
+    const match = line.match(/^__TASK_LOG_([A-Z_]+)__:(.*)$/);
+    if (!match) {
+      return null;
+    }
+
+    const markerType = match[1];
+    const payload = match[2];
+    try {
+      const data = JSON.parse(payload);
+      if (data && typeof data === 'object') {
+        return { markerType, data: data as Record<string, unknown> };
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Map task_logger phases to execution progress phases.
+   */
+  mapTaskLogPhaseToExecutionPhase(phase: string): ExecutionProgressData['phase'] | null {
+    switch (phase) {
+      case 'planning':
+        return 'planning';
+      case 'coding':
+        return 'coding';
+      case 'validation':
+        return 'qa_review';
+      default:
+        return null;
+    }
+  }
+  /**
    * Parse log output to detect execution phase transitions
    */
   parseExecutionPhase(

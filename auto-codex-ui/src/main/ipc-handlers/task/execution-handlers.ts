@@ -2,13 +2,54 @@ import { ipcMain, BrowserWindow } from 'electron';
 import { IPC_CHANNELS, AUTO_BUILD_PATHS, getSpecsDir } from '../../../shared/constants';
 import type { IPCResult, TaskStartOptions, TaskStatus } from '../../../shared/types';
 import path from 'path';
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
+import { existsSync, readFileSync, mkdirSync } from 'fs';
 import { spawnSync } from 'child_process';
 import { AgentManager } from '../../agent';
+import type { ProcessType } from '../../agent';
 import { fileWatcher } from '../../file-watcher';
 import { findTaskAndProject } from './shared';
 import { checkGitStatus } from '../../project-initializer';
 import { getCodexProfileManager } from '../../codex-profile-manager';
+import { atomicWriteFileSync } from '../../utils/atomic-write';
+import { createRunId } from '../../utils/run-id';
+
+interface TaskRunState {
+  run_id: string;
+  run_started_at: string;
+  task_id: string;
+  spec_id: string;
+  project_id: string;
+  process_type: ProcessType;
+}
+
+function writeTaskRunState(specDir: string, state: TaskRunState): void {
+  try {
+    if (!existsSync(specDir)) {
+      mkdirSync(specDir, { recursive: true });
+    }
+    atomicWriteFileSync(
+      path.join(specDir, 'run_state.json'),
+      JSON.stringify(state, null, 2),
+      { encoding: 'utf-8' }
+    );
+  } catch (error) {
+    console.warn('[TASK_RUN_STATE] Failed to write run_state.json:', error);
+  }
+}
+
+function updatePlanRunMetadata(planPath: string, runId: string): void {
+  if (!existsSync(planPath)) return;
+  try {
+    const planContent = readFileSync(planPath, 'utf-8');
+    const plan = JSON.parse(planContent);
+    plan.run_id = runId;
+    plan.run_started_at = new Date().toISOString();
+    plan.updated_at = new Date().toISOString();
+    atomicWriteFileSync(planPath, JSON.stringify(plan, null, 2), { encoding: 'utf-8' });
+  } catch (error) {
+    console.warn('[TASK_RUN_STATE] Failed to update implementation_plan.json:', error);
+  }
+}
 
 /**
  * Register task execution handlers (start, stop, review, status management, recovery)
@@ -97,6 +138,19 @@ export function registerTaskExecutionHandlers(
       const needsImplementation = hasSpec && task.subtasks.length === 0;
 
       console.warn('[TASK_START] hasSpec:', hasSpec, 'needsSpecCreation:', needsSpecCreation, 'needsImplementation:', needsImplementation);
+
+      const runId = createRunId();
+      const runStartedAt = new Date().toISOString();
+      const processType: ProcessType = needsSpecCreation ? 'spec-creation' : 'task-execution';
+      writeTaskRunState(specDir, {
+        run_id: runId,
+        run_started_at: runStartedAt,
+        task_id: taskId,
+        spec_id: task.specId,
+        project_id: task.projectId,
+        process_type: processType
+      });
+      updatePlanRunMetadata(path.join(specDir, AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN), runId);
 
       // Get base branch from project settings for worktree creation
       const baseBranch = project.settings?.mainBranch;
@@ -209,9 +263,10 @@ export function registerTaskExecutionHandlers(
       if (approved) {
         // Write approval to QA report
         const qaReportPath = path.join(specDir, AUTO_BUILD_PATHS.QA_REPORT);
-        writeFileSync(
+        atomicWriteFileSync(
           qaReportPath,
-          `# QA Review\n\nStatus: APPROVED\n\nReviewed at: ${new Date().toISOString()}\n`
+          `# QA Review\n\nStatus: APPROVED\n\nReviewed at: ${new Date().toISOString()}\n`,
+          { encoding: 'utf-8' }
         );
 
         const mainWindow = getMainWindow();
@@ -267,9 +322,10 @@ export function registerTaskExecutionHandlers(
         console.warn('[TASK_REVIEW] Writing QA fix request to:', fixRequestPath);
         console.warn('[TASK_REVIEW] hasWorktree:', hasWorktree, 'worktreePath:', worktreePath);
 
-        writeFileSync(
+        atomicWriteFileSync(
           fixRequestPath,
-          `# QA Fix Request\n\nStatus: REJECTED\n\n## Feedback\n\n${feedback || 'No feedback provided'}\n\nCreated at: ${new Date().toISOString()}\n`
+          `# QA Fix Request\n\nStatus: REJECTED\n\n## Feedback\n\n${feedback || 'No feedback provided'}\n\nCreated at: ${new Date().toISOString()}\n`,
+          { encoding: 'utf-8' }
         );
 
         // Restart QA process - use worktree path if it exists, otherwise main project
@@ -386,7 +442,7 @@ export function registerTaskExecutionHandlers(
             : 'pending';
           plan.updated_at = new Date().toISOString();
 
-          writeFileSync(planPath, JSON.stringify(plan, null, 2));
+          atomicWriteFileSync(planPath, JSON.stringify(plan, null, 2), { encoding: 'utf-8' });
         } else {
           // If no implementation plan exists yet, create a basic one
           const plan = {
@@ -408,7 +464,7 @@ export function registerTaskExecutionHandlers(
             mkdirSync(specDir, { recursive: true });
           }
 
-          writeFileSync(planPath, JSON.stringify(plan, null, 2));
+          atomicWriteFileSync(planPath, JSON.stringify(plan, null, 2), { encoding: 'utf-8' });
         }
 
         // Auto-start task when status changes to 'in_progress' and no process is running
@@ -455,6 +511,19 @@ export function registerTaskExecutionHandlers(
           const needsImplementation = hasSpec && task.subtasks.length === 0;
 
           console.warn('[TASK_UPDATE_STATUS] hasSpec:', hasSpec, 'needsSpecCreation:', needsSpecCreation, 'needsImplementation:', needsImplementation);
+
+          const runId = createRunId();
+          const runStartedAt = new Date().toISOString();
+          const processType: ProcessType = needsSpecCreation ? 'spec-creation' : 'task-execution';
+          writeTaskRunState(specDir, {
+            run_id: runId,
+            run_started_at: runStartedAt,
+            task_id: taskId,
+            spec_id: task.specId,
+            project_id: task.projectId,
+            process_type: processType
+          });
+          updatePlanRunMetadata(planPath, runId);
 
           if (needsSpecCreation) {
             // No spec file - need to run spec_runner.py to create the spec
@@ -645,7 +714,7 @@ export function registerTaskExecutionHandlers(
             }
           }
 
-          writeFileSync(planPath, JSON.stringify(plan, null, 2));
+          atomicWriteFileSync(planPath, JSON.stringify(plan, null, 2), { encoding: 'utf-8' });
         }
 
         // Stop file watcher if it was watching this task
@@ -696,7 +765,7 @@ export function registerTaskExecutionHandlers(
             if (plan) {
               plan.status = 'in_progress';
               plan.planStatus = 'in_progress';
-              writeFileSync(planPath, JSON.stringify(plan, null, 2));
+              atomicWriteFileSync(planPath, JSON.stringify(plan, null, 2), { encoding: 'utf-8' });
             }
 
             // Start the task execution

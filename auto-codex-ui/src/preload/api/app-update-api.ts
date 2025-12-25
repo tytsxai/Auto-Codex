@@ -1,12 +1,17 @@
-import { IPC_CHANNELS } from '../../shared/constants';
+import { IPC_CHANNELS } from "../../shared/constants";
 import type {
   AppUpdateInfo,
   AppUpdateProgress,
   AppUpdateAvailableEvent,
   AppUpdateDownloadedEvent,
-  IPCResult
-} from '../../shared/types';
-import { createIpcListener, invokeIpc, IpcListenerCleanup } from './modules/ipc-utils';
+  IPCResult,
+} from "../../shared/types";
+import {
+  createIpcListener,
+  invokeIpc,
+  invokeIpcResult,
+  IpcListenerCleanup,
+} from "./modules/ipc-utils";
 
 /**
  * App Auto-Update API operations
@@ -21,13 +26,13 @@ export interface AppUpdateAPI {
 
   // Event Listeners
   onAppUpdateAvailable: (
-    callback: (info: AppUpdateAvailableEvent) => void
+    callback: (info: AppUpdateAvailableEvent) => void,
   ) => IpcListenerCleanup;
   onAppUpdateDownloaded: (
-    callback: (info: AppUpdateDownloadedEvent) => void
+    callback: (info: AppUpdateDownloadedEvent) => void,
   ) => IpcListenerCleanup;
   onAppUpdateProgress: (
-    callback: (progress: AppUpdateProgress) => void
+    callback: (progress: AppUpdateProgress) => void,
   ) => IpcListenerCleanup;
 }
 
@@ -37,13 +42,13 @@ export interface AppUpdateAPI {
 export const createAppUpdateAPI = (): AppUpdateAPI => ({
   // Operations
   checkAppUpdate: (): Promise<IPCResult<AppUpdateInfo | null>> =>
-    invokeIpc(IPC_CHANNELS.APP_UPDATE_CHECK),
+    invokeIpcResult(IPC_CHANNELS.APP_UPDATE_CHECK),
 
   downloadAppUpdate: (): Promise<IPCResult> =>
-    invokeIpc(IPC_CHANNELS.APP_UPDATE_DOWNLOAD),
+    invokeIpcResult(IPC_CHANNELS.APP_UPDATE_DOWNLOAD),
 
   installAppUpdate: (): void => {
-    invokeIpc(IPC_CHANNELS.APP_UPDATE_INSTALL);
+    invokeIpcResult(IPC_CHANNELS.APP_UPDATE_INSTALL);
   },
 
   getAppVersion: (): Promise<string> =>
@@ -51,17 +56,17 @@ export const createAppUpdateAPI = (): AppUpdateAPI => ({
 
   // Event Listeners
   onAppUpdateAvailable: (
-    callback: (info: AppUpdateAvailableEvent) => void
+    callback: (info: AppUpdateAvailableEvent) => void,
   ): IpcListenerCleanup =>
     createIpcListener(IPC_CHANNELS.APP_UPDATE_AVAILABLE, callback),
 
   onAppUpdateDownloaded: (
-    callback: (info: AppUpdateDownloadedEvent) => void
+    callback: (info: AppUpdateDownloadedEvent) => void,
   ): IpcListenerCleanup =>
     createIpcListener(IPC_CHANNELS.APP_UPDATE_DOWNLOADED, callback),
 
   onAppUpdateProgress: (
-    callback: (progress: AppUpdateProgress) => void
+    callback: (progress: AppUpdateProgress) => void,
   ): IpcListenerCleanup =>
-    createIpcListener(IPC_CHANNELS.APP_UPDATE_PROGRESS, callback)
+    createIpcListener(IPC_CHANNELS.APP_UPDATE_PROGRESS, callback),
 });

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { mkdirSync, rmSync, existsSync, writeFileSync } from 'fs';
+import { mkdirSync, rmSync, existsSync, writeFileSync, readFileSync } from 'fs';
 import path from 'path';
+import { PythonEnvManager } from '../python-env-manager';
 
 // Test directory with spaces to catch shell quoting issues
 const TEST_DIR = '/tmp/python-env-test with spaces';
@@ -131,6 +132,64 @@ describe('PythonEnvManager', () => {
       
       // Verify spawnSync is used for synchronous checks
       expect(source).toContain("spawnSync");
+    });
+  });
+
+  describe('Dependency install selection', () => {
+    it('prefers lock file when matching Python version exists', () => {
+      const manager = new PythonEnvManager();
+      const lockPath = path.join(AUTO_CODEX_DIR, 'requirements-py312.lock');
+      writeFileSync(lockPath, '# lock');
+
+      (manager as unknown as { autoBuildSourcePath: string | null }).autoBuildSourcePath = AUTO_CODEX_DIR;
+      (manager as unknown as { getPythonVersionInfo: () => { major: number; minor: number; version: string } | null }).getPythonVersionInfo = () => ({
+        major: 3,
+        minor: 12,
+        version: 'Python 3.12.0'
+      });
+
+      const selection = (manager as unknown as { selectRequirementsFile: (p: string) => { path: string; source: string } | null }).selectRequirementsFile('/usr/bin/python3.12');
+
+      expect(selection?.path).toBe(lockPath);
+      expect(selection?.source).toBe('lock');
+    });
+
+    it('falls back to requirements.txt when lock file missing', () => {
+      const manager = new PythonEnvManager();
+      (manager as unknown as { autoBuildSourcePath: string | null }).autoBuildSourcePath = AUTO_CODEX_DIR;
+      (manager as unknown as { getPythonVersionInfo: () => { major: number; minor: number; version: string } | null }).getPythonVersionInfo = () => ({
+        major: 3,
+        minor: 11,
+        version: 'Python 3.11.0'
+      });
+
+      const selection = (manager as unknown as { selectRequirementsFile: (p: string) => { path: string; source: string } | null }).selectRequirementsFile('/usr/bin/python3.11');
+
+      expect(selection?.path).toBe(path.join(AUTO_CODEX_DIR, 'requirements.txt'));
+      expect(selection?.source).toBe('requirements');
+    });
+
+    it('records dependency installation metadata', () => {
+      const manager = new PythonEnvManager();
+      (manager as unknown as { autoBuildSourcePath: string | null }).autoBuildSourcePath = AUTO_CODEX_DIR;
+
+      const venvDir = path.join(AUTO_CODEX_DIR, '.venv');
+      mkdirSync(venvDir, { recursive: true });
+
+      const selection = {
+        path: path.join(AUTO_CODEX_DIR, 'requirements.txt'),
+        source: 'requirements' as const,
+        label: 'requirements.txt',
+        pythonVersion: 'Python 3.12.0'
+      };
+
+      (manager as unknown as { recordDependencyInstall: (s: typeof selection) => void }).recordDependencyInstall(selection);
+
+      const recordPath = path.join(venvDir, '.auto-codex-deps.json');
+      const record = JSON.parse(readFileSync(recordPath, 'utf-8')) as { requirementsFile: string; pythonVersion: string };
+
+      expect(record.requirementsFile).toBe('requirements.txt');
+      expect(record.pythonVersion).toContain('Python 3.12');
     });
   });
 });
