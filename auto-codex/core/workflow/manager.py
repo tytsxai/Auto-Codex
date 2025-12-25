@@ -353,6 +353,7 @@ class WorkflowManager:
                 branch = self._get_worktree_branch(entry)
                 days = self._get_days_since_activity(entry)
                 disk_mb = self._get_disk_usage_mb(entry)
+                stats = self._get_worktree_stats(entry)
                 
                 worktrees.append(WorktreeInfo(
                     spec_name=entry.name,
@@ -360,11 +361,104 @@ class WorkflowManager:
                     branch=branch,
                     days_since_activity=days,
                     disk_usage_mb=disk_mb,
+                    base_branch=stats["base_branch"],
+                    commit_count=stats["commit_count"],
+                    files_changed=stats["files_changed"],
+                    additions=stats["additions"],
+                    deletions=stats["deletions"],
+                    last_commit_date=stats["last_commit_date"],
+                    is_stale=stats["is_stale"]
                 ))
             except Exception:
                 continue
         
         return worktrees
+
+    def _get_worktree_stats(self, worktree_path: Path) -> dict[str, Any]:
+        """Get git statistics for a worktree."""
+        stats = {
+            "files_changed": 0,
+            "additions": 0,
+            "deletions": 0,
+            "commit_count": 0,
+            "base_branch": "main",
+            "last_commit_date": None,
+            "is_stale": False,
+        }
+        
+        if not worktree_path.exists():
+            return stats
+            
+        try:
+            # Get changes (modified files + line changes)
+            # Use git diff --numstat for line changes (vs HEAD to include both staged and unstaged)
+            result = subprocess.run(
+                ['git', 'diff', '--numstat', 'HEAD'],
+                cwd=worktree_path,
+                capture_output=True,
+                text=True,
+                check=False
+            )
+            
+            additions = 0
+            deletions = 0
+            
+            for line in result.stdout.splitlines():
+                parts = line.split('\t')
+                if len(parts) >= 3:
+                    try:
+                        add = int(parts[0]) if parts[0] != '-' else 0
+                        delete = int(parts[1]) if parts[1] != '-' else 0
+                        additions += add
+                        deletions += delete
+                    except ValueError:
+                        continue
+            
+            # Use porcelain for file count (includes untracked)
+            status_result = subprocess.run(
+                 ['git', 'status', '--porcelain'],
+                 cwd=worktree_path,
+                 capture_output=True,
+                 text=True,
+                 check=False
+            )
+            stats["files_changed"] = len(status_result.stdout.splitlines())
+            stats["additions"] = additions
+            stats["deletions"] = deletions
+
+            # Get commit count ahead of base branch (main)
+            base_branch = "main"
+            
+            commit_res = subprocess.run(
+                ['git', 'rev-list', '--count', 'HEAD', f'^{base_branch}'],
+                cwd=worktree_path,
+                capture_output=True,
+                text=True,
+                check=False
+            )
+            if commit_res.returncode == 0:
+                try:
+                    stats["commit_count"] = int(commit_res.stdout.strip())
+                except ValueError:
+                    pass
+                    
+            # Get last commit date
+            date_res = subprocess.run(
+                ['git', 'log', '-1', '--format=%cI'],
+                cwd=worktree_path,
+                capture_output=True,
+                text=True,
+                check=False
+            )
+            if date_res.returncode == 0:
+                stats["last_commit_date"] = date_res.stdout.strip()
+
+            # Staleness is already calculated via disk activity, keeping is_stale consistent with days
+            
+            return stats
+            
+        except Exception:
+            return stats
     
     def _get_worktree_branch(self, worktree_path: Path) -> str:
         """Get the branch name for a worktree."""
