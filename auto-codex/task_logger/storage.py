@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from .models import LogEntry, LogPhase
+from .redaction import redact_text
 
 
 def _get_max_log_entries() -> int:
@@ -121,7 +122,8 @@ class LogStorage:
                 "entries": [],
             }
 
-        self._data["phases"][phase_key]["entries"].append(entry.to_dict())
+        entry_dict = self._redact_entry(entry)
+        self._data["phases"][phase_key]["entries"].append(entry_dict)
         self._trim_entries(phase_key)
         self.save()
 
@@ -177,6 +179,15 @@ class LogStorage:
             new_spec_id: New spec ID
         """
         self._data["spec_id"] = new_spec_id
+
+    def _redact_entry(self, entry: LogEntry) -> dict:
+        """Redact sensitive data before persisting log entries."""
+        entry_dict = entry.to_dict()
+        for key in ("content", "detail", "tool_input"):
+            value = entry_dict.get(key)
+            if isinstance(value, str):
+                entry_dict[key] = redact_text(value)
+        return entry_dict
 
 
 def load_task_logs(spec_dir: Path) -> dict | None:

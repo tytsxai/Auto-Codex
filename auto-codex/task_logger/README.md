@@ -10,6 +10,7 @@ task_logger/
 ├── models.py            # Data models (LogPhase, LogEntryType, LogEntry, PhaseLog)
 ├── logger.py            # Main TaskLogger class
 ├── storage.py           # Log persistence and file I/O
+├── redaction.py         # Redaction helpers for sensitive log content
 ├── streaming.py         # Streaming marker emission for UI updates
 ├── utils.py             # Utility functions (get_task_logger, etc.)
 ├── capture.py           # StreamingLogCapture for agent sessions
@@ -34,6 +35,11 @@ Persistent storage functionality:
 - `LogStorage`: Handles JSON file storage and retrieval
 - `load_task_logs()`: Load logs from a spec directory
 - `get_active_phase()`: Get currently active phase
+- Log entries are redacted for common secret patterns before persisting
+
+### redaction.py
+Redaction helpers:
+- `redact_text()`: Masks common secret patterns in log text
 
 ### streaming.py
 Real-time UI updates:
