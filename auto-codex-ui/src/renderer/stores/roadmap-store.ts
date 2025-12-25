@@ -252,13 +252,25 @@ export async function loadRoadmap(projectId: string): Promise<void> {
   // 查询该项目的路线图生成是否正在运行
   // 这会在切回项目时恢复生成状态
   const statusResult = await window.electronAPI.getRoadmapStatus(projectId);
+
+  if (window.DEBUG) {
+    console.warn('[Roadmap Store] loadRoadmap status check:', {
+      projectId,
+      statusResult,
+      isRunning: statusResult.data?.isRunning
+    });
+  }
+
   if (statusResult.success && statusResult.data?.isRunning) {
     // 生成正在运行 - 恢复 UI 状态以显示进度
     // 实际进度将由传入事件更新
+    if (window.DEBUG) {
+      console.warn('[Roadmap Store] Restoring running status for:', projectId);
+    }
     store.setGenerationStatus({
       phase: 'analyzing',
       progress: 0,
-      message: 'Roadmap generation in progress...'
+      message: '路线图生成进行中...'
     });
   } else {
     // 生成未运行 - 重置为 idle
