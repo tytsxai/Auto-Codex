@@ -1,6 +1,114 @@
+# Changelog
+
+## 3.2.1 - Internationalization & Worktree Improvements
+
+### ✨ New Features
+
+- **Orphaned Worktree Management**: Add `deleteWorktreeDirect` API and enable delete button for orphaned worktrees
+- **Git Stats in Workflow**: Add git stats calculation to WorkflowManager for better worktree visibility
+- **Enhanced Logging**: Add debug logging for roadmap status persistence and restore
+
+### 🛠️ Improvements
+
+- **i18n Localization**: Complete Chinese localization of error messages in Roadmap and Ideation modules
+- **UX Guidance**: Improve riskPolicy error message to guide users to Settings UI
+- **Worktree Stats**: Include uncommitted changes in worktree statistics display
+
+### 🐛 Bug Fixes
+
+- Use camelCase keys in Python model serialization for frontend compatibility
+- Fix worktree change detection and error propagation for Kanban board
+
+---
+
+## 3.2.0 - Smart Worktree Workflow & Process Tracking
+
+### ✨ New Features
+
+- **Smart Worktree Workflow**: Complete staged merge workflow with Python backend
+  - Add staged changes tracking and AI review components
+  - Add workflow configuration options in Settings
+  - IPC handlers and preload API for worktree merge operations
+- **Stale Worktree Detection**: Add warnings for stale worktrees with cleanup suggestions
+- **Process Tracking**: Add status sync and process tracking for Kanban board
+
+### 🛠️ Improvements
+
+- Add worktree change detection and error propagation for better UX
+- Bundle node-pty darwin arm64 for Mac builds
+- Sync roadmap features when deleting tasks
+- Add ideation log toggle for debugging
+
+### 🐛 Bug Fixes
+
+- Fix Linear spec metadata ordering
+- Fix UI ideation stuck generation state with active state sync
+- Fix workflow file staging and cleanup in core module
+
+---
+
+## 3.1.0 - Third-Party Auth & Provider Enhancements
+
+### ✨ New Features
+
+- **Third-Party Auth Support**: Support third-party Codex activators via `auth.json` hydration
+  - Add `ensure_auth_hydrated()` and `check_auth_health()` for auth stability
+  - Build auth environment from config for consistent handling
+- **Security Flag Inversion**: Invert security flags logic with status API for better UX
+- **Provider Retry Logic**: Add retry logic and session timeout management for LLM providers
+- **Terminal Sandbox Toggle**: Add bypass sandbox toggle in terminal settings
+- **GPT-5.2 Model Option**: Add gpt-5.2 model option in UI settings
+
+### 🛠️ Improvements
+
+- Enhance LLM client protocol with multi-turn support
+- Enhance Python environment detection for Python 3.10+ requirement
+- Add startup auth verification for GUI app compatibility
+- Robust Python command hints for cross-platform usage
+
+### 🐛 Bug Fixes
+
+- Fix shell quoting in Python env detection (replace execSync with spawn/spawnSync)
+- Fix ideation UI state synchronization issues
+- Fix RuntimeWarning on module execution
+
+---
+
+## 3.0.0 - Codex CLI Migration & Pipeline Enhancements
+
+### 🚀 Breaking Changes
+
+- **Claude SDK → Codex CLI**: Migrated from Claude SDK to OpenAI Codex CLI
+  - See [MIGRATION.md](MIGRATION.md) for upgrade instructions
+  - All `CLAUDE_*` environment variables replaced with `CODEX_*` or `OPENAI_*` equivalents
+- **Python 3.12+ Recommended**: Python 3.12+ recommended for best experience (3.10+ minimum)
+
+### ✨ New Features
+
+- **Phase Validation Module**: Add phase validation and QA loop control modules
+- **Recovery Mechanism**: Add recovery context and iteration awareness to agents
+- **Memory Validation**: Add memory file validation with JSON schemas
+- **Workflow System**: Add smart worktree workflow Python backend
+
+### 🛠️ Improvements
+
+- Standardize tool call format in agent prompts
+- Add recovery mechanism and fallback to coder agent
+- Improve robustness of workflow system
+- Add pyproject.toml for modern Python packaging
+
+### 🐛 Bug Fixes
+
+- Align mock Codex client defaults in tests
+- Refine healthcheck gating and documentation
+- Redact sensitive task logs before persisting
+
+---
+
 ## 2.6.0 - Improved User Experience and Agent Configuration
 
 ### ✨ New Features
+
 
 - Add customizable phase configuration in app settings, allowing users to tailor the AI build pipeline to their workflow
 

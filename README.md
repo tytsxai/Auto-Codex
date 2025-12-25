@@ -39,8 +39,8 @@ The Desktop UI is the recommended way to use Auto-Codex. It provides visual task
 ### Prerequisites
 
 1. **Node.js 18+** - [Download Node.js](https://nodejs.org/)
-2. **Python 3.12+** - [Download Python](https://www.python.org/downloads/)
-3. **Docker Desktop** - Required for the Memory Layer
+2. **Python 3.10+** - [Download Python](https://www.python.org/downloads/) (3.12+ recommended)
+3. **Docker Desktop** - Required for the Memory Layer (optional)
 4. **Codex CLI** - `npm install -g @openai/codex`
 5. **OpenAI Account** - Required for Codex CLI access (API key or OAuth token for non-interactive use)
 6. **Git Repository** - Your project must be initialized as a git repository
