@@ -18,7 +18,6 @@ from .parser import extract_commands, get_command_for_validation, split_command_
 from .profile import get_security_profile
 from .validator import VALIDATORS
 
-
 # Audit log file path (optional, set via environment)
 AUDIT_LOG_FILE = os.environ.get("AUTO_CODEX_AUDIT_LOG")
 

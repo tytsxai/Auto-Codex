@@ -11,7 +11,7 @@ import subprocess
 from pathlib import Path
 
 from .change_tracker import ChangeTracker
-from .models import CommitResult, StagedChange
+from .models import CommitResult
 
 
 class CommitManager:

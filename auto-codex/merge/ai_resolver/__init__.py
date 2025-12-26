@@ -25,8 +25,8 @@ Usage:
     result = resolver.resolve_conflict(conflict, baseline_code, task_snapshots)
 """
 
-from .llm_client import create_llm_resolver
 from .context import ConflictContext
+from .llm_client import create_llm_resolver
 from .resolver import AIResolver
 
 __all__ = [

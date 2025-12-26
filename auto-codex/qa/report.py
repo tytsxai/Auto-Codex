@@ -8,7 +8,7 @@ and report generation.
 
 import json
 from collections import Counter
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from difflib import SequenceMatcher
 from pathlib import Path
 from typing import Any
@@ -68,7 +68,7 @@ def record_iteration(
     record = {
         "iteration": iteration,
         "status": status,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
         "issues": issues,
     }
     if duration_seconds is not None:
@@ -268,7 +268,7 @@ async def escalate_to_human(
 
     content = f"""# QA Escalation - Human Intervention Required
 
-**Generated**: {datetime.now(timezone.utc).isoformat()}
+**Generated**: {datetime.now(UTC).isoformat()}
 **Iteration**: {iteration}/{MAX_QA_ITERATIONS}
 **Reason**: Recurring issues detected ({RECURRING_ISSUE_THRESHOLD}+ occurrences)
 
@@ -363,7 +363,7 @@ def create_manual_test_plan(spec_dir: Path, spec_name: str) -> Path:
 
     content = f"""# Manual Test Plan - {spec_name}
 
-**Generated**: {datetime.now(timezone.utc).isoformat()}
+**Generated**: {datetime.now(UTC).isoformat()}
 **Reason**: No automated test framework detected
 
 ## Overview

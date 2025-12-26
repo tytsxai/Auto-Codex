@@ -30,6 +30,7 @@ def _install_codex_client_mocks():
             sys.modules.pop(module_name, None)
 
     from core.client import CodexClientAdapter
+
     from tests.fixtures.codex_mocks import MockCodexClient
 
     mock_client = MockCodexClient()

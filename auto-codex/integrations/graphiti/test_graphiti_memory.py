@@ -47,7 +47,7 @@ Usage:
 import asyncio
 import json
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from pathlib import Path
 
 # This file is a manual integration script, not part of the unit test suite.
@@ -190,7 +190,7 @@ async def test_save_episode():
         # Create test episode
         test_data = {
             "type": "test_episode",
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "test_field": "Hello from test script!",
             "test_number": 42,
             "test_list": ["item1", "item2", "item3"],
@@ -211,7 +211,7 @@ async def test_save_episode():
             episode_body=json.dumps(test_data),
             source=EpisodeType.text,
             source_description="Test episode from test_graphiti_memory.py",
-            reference_time=datetime.now(timezone.utc),
+            reference_time=datetime.now(UTC),
             group_id=group_id,
         )
 

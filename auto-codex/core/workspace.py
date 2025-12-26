@@ -17,9 +17,9 @@ This module has been refactored for better maintainability:
 Public API is exported via workspace/__init__.py for backward compatibility.
 """
 
-import subprocess
-from datetime import datetime, timezone
 import json
+import subprocess
+from datetime import UTC, datetime
 from pathlib import Path
 
 from ui import (
@@ -174,7 +174,7 @@ def _record_merge_completion(
 
         record = {
             "task_id": spec_name,
-            "completed_at": datetime.now(timezone.utc).isoformat(),
+            "completed_at": datetime.now(UTC).isoformat(),
             "files": list(resolved_files),
         }
 

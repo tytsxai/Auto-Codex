@@ -7,7 +7,7 @@ Enforces QA validation loop with iteration limits and escalation.
 
 import json
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -136,7 +136,7 @@ def generate_escalation_report(spec_dir: Path, tracking: QATracking) -> str:
 
 **Spec Directory:** {spec_dir}
 **Max Iterations Reached:** {tracking.max_iterations}
-**Date:** {datetime.now(timezone.utc).isoformat()}
+**Date:** {datetime.now(UTC).isoformat()}
 
 ## Summary
 
@@ -197,5 +197,5 @@ def parse_qa_result(response: str, iteration: int) -> QAResult:
         approved=approved,
         issues=issues,
         iteration=iteration,
-        timestamp=datetime.now(timezone.utc).isoformat()
+        timestamp=datetime.now(UTC).isoformat()
     )

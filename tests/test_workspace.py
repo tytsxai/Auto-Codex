@@ -11,19 +11,19 @@ Tests the workspace.py module functionality including:
 """
 
 import subprocess
-import pytest
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
+import pytest
 from workspace import (
-    WorkspaceMode,
     WorkspaceChoice,
-    has_uncommitted_changes,
+    WorkspaceMode,
     get_current_branch,
     get_existing_build_worktree,
+    has_uncommitted_changes,
     setup_workspace,
 )
-from worktree import WorktreeManager
+from worktree import WorktreeError, WorktreeManager
 
 # Test constant - in the new per-spec architecture, each spec has its own worktree
 # named after the spec itself. This constant is used for test assertions.
@@ -327,7 +327,7 @@ class TestWorkspaceErrors:
 
     def test_setup_non_git_directory(self, temp_dir: Path):
         """Handles non-git directories gracefully."""
-        with pytest.raises(Exception):
+        with pytest.raises(WorktreeError):
             # This should fail because temp_dir is not a git repo
             setup_workspace(
                 temp_dir,

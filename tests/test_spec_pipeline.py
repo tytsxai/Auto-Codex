@@ -11,13 +11,14 @@ Tests the spec/pipeline.py module functionality including:
 """
 
 import json
-import pytest
 import sys
 import time
 import types
 from datetime import datetime, timedelta
 from pathlib import Path
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 # Add auto-codex directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "auto-codex"))

@@ -44,10 +44,8 @@ from .models import (
     get_specs_dir,
     rename_spec_dir_from_requirements,
 )
-from .phase_validator import PhaseValidator, ValidationResult
+from .phase_validator import PhaseValidator
 from .qa_loop import (
-    MAX_QA_ITERATIONS,
-    QATracking,
     generate_escalation_report,
     get_iteration_context,
     load_qa_tracking,

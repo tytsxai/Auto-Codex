@@ -5,11 +5,10 @@ Provides centralized authentication token resolution with back-compat warnings
 for legacy LLM OAuth tokens, plus SDK environment variable passthrough.
 """
 
+import json
 import os
 import re
-import json
 from dataclasses import dataclass
-from typing import Optional
 
 from .debug import debug, debug_success, debug_warning
 
@@ -55,12 +54,12 @@ _DEFAULT_CODEX_CONFIG_DIR = os.path.expanduser("~/.codex")
 class AuthStatus:
     """Authentication status for health checks and startup verification."""
     is_authenticated: bool
-    source: Optional[str]  # "auth.json", "env", "config_dir", "default_config_dir"
+    source: str | None  # "auth.json", "env", "config_dir", "default_config_dir"
     api_key_set: bool
     base_url_set: bool
-    config_dir: Optional[str]
+    config_dir: str | None
     codex_cli_available: bool = False
-    codex_cli_path: Optional[str] = None
+    codex_cli_path: str | None = None
     errors: list[str] = None  # type: ignore[assignment]
 
     def __post_init__(self) -> None:
@@ -86,7 +85,7 @@ def _read_codex_auth_json(config_dir: str) -> dict[str, object] | None:
         if not os.path.isfile(auth_path):
             debug_warning("auth", "Codex auth.json not found", path=auth_path)
             return None
-        with open(auth_path, "r", encoding="utf-8") as f:
+        with open(auth_path, encoding="utf-8") as f:
             data = json.load(f)
         if isinstance(data, dict):
             debug_success("auth", "Loaded Codex auth.json", path=auth_path)
@@ -236,8 +235,8 @@ def ensure_auth_hydrated() -> AuthStatus:
     config_dir_env = (os.environ.get("CODEX_CONFIG_DIR") or "").strip()
 
     # Determine authentication source
-    source: Optional[str] = None
-    config_dir_used: Optional[str] = None
+    source: str | None = None
+    config_dir_used: str | None = None
 
     if api_key and is_valid_openai_api_key(api_key):
         if had_api_key_before:
@@ -283,8 +282,8 @@ def ensure_auth_hydrated() -> AuthStatus:
             "OPENAI_API_KEY (env)",
             "CODEX_CODE_OAUTH_TOKEN (env)",
             "CODEX_CONFIG_DIR (env)",
-            f"~/.codex/auth.json",
-            f"~/.codex/config.toml",
+            "~/.codex/auth.json",
+            "~/.codex/config.toml",
         ])
         errors.append("No valid authentication credentials found")
         debug_warning("auth", "No authentication credentials found", checked_sources=checked_sources)

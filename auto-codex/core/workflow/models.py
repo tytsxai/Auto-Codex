@@ -9,7 +9,6 @@ Data classes for the smart worktree workflow system.
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from pathlib import Path
 from typing import Any
 
 

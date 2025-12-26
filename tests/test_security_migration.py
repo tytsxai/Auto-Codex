@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from project_analyzer import SecurityProfile
-
 from agents.tools_pkg.permissions import get_codex_tool_permissions
+from project_analyzer import SecurityProfile
 from security import CodexSecurityConfig, validate_command
 
 

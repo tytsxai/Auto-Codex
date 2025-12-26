@@ -6,7 +6,7 @@ Tools for managing subtask status in implementation_plan.json.
 """
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -78,7 +78,7 @@ def create_subtask_tools(spec_dir: Path, project_dir: Path) -> list:
                         subtask["status"] = status
                         if notes:
                             subtask["notes"] = notes
-                        subtask["updated_at"] = datetime.now(timezone.utc).isoformat()
+                        subtask["updated_at"] = datetime.now(UTC).isoformat()
                         subtask_found = True
                         break
                 if subtask_found:
@@ -95,7 +95,7 @@ def create_subtask_tools(spec_dir: Path, project_dir: Path) -> list:
                 }
 
             # Update plan metadata
-            plan["last_updated"] = datetime.now(timezone.utc).isoformat()
+            plan["last_updated"] = datetime.now(UTC).isoformat()
 
             with open(plan_file, "w") as f:
                 json.dump(plan, f, indent=2)

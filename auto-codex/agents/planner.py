@@ -23,8 +23,8 @@ from ui import (
     highlight,
     icon,
     muted,
-    python_cmd,
     print_status,
+    python_cmd,
 )
 
 from .session import run_agent_session

@@ -6,7 +6,7 @@ import json
 import os
 import sys
 import tempfile
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from .models import LogEntry, LogPhase
@@ -102,7 +102,7 @@ class LogStorage:
 
     def _timestamp(self) -> str:
         """Get current timestamp in ISO format."""
-        return datetime.now(timezone.utc).isoformat()
+        return datetime.now(UTC).isoformat()
 
     def add_entry(self, entry: LogEntry) -> None:
         """

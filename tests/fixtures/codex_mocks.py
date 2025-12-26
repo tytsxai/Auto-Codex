@@ -1,5 +1,5 @@
 import asyncio
-from typing import AsyncIterator
+from collections.abc import AsyncIterator
 
 from core.protocols import LLMClientProtocol, LLMEvent
 

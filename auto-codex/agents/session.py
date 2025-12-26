@@ -10,6 +10,7 @@ import logging
 from collections import deque
 from pathlib import Path
 
+from core.protocols import LLMQueryClientProtocol
 from debug import debug, debug_detailed, debug_error, debug_section, debug_success
 from insight_extractor import extract_session_insights
 from linear_updater import (
@@ -32,7 +33,6 @@ from ui import (
     print_key_value,
     print_status,
 )
-from core.protocols import LLMQueryClientProtocol
 
 from .memory_manager import save_session_memory
 from .utils import (

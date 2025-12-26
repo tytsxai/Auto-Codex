@@ -5,7 +5,7 @@ Log redaction utilities for task logs.
 from __future__ import annotations
 
 import re
-from typing import Pattern
+from re import Pattern
 
 REDACTION_RULES: list[tuple[Pattern[str], str]] = [
     (re.compile(r"(sk-[A-Za-z0-9_-]{10,})"), "[REDACTED]"),

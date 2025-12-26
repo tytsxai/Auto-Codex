@@ -1,6 +1,6 @@
-from pathlib import Path
 import re
 import sys
+from pathlib import Path
 
 import pytest
 
@@ -12,6 +12,7 @@ if 'core.client' in sys.modules:
 
 from core.client import CodexClientAdapter, TextBlock, ToolResultBlock, ToolUseBlock
 from core.protocols import EventType, LLMEvent
+
 from tests.fixtures.codex_mocks import MockCodexClient
 
 

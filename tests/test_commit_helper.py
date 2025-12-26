@@ -1,9 +1,9 @@
 from pathlib import Path
 
-from core.protocols import EventType, LLMEvent
-from tests.fixtures.codex_mocks import MockCodexClient
-
 from commit_message import generate_commit_message_sync
+from core.protocols import EventType, LLMEvent
+
+from tests.fixtures.codex_mocks import MockCodexClient
 
 
 def test_commit_message_uses_provider(provider_switch, tmp_path: Path):

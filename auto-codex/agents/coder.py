@@ -49,9 +49,9 @@ from ui import (
     highlight,
     icon,
     muted,
-    python_cmd,
     print_key_value,
     print_status,
+    python_cmd,
 )
 
 from .base import AUTO_CONTINUE_DELAY_SECONDS, HUMAN_INTERVENTION_FILE

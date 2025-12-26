@@ -36,6 +36,9 @@ if env_file.exists():
     load_dotenv(env_file)
 
 # Import from refactored modules
+from core.auth import ensure_auth_hydrated
+from debug import debug, debug_error
+from evals.ideation_eval import evaluate_ideation
 from ideation import (
     IdeationConfig,
     IdeationOrchestrator,
@@ -43,9 +46,6 @@ from ideation import (
 )
 from ideation.generator import IDEATION_TYPE_LABELS, IDEATION_TYPES
 from phase_config import normalize_thinking_level
-from core.auth import ensure_auth_hydrated
-from debug import debug, debug_error
-from evals.ideation_eval import evaluate_ideation
 
 # Re-export for backward compatibility
 __all__ = [

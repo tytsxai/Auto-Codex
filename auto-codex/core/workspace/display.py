@@ -7,7 +7,7 @@ Functions for displaying workspace information and build summaries.
 """
 
 import subprocess
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from ui import bold, error, info, print_status, python_cmd, success, warning
@@ -36,7 +36,7 @@ def get_worktree_last_activity(worktree_path: Path) -> tuple[datetime | None, in
         if result.returncode == 0 and result.stdout.strip():
             last_commit_str = result.stdout.strip()
             last_commit = datetime.fromisoformat(last_commit_str.replace("Z", "+00:00"))
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             days_since = (now - last_commit).days
             return last_commit, days_since
     except Exception:

@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass, field
-from typing import Iterable, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from project_analyzer import SecurityProfile
@@ -48,7 +49,7 @@ class CodexSecurityConfig:
         return args
 
     @classmethod
-    def from_claude_settings(cls, settings: dict) -> "CodexSecurityConfig":
+    def from_claude_settings(cls, settings: dict) -> CodexSecurityConfig:
         """Convert legacy LLM settings to Codex config."""
         sandbox = settings.get("sandbox", {})
         bypass_sandbox = not sandbox.get("enabled", True)
@@ -81,11 +82,11 @@ class CodexSecurityConfig:
     @classmethod
     def from_security_profile(
         cls,
-        profile: "SecurityProfile",
-        allowed_paths: Optional[list[str]] = None,
-        blocked_paths: Optional[list[str]] = None,
+        profile: SecurityProfile,
+        allowed_paths: list[str] | None = None,
+        blocked_paths: list[str] | None = None,
         bypass_sandbox: bool = False,
-    ) -> "CodexSecurityConfig":
+    ) -> CodexSecurityConfig:
         """Convert a project security profile to Codex config."""
         if allowed_paths is None:
             allowed_paths = ["./**"]

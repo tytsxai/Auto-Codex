@@ -12,7 +12,7 @@ without importing provider dependencies that are not available in the test envir
 import sys
 import types
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 from unittest.mock import MagicMock
 
 # =============================================================================
@@ -20,8 +20,8 @@ from unittest.mock import MagicMock
 # =============================================================================
 
 # Store original modules for cleanup
-_original_modules: Dict[str, Any] = {}
-_mocked_module_names: List[str] = [
+_original_modules: dict[str, Any] = {}
+_mocked_module_names: list[str] = [
     'ui',
     'progress',
     'task_logger',
@@ -108,6 +108,6 @@ def cleanup_qa_report_mocks() -> None:
             del sys.modules[name]
 
 
-def get_mocked_module_names() -> List[str]:
+def get_mocked_module_names() -> list[str]:
     """Return list of module names that are mocked."""
     return _mocked_module_names.copy()

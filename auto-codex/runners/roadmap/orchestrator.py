@@ -21,6 +21,7 @@ from .executor import AgentExecutor, ScriptExecutor
 from .graph_integration import GraphHintsProvider
 from .phases import DiscoveryPhase, FeaturesPhase, ProjectIndexPhase
 
+
 class RoadmapOrchestrator:
     """Orchestrates the roadmap creation process."""
 

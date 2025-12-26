@@ -22,10 +22,8 @@ env_file = Path(__file__).parent.parent / ".env"
 if env_file.exists():
     load_dotenv(env_file)
 
-from core.auth import get_auth_token, ensure_auth_hydrated
+from core.auth import ensure_auth_hydrated, get_auth_token
 from core.client import create_client
-from providers.codex_cli import find_codex_path, get_gui_env
-from phase_config import get_thinking_budget, normalize_thinking_level
 from debug import (
     debug,
     debug_detailed,
@@ -34,6 +32,8 @@ from debug import (
     debug_success,
     debug_warning,
 )
+from phase_config import get_thinking_budget, normalize_thinking_level
+from providers.codex_cli import find_codex_path, get_gui_env
 
 
 def load_project_context(project_dir: str) -> str:

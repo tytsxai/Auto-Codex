@@ -7,20 +7,8 @@ Utilities for reading and parsing project configuration files
 """
 
 import json
-import sys
+import tomllib
 from pathlib import Path
-
-# tomllib is available in Python 3.11+, use tomli for older versions
-if sys.version_info >= (3, 11):
-    import tomllib
-else:
-    try:
-        import tomli as tomllib
-    except ImportError:
-        raise ImportError(
-            "Python < 3.11 requires 'tomli' package for TOML parsing. "
-            "Install with: pip install tomli"
-        ) from None
 
 
 class ConfigParser:

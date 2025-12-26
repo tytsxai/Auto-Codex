@@ -3,15 +3,21 @@ Tests for PhaseValidator
 """
 
 import json
-import pytest
-from pathlib import Path
-from unittest.mock import patch
 
 # Add auto-codex to path for imports
 import sys
+from pathlib import Path
+from unittest.mock import patch
+
+import pytest
+
 sys.path.insert(0, str(Path(__file__).parent.parent / "auto-codex"))
 
-from spec.pipeline.phase_validator import PhaseValidator, ValidationResult, PHASE_OUTPUTS
+from spec.pipeline.phase_validator import (
+    PHASE_OUTPUTS,
+    PhaseValidator,
+    ValidationResult,
+)
 
 
 @pytest.fixture

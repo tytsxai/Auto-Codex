@@ -2,7 +2,7 @@
 Main TaskLogger class for logging task execution.
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from core.debug import debug, debug_error, debug_info, debug_success, is_debug_enabled
@@ -54,7 +54,7 @@ class TaskLogger:
 
     def _timestamp(self) -> str:
         """Get current timestamp in ISO format."""
-        return datetime.now(timezone.utc).isoformat()
+        return datetime.now(UTC).isoformat()
 
     def _emit(self, marker_type: str, data: dict) -> None:
         """Emit a streaming marker to stdout for UI consumption."""

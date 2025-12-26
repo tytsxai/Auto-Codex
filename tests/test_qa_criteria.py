@@ -105,19 +105,19 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "auto-codex"))
 
 # Import criteria functions directly to avoid going through qa/__init__.py
 # which imports reviewer and fixer that need the SDK
+import qa.criteria as qa_criteria_module
 from qa.criteria import (
-    load_implementation_plan,
-    save_implementation_plan,
+    get_qa_iteration_count,
     get_qa_signoff_status,
+    is_fixes_applied,
     is_qa_approved,
     is_qa_rejected,
-    is_fixes_applied,
-    get_qa_iteration_count,
-    should_run_qa,
-    should_run_fixes,
+    load_implementation_plan,
     print_qa_status,
+    save_implementation_plan,
+    should_run_fixes,
+    should_run_qa,
 )
-import qa.criteria as qa_criteria_module
 
 # Patch is_build_complete in the qa.criteria module to use our mock
 qa_criteria_module.is_build_complete = mock_progress.is_build_complete

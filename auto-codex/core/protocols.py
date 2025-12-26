@@ -1,6 +1,7 @@
+from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, AsyncIterator, Optional, Protocol, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
 
 class EventType(Enum):
@@ -23,7 +24,7 @@ class EventType(Enum):
 class LLMEvent:
     type: EventType
     data: dict[str, Any]
-    timestamp: Optional[float] = None
+    timestamp: float | None = None
 
 
 @runtime_checkable

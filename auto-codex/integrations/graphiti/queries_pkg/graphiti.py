@@ -10,7 +10,7 @@ Provides a high-level interface that delegates to specialized modules:
 
 import hashlib
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from graphiti_config import GraphitiConfig, GraphitiState
@@ -147,7 +147,7 @@ class GraphitiMemory:
                 self.state = GraphitiState()
                 self.state.initialized = True
                 self.state.database = self.config.database
-                self.state.created_at = datetime.now(timezone.utc).isoformat()
+                self.state.created_at = datetime.now(UTC).isoformat()
                 self.state.llm_provider = self.config.llm_provider
                 self.state.embedder_provider = self.config.embedder_provider
                 self.state.save(self.spec_dir)

@@ -11,11 +11,12 @@ Tests the qa_loop.py module functionality including:
 """
 
 import json
-import pytest
 import sys
 import types
 from pathlib import Path
 from unittest.mock import MagicMock
+
+import pytest
 
 # Store original modules for cleanup
 _original_modules = {}
@@ -35,16 +36,16 @@ mock_core_client = types.SimpleNamespace(
 sys.modules['core.client'] = mock_core_client
 
 from qa_loop import (
-    load_implementation_plan,
-    save_implementation_plan,
+    MAX_QA_ITERATIONS,
+    get_qa_iteration_count,
     get_qa_signoff_status,
+    is_fixes_applied,
     is_qa_approved,
     is_qa_rejected,
-    is_fixes_applied,
-    get_qa_iteration_count,
-    should_run_qa,
+    load_implementation_plan,
+    save_implementation_plan,
     should_run_fixes,
-    MAX_QA_ITERATIONS,
+    should_run_qa,
 )
 
 

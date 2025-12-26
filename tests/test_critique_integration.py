@@ -16,11 +16,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / "auto-codex"))
 
 from critique import (
+    CritiqueResult,
+    format_critique_summary,
     generate_critique_prompt,
     parse_critique_response,
     should_proceed,
-    format_critique_summary,
-    CritiqueResult,
 )
 from implementation_plan import Chunk, ChunkStatus, Verification, VerificationType
 
@@ -38,7 +38,7 @@ def test_critique_data_structures():
 
     # Test to_dict
     data = result.to_dict()
-    assert data["passes"] == True
+    assert data["passes"] is True
     assert len(data["issues"]) == 2
     assert len(data["improvements_made"]) == 2
 
@@ -102,7 +102,7 @@ def test_critique_response_parsing():
 """
 
     result = parse_critique_response(response_pass)
-    assert result.passes == True
+    assert result.passes is True
     assert len(result.improvements_made) == 2
 
     # Test failed critique
@@ -126,7 +126,7 @@ def test_critique_response_parsing():
 """
 
     result2 = parse_critique_response(response_fail)
-    assert result2.passes == False
+    assert result2.passes is False
     assert len(result2.issues) == 2
     assert not should_proceed(result2)
 
@@ -158,12 +158,12 @@ def test_implementation_plan_integration():
     # Test serialization
     chunk_dict = chunk.to_dict()
     assert "critique_result" in chunk_dict
-    assert chunk_dict["critique_result"]["passes"] == True
+    assert chunk_dict["critique_result"]["passes"] is True
 
     # Test deserialization
     chunk2 = Chunk.from_dict(chunk_dict)
     assert chunk2.critique_result is not None
-    assert chunk2.critique_result["passes"] == True
+    assert chunk2.critique_result["passes"] is True
     assert len(chunk2.critique_result["improvements_made"]) == 1
 
     print("✓ Implementation plan integration works correctly")
@@ -210,7 +210,7 @@ def test_complete_workflow():
 
     # 5. Check if should proceed
     can_proceed = should_proceed(result)
-    assert can_proceed == True
+    assert can_proceed is True
 
     # 6. Format summary
     summary = format_critique_summary(result)
@@ -228,7 +228,7 @@ def test_complete_workflow():
 
     # 8. Verify storage
     assert chunk_obj.critique_result is not None
-    assert chunk_obj.critique_result["passes"] == True
+    assert chunk_obj.critique_result["passes"] is True
 
     print("✓ Complete workflow works correctly")
 

@@ -25,7 +25,7 @@ def load_schemas() -> dict[str, Any]:
 
 
 def validate_memory_file(
-    file_path: Path, 
+    file_path: Path,
     schema_name: str
 ) -> tuple[bool, str, list[str]]:
     """

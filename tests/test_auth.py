@@ -3,10 +3,8 @@
 Auth module tests for Codex authentication sources.
 """
 
-import pytest
-
 import core.auth as auth
-
+import pytest
 from core.auth import (
     get_auth_token,
     get_auth_token_source,

@@ -3,20 +3,22 @@ Tests for Memory Validator
 """
 
 import json
-import pytest
-from pathlib import Path
-from unittest.mock import patch
 
 # Add auto-codex to path for imports
 import sys
+from pathlib import Path
+from unittest.mock import patch
+
+import pytest
+
 sys.path.insert(0, str(Path(__file__).parent.parent / "auto-codex"))
 
 from memory_validator import (
-    validate_memory_file,
-    validate_attempt_history,
-    validate_all_memory_files,
     ensure_memory_structure,
     load_schemas,
+    validate_all_memory_files,
+    validate_attempt_history,
+    validate_memory_file,
 )
 
 

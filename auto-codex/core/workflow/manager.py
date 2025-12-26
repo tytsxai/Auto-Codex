@@ -9,8 +9,9 @@ Manages worktree lifecycle: staging, cleanup, health monitoring.
 import os
 import shutil
 import subprocess
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 from .change_tracker import ChangeTracker
 from .models import (
@@ -607,7 +608,7 @@ class WorkflowManager:
             last_commit = datetime.fromisoformat(
                 result.stdout.strip().replace("Z", "+00:00")
             )
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             return (now - last_commit).days
         except Exception:
             return 0

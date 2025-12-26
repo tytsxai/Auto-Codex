@@ -207,7 +207,7 @@ class ChangeTracker:
         with self._lock:
             if self.store_path.exists():
                 try:
-                    with open(self.store_path, "r", encoding="utf-8") as f:
+                    with open(self.store_path, encoding="utf-8") as f:
                         data = json.load(f)
                     self._store = StagedChangesStore.from_dict(data)
                 except (json.JSONDecodeError, KeyError, TypeError, OSError) as e:

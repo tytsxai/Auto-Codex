@@ -13,10 +13,7 @@ import json
 from pathlib import Path
 
 import pytest
-
-from review import ReviewState, REVIEW_STATE_FILE
-from tests.review_fixtures import approved_state, pending_state
-
+from review import REVIEW_STATE_FILE, ReviewState
 
 # =============================================================================
 # REVIEW STATE - BASIC FUNCTIONALITY

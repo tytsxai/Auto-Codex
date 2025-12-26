@@ -35,8 +35,8 @@ from project_analyzer import (
     needs_validation,
 )
 
-from .hooks import bash_security_hook, validate_command
 from .codex_config import CodexSecurityConfig
+from .hooks import bash_security_hook, validate_command
 
 # Command parsing utilities
 from .parser import (

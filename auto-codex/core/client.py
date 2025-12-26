@@ -9,12 +9,18 @@ legacy streaming API used across agents.
 from __future__ import annotations
 
 import os
+from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, AsyncIterator, Optional
+from typing import Any
 
 from core.auth import require_auth_token
-from core.protocols import EventType, LLMClientProtocol, LLMEvent, LLMQueryClientProtocol
+from core.protocols import (
+    EventType,
+    LLMClientProtocol,
+    LLMEvent,
+    LLMQueryClientProtocol,
+)
 from debug import debug_warning
 from providers import CodexCliClient
 from security import CodexSecurityConfig, get_security_profile
@@ -73,9 +79,9 @@ class CodexClientAdapter:
 
     def __init__(self, client: LLMClientProtocol) -> None:
         self._client = client
-        self._session_id: Optional[str] = None
+        self._session_id: str | None = None
 
-    async def __aenter__(self) -> "CodexClientAdapter":
+    async def __aenter__(self) -> CodexClientAdapter:
         return self
 
     async def __aexit__(self, exc_type, exc, tb) -> None:

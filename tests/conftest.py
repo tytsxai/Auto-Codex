@@ -6,14 +6,14 @@ Pytest Configuration and Shared Fixtures
 Provides common test fixtures for the Auto-Build Framework test suite.
 """
 
+import importlib.util
 import json
-import os
 import shutil
 import subprocess
 import sys
 import tempfile
+from collections.abc import Generator
 from pathlib import Path
-from typing import Generator
 from unittest.mock import MagicMock
 
 import pytest
@@ -22,7 +22,6 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent / "auto-codex"))
 
 from tests.fixtures.codex_mocks import MockCodexClient  # noqa: E402
-
 
 # =============================================================================
 # MODULE MOCK CLEANUP - Prevents test isolation issues
@@ -231,7 +230,6 @@ from tests.review_fixtures import (  # noqa: E402, F401
     review_spec_dir,
 )
 
-
 # =============================================================================
 # PROJECT STRUCTURE FIXTURES
 # =============================================================================
@@ -256,7 +254,6 @@ def python_project(temp_git_repo: Path) -> Path:
         },
     }
 
-    import tomllib
     # Write as TOML (we'll write manually since tomllib is read-only)
     toml_content = """[project]
 name = "test-project"
@@ -699,8 +696,8 @@ def mock_spec_validator():
             result = validator.validate_spec_document()
             assert result.valid
     """
-    from unittest.mock import MagicMock
     from dataclasses import dataclass
+    from unittest.mock import MagicMock
 
     @dataclass
     class MockValidationResult:
@@ -1029,18 +1026,8 @@ Add Google OAuth2 authentication to the application.
 # MERGE SYSTEM FIXTURES AND SAMPLE DATA
 # =============================================================================
 
-# Import merge module (path already added at top of conftest)
-try:
-    from merge import (
-        SemanticAnalyzer,
-        ConflictDetector,
-        AutoMerger,
-        FileEvolutionTracker,
-        AIResolver,
-    )
-except ImportError:
-    # Module will be available when tests run
-    pass
+# Verify merge module is importable (fixtures below import it lazily).
+_merge_spec = importlib.util.find_spec("merge")
 
 # Sample data constants moved to test_fixtures.py
 # Import from there if needed in test files
@@ -1104,7 +1091,7 @@ def temp_project(temp_git_repo: Path):
     - src/App.tsx (React component)
     - src/utils.py (Python module)
     """
-    from tests.test_fixtures import SAMPLE_REACT_COMPONENT, SAMPLE_PYTHON_MODULE
+    from tests.test_fixtures import SAMPLE_PYTHON_MODULE, SAMPLE_REACT_COMPONENT
 
     # Create src directory
     src_dir = temp_git_repo / "src"

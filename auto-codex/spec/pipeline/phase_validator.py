@@ -119,8 +119,8 @@ class PhaseValidator:
         )
     
     def _validate_json_file(
-        self, 
-        file_path: Path, 
+        self,
+        file_path: Path,
         config: dict[str, Any]
     ) -> list[str]:
         """Validate a JSON file."""
@@ -140,8 +140,8 @@ class PhaseValidator:
         return errors
     
     def _validate_markdown_file(
-        self, 
-        file_path: Path, 
+        self,
+        file_path: Path,
         config: dict[str, Any]
     ) -> list[str]:
         """Validate a markdown file."""

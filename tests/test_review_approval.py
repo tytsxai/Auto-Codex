@@ -14,9 +14,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-
-from review import ReviewState, REVIEW_STATE_FILE
-from tests.review_fixtures import approved_state, pending_state, review_spec_dir
+from review import REVIEW_STATE_FILE, ReviewState
 
 
 class TestReviewStateApproval:

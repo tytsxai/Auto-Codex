@@ -1,5 +1,4 @@
 import pytest
-
 from core.protocols import (
     ConversationalClientProtocol,
     EventType,
@@ -7,6 +6,7 @@ from core.protocols import (
     LLMEvent,
     LLMQueryClientProtocol,
 )
+
 from tests.fixtures.codex_mocks import MockCodexClient
 
 

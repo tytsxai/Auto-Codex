@@ -6,8 +6,8 @@ import random
 import shutil
 import time
 import uuid
+from collections.abc import AsyncIterator
 from dataclasses import dataclass
-from typing import Any, AsyncIterator, Optional
 
 from core.auth import get_auth_token
 from core.debug import debug_warning
@@ -143,10 +143,10 @@ class CodexSession:
     """Tracks a running Codex CLI session."""
 
     session_id: str
-    process: Optional[asyncio.subprocess.Process] = None
+    process: asyncio.subprocess.Process | None = None
     workdir: str = ""
     closed: bool = False
-    stderr_task: Optional[asyncio.Task[None]] = None
+    stderr_task: asyncio.Task[None] | None = None
     stderr_tail: str = ""
     last_activity: float = 0.0  # Timestamp of last output
     start_time: float = 0.0  # Timestamp when session started
@@ -165,12 +165,12 @@ class CodexCliClient(LLMClientProtocol):
         self,
         model: str | None = None,
         reasoning_effort: str | None = None,
-        workdir: Optional[str] = None,
+        workdir: str | None = None,
         timeout: int = 600,
         idle_timeout: int = DEFAULT_IDLE_TIMEOUT,
         max_runtime: int = DEFAULT_MAX_RUNTIME,
         bypass_sandbox: bool = False,
-        extra_args: Optional[list[str]] = None,
+        extra_args: list[str] | None = None,
     ) -> None:
         # Parse model string to extract base model and (optional) reasoning effort.
         # We treat any "-low/-medium/-high/-xhigh" suffix as legacy input and
@@ -291,7 +291,7 @@ class CodexCliClient(LLMClientProtocol):
                     line = await asyncio.wait_for(
                         process.stdout.readline(), timeout=read_timeout
                     )
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     # Check if we've exceeded max runtime
                     if session.start_time > 0 and self.max_runtime > 0:
                         runtime = time.time() - session.start_time
@@ -344,7 +344,7 @@ class CodexCliClient(LLMClientProtocol):
         await self.close(session_id)
         yield LLMEvent(type=EventType.SESSION_END, data={"session_id": session_id})
 
-    def _parse_output_line(self, line: str) -> Optional[LLMEvent]:
+    def _parse_output_line(self, line: str) -> LLMEvent | None:
         """Parse a single line of Codex CLI JSON output."""
         if not line:
             return None
@@ -434,7 +434,7 @@ class CodexCliClient(LLMClientProtocol):
         process.terminate()
         try:
             await asyncio.wait_for(process.wait(), timeout=5)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             process.kill()
             await process.wait()
 

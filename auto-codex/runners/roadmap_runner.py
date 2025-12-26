@@ -30,14 +30,14 @@ env_file = Path(__file__).parent.parent / ".env"
 if env_file.exists():
     load_dotenv(env_file)
 
-from debug import debug, debug_error, debug_warning
-from core.debug import is_debug_enabled
 from core.auth import ensure_auth_hydrated
+from core.debug import is_debug_enabled
+from debug import debug, debug_error, debug_warning
+from evals.roadmap_eval import evaluate_roadmap
+from phase_config import normalize_thinking_level
 
 # Import from refactored roadmap package
 from runners.roadmap import RoadmapOrchestrator
-from phase_config import normalize_thinking_level
-from evals.roadmap_eval import evaluate_roadmap
 
 
 def main():

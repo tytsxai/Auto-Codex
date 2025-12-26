@@ -13,22 +13,22 @@ Tests the project_analyzer.py module functionality including:
 """
 
 import json
-import pytest
 from pathlib import Path
 
+import pytest
 from project_analyzer import (
+    BASE_COMMANDS,
+    DATABASE_COMMANDS,
+    FRAMEWORK_COMMANDS,
+    INFRASTRUCTURE_COMMANDS,
+    LANGUAGE_COMMANDS,
+    CustomScripts,
     ProjectAnalyzer,
     SecurityProfile,
     TechnologyStack,
-    CustomScripts,
     get_or_create_profile,
     is_command_allowed,
     needs_validation,
-    BASE_COMMANDS,
-    LANGUAGE_COMMANDS,
-    FRAMEWORK_COMMANDS,
-    DATABASE_COMMANDS,
-    INFRASTRUCTURE_COMMANDS,
 )
 
 

@@ -9,8 +9,9 @@ Tests cover:
 """
 
 import asyncio
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import MagicMock, patch, AsyncMock
 
 
 class TestCodexCliClientProtocol:
@@ -51,7 +52,7 @@ class TestIdleWatchdog:
 
     def test_default_idle_timeout(self):
         """Default idle timeout should be 300 seconds."""
-        from providers.codex_cli import CodexCliClient, DEFAULT_IDLE_TIMEOUT
+        from providers.codex_cli import DEFAULT_IDLE_TIMEOUT, CodexCliClient
 
         assert DEFAULT_IDLE_TIMEOUT == 300
         client = CodexCliClient(model="test-model")

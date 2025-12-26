@@ -11,6 +11,7 @@ from merge import (
 )
 from merge.ai_resolver import create_llm_resolver
 from merge.ai_resolver.prompts import SYSTEM_PROMPT
+
 from tests.fixtures.codex_mocks import MockCodexClient
 
 

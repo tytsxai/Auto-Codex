@@ -11,11 +11,12 @@ Tests the PhaseExecutor class in auto-codex/spec/phases.py covering:
 """
 
 import json
-import pytest
 import sys
 import types
 from pathlib import Path
-from unittest.mock import MagicMock, AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 # Store original modules before mocking (for cleanup)
 _original_modules = {}
@@ -48,7 +49,7 @@ mock_validate_spec.auto_fix_plan = MagicMock(return_value=False)
 sys.modules['validate_spec'] = mock_validate_spec
 
 # Now import the phases module directly (bypasses __init__.py issues)
-from spec.phases import PhaseExecutor, PhaseResult, MAX_RETRIES
+from spec.phases import MAX_RETRIES, PhaseExecutor, PhaseResult
 
 
 # Cleanup fixture to restore original modules after all tests in this module
@@ -627,8 +628,8 @@ class TestPhaseSpecWriting:
         # First call returns invalid, subsequent calls return valid
         validator = mock_spec_validator(spec_valid=False)
 
-        from unittest.mock import MagicMock as Mock
         from dataclasses import dataclass
+        from unittest.mock import MagicMock as Mock
 
         @dataclass
         class MockResult:
