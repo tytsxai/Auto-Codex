@@ -56,7 +56,7 @@ class WorktreeManager:
         self.project_dir = project_dir
         self.base_branch = base_branch or self._detect_base_branch()
         self.worktrees_dir = project_dir / ".worktrees"
-        self._worktree_lock = threading.Lock()  # Protects create/remove/merge operations
+        self._worktree_lock = threading.RLock()  # Protects create/remove/merge operations
 
     def _detect_base_branch(self) -> str:
         """
