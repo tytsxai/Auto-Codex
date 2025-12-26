@@ -336,6 +336,44 @@ class TestMultiServiceDetection:
 
 
 # =============================================================================
+# LOCAL SERVICE STARTUP
+# =============================================================================
+
+
+class TestLocalServiceStartup:
+    """Tests for local service orchestration behavior."""
+
+    def test_local_services_without_startup_command_returns_error(self, temp_dir):
+        """Local services discovered without startup_command should report an error."""
+        services_dir = temp_dir / "services"
+        services_dir.mkdir()
+
+        for name in ["api", "worker"]:
+            service_dir = services_dir / name
+            service_dir.mkdir()
+            (service_dir / "package.json").write_text("{}")
+
+        orchestrator = ServiceOrchestrator(temp_dir)
+        assert orchestrator.is_multi_service() is True
+
+        result = orchestrator.start_services(timeout=1)
+
+        assert result.success is False
+        assert result.errors, "Expected an error when no local startup_command is configured"
+        assert set(result.services_failed) == {"api", "worker"}
+
+
+class TestHealthCheckSecurity:
+    """Security-focused health check behavior."""
+
+    def test_rejects_non_http_health_url(self, temp_dir):
+        """Non-http(s) URLs should be refused and never opened."""
+        orchestrator = ServiceOrchestrator(temp_dir)
+
+        assert orchestrator._check_http_health("file:///etc/passwd") is False
+
+
+# =============================================================================
 # SERIALIZATION
 # =============================================================================
 

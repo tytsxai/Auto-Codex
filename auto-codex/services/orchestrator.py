@@ -21,6 +21,8 @@ Usage:
 """
 
 import json
+import shlex
+import shutil
 import subprocess
 import time
 from dataclasses import dataclass, field
@@ -61,7 +63,7 @@ class ServiceConfig:
     port: int | None = None
     type: str = "docker"  # docker, local, mock
     health_check_url: str | None = None
-    startup_command: str | None = None
+    startup_command: str | list[str] | None = None
     startup_timeout: int = 120
 
 
@@ -416,6 +418,8 @@ class ServiceOrchestrator:
         """Start local services (non-docker)."""
         result = OrchestrationResult()
 
+        local_services = [s for s in self._services if s.type == "local"]
+
         for service in self._services:
             if service.startup_command:
                 try:
@@ -424,9 +428,10 @@ class ServiceOrchestrator:
                         if service.path
                         else self.project_dir
                     )
+
+                    cmd = self._build_startup_command(service.startup_command)
                     proc = subprocess.Popen(
-                        service.startup_command,
-                        shell=True,
+                        cmd,
                         cwd=cwd,
                         stdout=subprocess.DEVNULL,
                         stderr=subprocess.DEVNULL,
@@ -445,6 +450,12 @@ class ServiceOrchestrator:
                         cwd=str(cwd) if "cwd" in locals() else None,
                         error=str(e),
                     )
+
+        if local_services and not result.services_started:
+            result.errors.append(
+                "No local services were started (no startup_command configured)."
+            )
+            result.services_failed = [s.name for s in local_services]
 
         # Wait for services to be ready
         if result.services_started:
@@ -474,6 +485,38 @@ class ServiceOrchestrator:
                     )
 
         return result
+
+    def _build_startup_command(self, startup_command: str | list[str]) -> list[str]:
+        """Convert a startup command into an argv list safe for subprocess.Popen."""
+        if isinstance(startup_command, list):
+            return startup_command
+
+        command = (startup_command or "").strip()
+        if not command:
+            raise ValueError("startup_command is empty")
+
+        if self._startup_command_needs_shell(command):
+            shell = shutil.which("bash") or shutil.which("sh")
+            if not shell:
+                raise ValueError("No shell found to run startup_command")
+            flag = "-lc" if shell.endswith("bash") else "-c"
+            return [shell, flag, command]
+
+        return shlex.split(command)
+
+    def _startup_command_needs_shell(self, command: str) -> bool:
+        """Return True if the command likely depends on shell features."""
+        shell_tokens = ["&&", "||", "|", ";", ">", "<", "$", "`", "\n"]
+        if any(token in command for token in shell_tokens):
+            return True
+
+        # Leading environment assignments (e.g. FOO=bar cmd) require a shell.
+        first_token = command.split(maxsplit=1)[0]
+        key, sep, _ = first_token.partition("=")
+        if sep and key.isidentifier():
+            return True
+
+        return False
 
     def stop_services(self) -> None:
         """Stop all running services."""
@@ -629,10 +672,28 @@ class ServiceOrchestrator:
 
     def _check_http_health(self, url: str) -> bool:
         import urllib.error
+        import urllib.parse
         import urllib.request
 
+        candidate = (url or "").strip()
+        if not candidate:
+            return False
+
+        if "://" not in candidate:
+            candidate = f"http://{candidate}"
+
+        parsed = urllib.parse.urlparse(candidate)
+        if parsed.scheme not in ("http", "https"):
+            debug_warning(
+                "orchestrator",
+                "Refusing non-http(s) health check URL",
+                url=url,
+                scheme=parsed.scheme,
+            )
+            return False
+
         try:
-            with urllib.request.urlopen(url, timeout=2):
+            with urllib.request.urlopen(candidate, timeout=2):
                 return True
         except urllib.error.HTTPError:
             return True
