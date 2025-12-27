@@ -3,7 +3,9 @@ import { mkdirSync, rmSync, writeFileSync, readFileSync, existsSync } from 'fs';
 import path from 'path';
 
 const TEST_DIR = '/tmp/task-run-state-test';
-const USER_DATA_DIR = '/tmp/test-app-data';
+const USER_DATA_DIR = `/tmp/test-app-data-${
+  process.env.VITEST_WORKER_ID ?? process.env.VITEST_POOL_ID ?? process.pid
+}`;
 const PROJECT_PATH = path.join(TEST_DIR, 'project');
 const SPEC_ID = '001-test-task';
 

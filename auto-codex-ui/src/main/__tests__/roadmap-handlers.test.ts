@@ -3,7 +3,9 @@ import { mkdirSync, rmSync, writeFileSync, readFileSync, existsSync } from 'fs';
 import path from 'path';
 
 const TEST_DIR = '/tmp/roadmap-handlers-test';
-const USER_DATA_DIR = '/tmp/test-app-data';
+const USER_DATA_DIR = `/tmp/test-app-data-${
+  process.env.VITEST_WORKER_ID ?? process.env.VITEST_POOL_ID ?? process.pid
+}`;
 const PROJECT_PATH = path.join(TEST_DIR, 'project');
 
 describe('roadmap handlers', () => {
@@ -65,7 +67,7 @@ describe('roadmap handlers', () => {
     expect(mainWindow.webContents.send).toHaveBeenCalledWith(
       IPC_CHANNELS.ROADMAP_ERROR,
       project.id,
-      expect.stringContaining('risk policy')
+      expect.stringMatching(/risk policy|\u98ce\u9669\u7b56\u7565/)
     );
     expect(mockAgentManager.startRoadmapGeneration).not.toHaveBeenCalled();
   });

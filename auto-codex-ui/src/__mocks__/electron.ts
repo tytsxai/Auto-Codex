@@ -4,11 +4,16 @@
 import { vi } from 'vitest';
 import { EventEmitter } from 'events';
 
+const TEST_WORKER_ID =
+  process.env.VITEST_WORKER_ID ??
+  process.env.VITEST_POOL_ID ??
+  String(process.pid);
+
 // Mock app
 export const app = {
   getPath: vi.fn((name: string) => {
     const paths: Record<string, string> = {
-      userData: '/tmp/test-app-data',
+      userData: `/tmp/test-app-data-${TEST_WORKER_ID}`,
       home: '/tmp/test-home',
       temp: '/tmp'
     };
