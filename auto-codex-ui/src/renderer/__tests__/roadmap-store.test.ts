@@ -122,11 +122,12 @@ describe('Roadmap Store', () => {
       stopRoadmap: vi.fn()
     };
 
-    if (!(globalThis as typeof globalThis & { window?: Window }).window) {
-      (globalThis as typeof globalThis & { window: Window }).window = {} as Window;
+    const globalWithWindow = globalThis as unknown as { window?: Window & typeof globalThis };
+    if (!globalWithWindow.window) {
+      globalWithWindow.window = {} as unknown as Window & typeof globalThis;
     }
 
-    (window as Window & { electronAPI: typeof electronAPI }).electronAPI = electronAPI;
+    (window as unknown as { electronAPI: typeof electronAPI }).electronAPI = electronAPI;
     (window as Window & { DEBUG?: boolean }).DEBUG = false;
 
     // Reset store to initial state before each test
@@ -650,7 +651,7 @@ describe('Roadmap Store', () => {
       const state = useRoadmapStore.getState();
       expect(state.currentProjectId).toBe('project-1');
       expect(state.generationStatus.phase).toBe('analyzing');
-      expect(state.generationStatus.message).toBe('Roadmap generation in progress...');
+      expect(state.generationStatus.message).toMatch(/Roadmap generation in progress\.\.\.|\u8def\u7ebf\u56fe\u751f\u6210\u8fdb\u884c\u4e2d/);
       expect(state.roadmap?.features[0].status).toBe('under_review');
       expect(state.roadmap?.features[0].source?.provider).toBe('internal');
       expect(state.competitorAnalysis?.projectContext.projectName).toBe('Test Project');

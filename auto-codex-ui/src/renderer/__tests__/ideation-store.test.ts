@@ -98,11 +98,12 @@ describe('Ideation Store', () => {
       onIdeationStopped: vi.fn().mockImplementation(() => vi.fn())
     };
 
-    if (!(globalThis as typeof globalThis & { window?: Window }).window) {
-      (globalThis as typeof globalThis & { window: Window }).window = {} as Window;
+    const globalWithWindow = globalThis as unknown as { window?: Window & typeof globalThis };
+    if (!globalWithWindow.window) {
+      globalWithWindow.window = {} as unknown as Window & typeof globalThis;
     }
 
-    (window as Window & { electronAPI: typeof electronAPI }).electronAPI = electronAPI;
+    (window as unknown as { electronAPI: typeof electronAPI }).electronAPI = electronAPI;
     (window as Window & { DEBUG?: boolean }).DEBUG = false;
 
     useIdeationStore.setState({
@@ -211,15 +212,18 @@ describe('Ideation Store', () => {
   describe('error handling', () => {
     it('updates status and logs when onIdeationError fires', () => {
       let onErrorHandler: ((projectId: string, error: string) => void) | null = null;
-      electronAPI.onIdeationError.mockImplementation((handler) => {
-        onErrorHandler = handler;
+      electronAPI.onIdeationError.mockImplementation((handler: unknown) => {
+        onErrorHandler = handler as (projectId: string, error: string) => void;
         return vi.fn();
       });
 
       setupIdeationListeners();
 
       expect(onErrorHandler).not.toBeNull();
-      onErrorHandler?.('project-1', 'boom');
+      if (!onErrorHandler) {
+        throw new Error('Expected onIdeationError handler to be registered');
+      }
+      (onErrorHandler as unknown as (projectId: string, error: string) => void)('project-1', 'boom');
 
       const state = useIdeationStore.getState();
       expect(state.generationStatus.phase).toBe('error');

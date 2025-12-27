@@ -159,17 +159,20 @@ describe('Changelog Store', () => {
       saveSettings: vi.fn().mockResolvedValue({ success: true })
     };
 
-    if (!(globalThis as typeof globalThis & { window?: Window }).window) {
-      (globalThis as typeof globalThis & { window: Window }).window = {} as Window;
+    const globalWithWindow = globalThis as unknown as { window?: Window & typeof globalThis };
+    if (!globalWithWindow.window) {
+      globalWithWindow.window = {} as unknown as Window & typeof globalThis;
     }
 
     if (!(globalThis as typeof globalThis & { navigator?: Navigator }).navigator) {
       (globalThis as typeof globalThis & { navigator: Navigator }).navigator = {} as Navigator;
     }
 
-    (window as Window & { electronAPI: typeof electronAPI }).electronAPI = electronAPI;
-    (navigator as Navigator & { clipboard?: { writeText: ReturnType<typeof vi.fn> } }).clipboard = {
-      writeText: vi.fn()
+    (window as unknown as { electronAPI: typeof electronAPI }).electronAPI = electronAPI;
+    (navigator as unknown as { clipboard: { writeText: (data: string) => Promise<void> } }).clipboard = {
+      writeText: vi.fn().mockImplementation(async (_data: string) => undefined) as unknown as (
+        data: string,
+      ) => Promise<void>
     };
 
     useChangelogStore.setState({ ...initialState });

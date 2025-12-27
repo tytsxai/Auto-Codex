@@ -47,7 +47,15 @@ describe('InsightsService', () => {
 
     service.configure('/usr/bin/python3', autoCodexPath);
 
-    const executor = (service as unknown as { executor: { execute: Function } }).executor;
+    type InsightsExecutor = {
+      execute: (...args: unknown[]) => Promise<{
+        fullResponse: string;
+        suggestedTask?: InsightsChatMessage['suggestedTask'];
+        toolsUsed: unknown[];
+      }>;
+    };
+
+    const executor = (service as unknown as { executor: InsightsExecutor }).executor;
     vi.spyOn(executor, 'execute').mockResolvedValue({
       fullResponse: 'All good',
       suggestedTask: {

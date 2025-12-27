@@ -48,11 +48,12 @@ describe('GitHub Store', () => {
       importGitHubIssues: vi.fn()
     };
 
-    if (!(globalThis as typeof globalThis & { window?: Window }).window) {
-      (globalThis as typeof globalThis & { window: Window }).window = {} as Window;
+    const globalWithWindow = globalThis as unknown as { window?: Window & typeof globalThis };
+    if (!globalWithWindow.window) {
+      globalWithWindow.window = {} as unknown as Window & typeof globalThis;
     }
 
-    (window as Window & { electronAPI: typeof electronAPI }).electronAPI = electronAPI;
+    (window as unknown as { electronAPI: typeof electronAPI }).electronAPI = electronAPI;
 
     useGitHubStore.setState({
       issues: [],

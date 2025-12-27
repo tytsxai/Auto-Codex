@@ -630,7 +630,7 @@ describe('IPC Handlers', () => {
       );
 
       expect((result as { success: boolean }).success).toBe(true);
-      const task = (result as { data: { id: string } }).data;
+      const task = (result as { data: { id: string; metadata: { sourceType: string } } }).data;
       const specDir = path.join(autoCodexDir, 'specs', task.id);
       expect(existsSync(specDir)).toBe(true);
       expect(task.metadata.sourceType).toBe('insights');
