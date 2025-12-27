@@ -1,8 +1,9 @@
 import { ipcMain } from 'electron';
-import { readdirSync } from 'fs';
+import { readdirSync, realpathSync } from 'fs';
 import path from 'path';
 import { IPC_CHANNELS } from '../../shared/constants';
 import type { IPCResult, FileNode } from '../../shared/types';
+import { projectStore } from '../project-store';
 
 // Directories to ignore when listing
 const IGNORED_DIRS = new Set([
@@ -11,6 +12,42 @@ const IGNORED_DIRS = new Set([
   'out', '.turbo', '.worktrees',
   'vendor', 'target', '.gradle', '.maven'
 ]);
+
+function tryRealpath(p: string): string | null {
+  try {
+    return realpathSync(p);
+  } catch {
+    return null;
+  }
+}
+
+function isPathWithinDir(targetPath: string, parentDir: string): boolean {
+  const normalizedTarget = path.resolve(targetPath);
+  const normalizedParent = path.resolve(parentDir);
+  if (normalizedTarget === normalizedParent) return true;
+  return normalizedTarget.startsWith(normalizedParent + path.sep);
+}
+
+function isAllowedFileExplorerPath(dirPath: string): boolean {
+  if (!dirPath || typeof dirPath !== 'string') return false;
+
+  // Only allow absolute paths; prevents ambiguity and path traversal via CWD.
+  if (!path.isAbsolute(dirPath)) return false;
+
+  const requested = tryRealpath(dirPath);
+  if (!requested) return false;
+
+  const projects = projectStore.getProjects();
+  if (!projects.length) return false;
+
+  for (const project of projects) {
+    const projectRoot = tryRealpath(project.path);
+    if (!projectRoot) continue;
+    if (isPathWithinDir(requested, projectRoot)) return true;
+  }
+
+  return false;
+}
 
 /**
  * Register all file-related IPC handlers
@@ -24,6 +61,13 @@ export function registerFileHandlers(): void {
     IPC_CHANNELS.FILE_EXPLORER_LIST,
     async (_, dirPath: string): Promise<IPCResult<FileNode[]>> => {
       try {
+        if (!isAllowedFileExplorerPath(dirPath)) {
+          return {
+            success: false,
+            error: 'Access denied: directory is outside allowed project roots'
+          };
+        }
+
         const entries = readdirSync(dirPath, { withFileTypes: true });
 
         // Filter and map entries
