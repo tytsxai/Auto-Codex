@@ -1,4 +1,4 @@
-import { execSync } from 'child_process';
+import { execFileSync } from 'child_process';
 import { existsSync } from 'fs';
 
 /**
@@ -45,11 +45,14 @@ export function findPythonCommand(): string | null {
       if (cmd.startsWith('/') && !existsSync(cmd)) {
         continue;
       }
-      const version = execSync(`${cmd} --version`, {
-        stdio: 'pipe',
+
+      const [pythonCommand, pythonBaseArgs] = parsePythonCommand(cmd);
+      const version = execFileSync(pythonCommand, [...pythonBaseArgs, '--version'], {
+        stdio: ['ignore', 'pipe', 'pipe'],
         timeout: 5000,
-        windowsHide: true
-      }).toString();
+        windowsHide: true,
+        encoding: 'utf-8'
+      });
 
       if (isUsablePython(version)) {
         return cmd;

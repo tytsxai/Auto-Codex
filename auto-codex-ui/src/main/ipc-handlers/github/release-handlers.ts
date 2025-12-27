@@ -3,7 +3,7 @@
  */
 
 import { ipcMain } from 'electron';
-import { execSync } from 'child_process';
+import { execFileSync, execSync } from 'child_process';
 import { existsSync, readFileSync } from 'fs';
 import path from 'path';
 import { IPC_CHANNELS } from '../../../shared/constants';
@@ -93,12 +93,10 @@ export function registerCreateRelease(): void {
       try {
         // Build and execute release command
         const args = buildReleaseArgs(version, releaseNotes, options);
-        const command = `gh ${args.map(a => `"${a.replace(/"/g, '\\"')}"`).join(' ')}`;
-
-        const output = execSync(command, {
+        const output = execFileSync('gh', args, {
           cwd: project.path,
           encoding: 'utf-8',
-          stdio: 'pipe'
+          stdio: ['ignore', 'pipe', 'pipe']
         }).trim();
 
         // Output is typically the release URL
@@ -126,9 +124,10 @@ export function registerCreateRelease(): void {
  */
 function getLatestTag(projectPath: string): string | null {
   try {
-    const tag = execSync('git describe --tags --abbrev=0 2>/dev/null || echo ""', {
+    const tag = execFileSync('git', ['describe', '--tags', '--abbrev=0'], {
       cwd: projectPath,
-      encoding: 'utf-8'
+      encoding: 'utf-8',
+      stdio: ['ignore', 'pipe', 'ignore']
     }).trim();
     return tag || null;
   } catch {
@@ -143,10 +142,11 @@ function getCommitsSinceTag(projectPath: string, tag: string | null): GitCommit[
   try {
     const range = tag ? `${tag}..HEAD` : 'HEAD';
     const format = '%H|%s|%an|%ae|%aI';
-    const output = execSync(`git log ${range} --pretty=format:"${format}"`, {
-      cwd: projectPath,
-      encoding: 'utf-8'
-    }).trim();
+    const output = execFileSync(
+      'git',
+      ['log', range, `--pretty=format:${format}`],
+      { cwd: projectPath, encoding: 'utf-8', stdio: ['ignore', 'pipe', 'pipe'] }
+    ).trim();
 
     if (!output) return [];
 
