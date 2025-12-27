@@ -150,6 +150,7 @@ export interface ElectronAPI {
   mergeWorktree: (taskId: string, options?: { noCommit?: boolean }) => Promise<IPCResult<WorktreeMergeResult>>;
   mergeWorktreePreview: (taskId: string) => Promise<IPCResult<WorktreeMergeResult>>;
   discardWorktree: (taskId: string) => Promise<IPCResult<WorktreeDiscardResult>>;
+  deleteWorktreeDirect: (specName: string) => Promise<IPCResult<WorktreeDiscardResult>>;
   listWorktrees: (projectId: string) => Promise<IPCResult<WorktreeListResult>>;
 
   // Task archive operations
