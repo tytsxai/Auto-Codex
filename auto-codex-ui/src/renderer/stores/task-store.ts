@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { Task, TaskStatus, ImplementationPlan, Subtask, TaskMetadata, ExecutionProgress, ExecutionPhase, ReviewReason, TaskDraft } from '../../shared/types';
+import { useRoadmapStore } from './roadmap-store';
 
 interface TaskState {
   tasks: Task[];
@@ -401,8 +402,6 @@ export async function deleteTask(
       }
 
       // 同步删除路线图中关联的 feature
-      // 延迟导入避免循环依赖
-      const { useRoadmapStore } = await import('./roadmap-store');
       const roadmapStore = useRoadmapStore.getState();
       if (roadmapStore.roadmap) {
         const linkedFeatures = roadmapStore.roadmap.features.filter(
@@ -414,7 +413,7 @@ export async function deleteTask(
           const updatedRoadmap = useRoadmapStore.getState().roadmap;
           const projectId = roadmapStore.currentProjectId ?? task?.projectId;
           if (updatedRoadmap && projectId) {
-            window.electronAPI.saveRoadmap(projectId, updatedRoadmap).catch(err => {
+            Promise.resolve(window.electronAPI.saveRoadmap(projectId, updatedRoadmap)).catch(err => {
               console.error('Failed to save roadmap after deleting linked feature:', err);
             });
           }

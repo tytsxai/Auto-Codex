@@ -141,11 +141,12 @@ describe('Task Store', () => {
       saveRoadmap: vi.fn()
     };
 
-    if (!(globalThis as typeof globalThis & { window?: Window }).window) {
-      (globalThis as typeof globalThis & { window: Window }).window = {} as Window;
+    const globalWithWindow = globalThis as unknown as { window?: Window & typeof globalThis };
+    if (!globalWithWindow.window) {
+      globalWithWindow.window = {} as unknown as Window & typeof globalThis;
     }
 
-    (window as Window & { electronAPI: typeof electronAPI }).electronAPI = electronAPI;
+    (window as unknown as { electronAPI: typeof electronAPI }).electronAPI = electronAPI;
     (globalThis as typeof globalThis & { localStorage?: Storage }).localStorage = localStorageMock as Storage;
     localStorageMock.clear();
 
@@ -748,8 +749,8 @@ describe('Task Store', () => {
     it('deleteTask should remove task and clear selection on success', async () => {
       useTaskStore.setState({
         tasks: [
-          createTestTask({ id: 'task-1' }),
-          createTestTask({ id: 'task-2' })
+          createTestTask({ id: 'task-1', specId: 'spec-1' }),
+          createTestTask({ id: 'task-2', specId: 'spec-2' })
         ],
         selectedTaskId: 'task-1'
       });
