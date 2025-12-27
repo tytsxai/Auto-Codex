@@ -3,10 +3,11 @@
  * Provides a simpler OAuth flow than manual PAT creation
  */
 
-import { ipcMain, shell } from 'electron';
+import { ipcMain } from 'electron';
 import { execSync, execFileSync, spawn } from 'child_process';
 import { IPC_CHANNELS } from '../../../shared/constants';
 import type { IPCResult } from '../../../shared/types';
+import { safeOpenExternal } from '../../utils/safe-external';
 
 // Debug logging helper
 const DEBUG = process.env.DEBUG === 'true' || process.env.NODE_ENV === 'development';
@@ -239,12 +240,12 @@ export function registerStartGhAuth(): void {
               debugLog('Device code extracted successfully (code redacted for security)');
               debugLog('Auth URL:', extractedAuthUrl);
 
-              // Open browser using Electron's shell.openExternal
+              // Open browser using Electron (with URL protocol allowlist)
               // This bypasses macOS child process restrictions that block gh CLI's browser launch
               try {
-                await shell.openExternal(extractedAuthUrl);
+                await safeOpenExternal(extractedAuthUrl);
                 browserOpenedSuccessfully = true;
-                debugLog('Browser opened successfully via shell.openExternal');
+                debugLog('Browser opened successfully');
               } catch (browserError) {
                 debugLog('Failed to open browser:', browserError instanceof Error ? browserError.message : browserError);
                 browserOpenedSuccessfully = false;

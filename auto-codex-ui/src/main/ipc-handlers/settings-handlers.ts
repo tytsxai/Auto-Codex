@@ -1,4 +1,4 @@
-import { ipcMain, dialog, app, shell, safeStorage } from "electron";
+import { ipcMain, dialog, app, safeStorage } from "electron";
 import { existsSync, mkdirSync } from "fs";
 import { execSync } from "child_process";
 import path from "path";
@@ -22,6 +22,7 @@ import {
   prepareSettingsForSave,
   SENSITIVE_SETTINGS_FIELDS,
 } from "../utils/secure-settings";
+import { safeOpenExternal } from "../utils/safe-external";
 
 const settingsPath = path.join(app.getPath("userData"), "settings.json");
 
@@ -539,7 +540,7 @@ export function registerSettingsHandlers(
   ipcMain.handle(
     IPC_CHANNELS.SHELL_OPEN_EXTERNAL,
     async (_, url: string): Promise<void> => {
-      await shell.openExternal(url);
+      await safeOpenExternal(url);
     },
   );
 }

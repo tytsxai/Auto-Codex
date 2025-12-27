@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell, nativeImage } from 'electron';
+import { app, BrowserWindow, nativeImage } from 'electron';
 import { join } from 'path';
 import { electronApp, optimizer, is } from '@electron-toolkit/utils';
 import { setupIpcHandlers } from './ipc-setup';
@@ -12,6 +12,7 @@ import { debugError, debugWarn } from '../shared/utils/debug-logger';
 import { logService } from './log-service';
 import { cleanupStaleTokenFiles } from './terminal/codex-integration-handler';
 import { compareVersions, getBundledVersion, getEffectiveVersion } from './updater/version-manager';
+import { safeOpenExternal } from './utils/safe-external';
 
 // Get icon path based on platform
 function getIconPath(): string {
@@ -68,7 +69,7 @@ function createWindow(): void {
 
   // Handle external links
   mainWindow.webContents.setWindowOpenHandler((details) => {
-    shell.openExternal(details.url);
+    void safeOpenExternal(details.url);
     return { action: 'deny' };
   });
 
