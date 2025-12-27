@@ -78,15 +78,12 @@ BASE_COMMANDS: set[str] = {
     "set",
     "source",
     ".",
-    "eval",
-    "exec",
     "exit",
     "return",
     "break",
     "continue",
-    "sh",
-    "bash",
-    "zsh",
+    # NOTE: We intentionally do NOT allow launching a shell (bash/sh/zsh) from
+    # agent commands; it can bypass command-level validation (e.g. `bash -c ...`).
     # Archives
     "tar",
     "zip",
