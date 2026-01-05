@@ -2,6 +2,8 @@
 
 使用 Auto-Codex 自主编码框架管理 AI 驱动开发任务的桌面应用程序。
 
+This project is a Codex-based fork derived from https://github.com/AndyMik90/Auto-Claude.
+
 ## 快速开始
 
 ```bash

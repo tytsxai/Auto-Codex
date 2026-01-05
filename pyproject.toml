@@ -6,6 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "auto-codex"
 version = "3.0.1"
 description = "Multi-agent autonomous coding framework"
+# This project is a Codex-based fork derived from https://github.com/AndyMik90/Auto-Claude
 readme = "README.md"
 license = {text = "AGPL-3.0"}
 requires-python = ">=3.12"

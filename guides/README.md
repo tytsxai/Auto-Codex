@@ -2,6 +2,8 @@
 
 Detailed documentation for Auto-Codex setup and usage.
 
+This project is a Codex-based fork derived from https://github.com/AndyMik90/Auto-Claude.
+
 ## Available Guides
 
 | Guide | Description |

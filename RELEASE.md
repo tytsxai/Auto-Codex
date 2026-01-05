@@ -2,6 +2,8 @@
 
 This document describes how to create a new release of Auto-Codex.
 
+This project is a Codex-based fork derived from https://github.com/AndyMik90/Auto-Claude.
+
 ## Automated Release Process (Recommended)
 
 We provide an automated script that handles version bumping, git commits, and tagging to ensure version consistency.

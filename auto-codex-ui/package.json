@@ -1,7 +1,7 @@
 {
   "name": "auto-codex-ui",
   "version": "3.2.1",
-  "description": "Desktop UI for Auto-Codex autonomous coding framework",
+  "description": "Desktop UI for Auto-Codex autonomous coding framework (Codex-based fork derived from https://github.com/AndyMik90/Auto-Claude)",
   "main": "./out/main/index.js",
   "author": "Auto-Codex Team",
   "license": "AGPL-3.0",

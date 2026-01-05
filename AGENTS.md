@@ -2,6 +2,8 @@
 
 This file is the lightweight working guide for Codex/LLM agents in this repo.
 
+This project is a Codex-based fork derived from https://github.com/AndyMik90/Auto-Claude.
+
 ## Project overview
 - **Auto-Codex** is a multi-agent coding framework.
 - **auto-codex/**: Python backend (spec runner, agents, memory, security).

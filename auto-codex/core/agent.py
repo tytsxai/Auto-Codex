@@ -15,6 +15,8 @@ Enhanced with Graphiti memory for cross-session context retrieval.
 
 NOTE: This module is now a facade that imports from agents/ submodules.
 All logic has been refactored into focused modules for better maintainability.
+
+This project is a Codex-based fork derived from https://github.com/AndyMik90/Auto-Claude.
 """
 
 # Re-export everything from the agents module to maintain backwards compatibility

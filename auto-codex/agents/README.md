@@ -2,6 +2,8 @@
 
 Modular agent system for autonomous coding. This module refactors the original monolithic `agent.py` (1,446 lines) into focused, maintainable modules.
 
+This project is a Codex-based fork derived from https://github.com/AndyMik90/Auto-Claude.
+
 ## Architecture
 
 The agent system is now organized by concern:

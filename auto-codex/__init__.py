@@ -4,6 +4,8 @@ Auto Codex - Autonomous Coding Framework
 
 Multi-agent autonomous coding framework that builds software through
 coordinated AI agent sessions.
+
+This project is a Codex-based fork derived from https://github.com/AndyMik90/Auto-Claude.
 """
 
 import json
