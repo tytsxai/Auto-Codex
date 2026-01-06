@@ -30,7 +30,7 @@ docker run -d \
   --name auto-codex-falkordb \
   -p 127.0.0.1:6380:6379 \
   -v auto-codex_falkordb_data:/data \
-  -e FALKORDB_ARGS=--appendonly yes \
+  -e "FALKORDB_ARGS=--appendonly yes" \
   --restart unless-stopped \
   falkordb/falkordb:latest
 
@@ -200,7 +200,7 @@ docker run -d \
   --name auto-codex-falkordb \
   -p 127.0.0.1:6380:6379 \
   -v auto-codex_falkordb_data:/data \
-  -e FALKORDB_ARGS=--appendonly yes \
+  -e "FALKORDB_ARGS=--appendonly yes" \
   --restart unless-stopped \
   falkordb/falkordb:latest
 ```
@@ -359,7 +359,7 @@ docker run -d \
   --name auto-codex-falkordb \
   -p 127.0.0.1:6381:6379 \
   -v auto-codex_falkordb_data:/data \
-  -e FALKORDB_ARGS=--appendonly yes \
+  -e "FALKORDB_ARGS=--appendonly yes" \
   --restart unless-stopped \
   falkordb/falkordb:latest
 ```
@@ -375,7 +375,7 @@ docker run -d \
   --name auto-codex-falkordb \
   -p 127.0.0.1:6380:6379 \
   -v auto-codex_falkordb_data:/data \
-  -e FALKORDB_ARGS=--appendonly yes \
+  -e "FALKORDB_ARGS=--appendonly yes" \
   --restart unless-stopped \
   falkordb/falkordb:latest
 ```
@@ -389,7 +389,7 @@ docker run -d \
   --name auto-codex-falkordb \
   -p 127.0.0.1:6380:6379 \
   -v auto-codex_falkordb_data:/data \
-  -e FALKORDB_ARGS=--appendonly yes \
+  -e "FALKORDB_ARGS=--appendonly yes" \
   --memory=2g \
   --restart unless-stopped \
   falkordb/falkordb:latest
@@ -405,7 +405,7 @@ If running Docker on a different machine:
      --name auto-codex-falkordb \
      -p 0.0.0.0:6380:6379 \
      -v auto-codex_falkordb_data:/data \
-     -e FALKORDB_ARGS=--appendonly yes \
+     -e "FALKORDB_ARGS=--appendonly yes" \
      --restart unless-stopped \
      falkordb/falkordb:latest
    ```

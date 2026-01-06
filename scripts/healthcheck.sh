@@ -132,6 +132,9 @@ check_file() {
 
 check_auth() {
   # Use Python health check for comprehensive auth verification
+  # Graphiti config validation relies on env vars from auto-codex/.env or repo .env.
+  # Ensure provider credentials (OPENAI_API_KEY/ANTHROPIC_API_KEY/AZURE_OPENAI_*/VOYAGE_API_KEY/GOOGLE_API_KEY/OLLAMA_*)
+  # and FalkorDB settings are available when GRAPHITI_ENABLED=true.
   local python_output python_exit_code
   python_output=$(python3 -c "
 import sys
@@ -287,6 +290,73 @@ check_graphiti() {
     return
   fi
 
+  local python_output python_exit_code
+  set +e
+  python_output=$(GRAPHITI_ENABLED="$graphiti_enabled" python3 - <<PY
+import os
+import sys
+from pathlib import Path
+
+root = Path(r"$ROOT_DIR")
+
+def load_env(path: Path) -> None:
+    if not path.exists():
+        return
+    try:
+        content = path.read_text(encoding="utf-8")
+    except OSError:
+        return
+    for raw in content.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        if "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        key = key.strip()
+        value = value.strip()
+        if not key:
+            continue
+        if value and value[0] in ("'", '"') and value[-1] == value[0]:
+            value = value[1:-1]
+        else:
+            if "#" in value:
+                value = value.split("#", 1)[0].rstrip()
+        os.environ.setdefault(key, value)
+
+load_env(root / "auto-codex" / ".env")
+load_env(root / ".env")
+
+sys.path.insert(0, str(root / "auto-codex"))
+try:
+    from graphiti_config import validate_graphiti_config
+except Exception as exc:
+    print(f"GRAPHITI_CONFIG_ERRORS=Healthcheck failed to load Graphiti config: {exc}")
+    raise SystemExit(1)
+
+ok, errors = validate_graphiti_config()
+if ok:
+    print("GRAPHITI_CONFIG_OK=1")
+else:
+    print("GRAPHITI_CONFIG_ERRORS=" + "|".join(errors))
+    raise SystemExit(1)
+PY
+  )
+  python_exit_code=$?
+  set -e
+
+  if [[ "$python_exit_code" -ne 0 ]]; then
+    local config_errors
+    config_errors="$(echo "$python_output" | grep '^GRAPHITI_CONFIG_ERRORS=' | cut -d= -f2- || true)"
+    if [[ -n "$config_errors" ]]; then
+      log_fail "Graphiti config invalid: $config_errors"
+    else
+      log_fail "Graphiti config validation failed"
+    fi
+  else
+    log_ok "Graphiti config valid"
+  fi
+
   if ! check_docker; then
     return
   fi
@@ -318,12 +388,18 @@ check_graphiti() {
     log_fail "GRAPHITI_MCP_IMAGE_TAG not set (required for production)"
   fi
 
-  local falkor_password="${GRAPHITI_FALKORDB_PASSWORD:-}"
+  local falkor_password="${GRAPHITI_FALKORDB_PASSWORD:-${FALKORDB_PASSWORD:-}}"
   if [[ -z "$falkor_password" ]]; then
     falkor_password="$(get_env_value "GRAPHITI_FALKORDB_PASSWORD" "$ROOT_DIR/auto-codex/.env" || true)"
   fi
   if [[ -z "$falkor_password" ]]; then
+    falkor_password="$(get_env_value "FALKORDB_PASSWORD" "$ROOT_DIR/auto-codex/.env" || true)"
+  fi
+  if [[ -z "$falkor_password" ]]; then
     falkor_password="$(get_env_value "GRAPHITI_FALKORDB_PASSWORD" "$ROOT_DIR/.env" || true)"
+  fi
+  if [[ -z "$falkor_password" ]]; then
+    falkor_password="$(get_env_value "FALKORDB_PASSWORD" "$ROOT_DIR/.env" || true)"
   fi
 
   local falkor_args="${FALKORDB_ARGS:-}"

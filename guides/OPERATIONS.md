@@ -41,7 +41,9 @@ Run before a release or after changing dependencies/env:
 
 `./scripts/healthcheck.sh`
 
-This validates Python/Node/Git/Codex auth, ensures the git working tree is clean, and if Graphiti is enabled it checks Docker/Compose and pinned image tags. A non-zero exit indicates a blocking issue.
+This validates Python/Node/Git/Codex auth, ensures the git working tree is clean, and if Graphiti is enabled it validates the Graphiti config (provider credentials + FalkorDB settings) and checks Docker/Compose + pinned image tags. A non-zero exit indicates a blocking issue.
+
+Note: Graphiti config validation reads from environment and `.env` files. If your API keys live in the UI's secure storage, export them (or temporarily disable `GRAPHITI_ENABLED`) before running the healthcheck.
 
 For internal "production-lite" gating, set `AUTO_CODEX_PRODUCTION=true` to require healthchecks in release scripts. If you want stricter gating, set `AUTO_CODEX_ENFORCE_CLEAN_GIT=true` and/or strict security enforcement via `AUTO_CODEX_ENFORCE_SANDBOX=true` and `AUTO_CODEX_ENFORCE_FALKORDB_AUTH=true` to turn warnings into failures.
 
@@ -82,8 +84,10 @@ Stop:
 
 ### Health
 
-- `falkordb` uses a container healthcheck (`redis-cli ping`).
+- `falkordb` uses a container healthcheck (`redis-cli ping`, with auth if configured).
 - `graphiti-mcp` uses an HTTP-response healthcheck (no strict `/health` endpoint).
+
+**Auth note:** If you enable `--requirepass`, ensure `GRAPHITI_FALKORDB_PASSWORD` (or `FALKORDB_PASSWORD`) is set in the same environment the app/compose uses. The Desktop UI reads these from process env and the effective `auto-codex/.env` (and falls back to repo `.env` when running from source).
 
 ### Network Exposure (Important)
 
@@ -173,7 +177,7 @@ If you are migrating from an existing container, **back up first**, then:
 3. Remove the old container (volume preserved): `docker rm -f auto-codex-falkordb`
 4. Restart with hardened settings (appendonly + localhost bind + persistent volume + auth):
    - Set `FALKORDB_ARGS=--appendonly yes --requirepass <password>` in `.env`
-   - Set `GRAPHITI_FALKORDB_PASSWORD=<password>` in `auto-codex/.env` (and for Graphiti MCP)
+   - Set `GRAPHITI_FALKORDB_PASSWORD=<password>` (or `FALKORDB_PASSWORD=<password>`) in `auto-codex/.env` (and for Graphiti MCP)
    - `docker-compose up -d`
 
 ### Task Logs Backup
@@ -265,6 +269,7 @@ Perform a restore drill quarterly on a non-production machine:
 - Check container health: `docker-compose ps` (or `docker compose ps`) should show `healthy` for Graphiti/FalkorDB.
 - Track disk usage for Docker volume `auto-codex_falkordb_data` and the `backups/` directory.
 - Review logs for repeated failures: `<userData>/logs/` and `.auto-codex/specs/**/logs`.
+- Optional: enable command audit logging with `AUTO_CODEX_AUDIT_LOG=/path/to/audit.log` and rotate it periodically.
 
 ## Release & Rollback
 

@@ -8,16 +8,139 @@
 
 import { exec, spawn } from 'child_process';
 import { promisify } from 'util';
+import { app } from 'electron';
+import { existsSync, readFileSync } from 'fs';
+import path from 'path';
+import { getEffectiveSourcePath } from './updater/path-resolver';
+import { escapeShellArg, escapeShellArgWindows } from '../shared/utils/shell-escape';
 
 const execAsync = promisify(exec);
 
 // FalkorDB container configuration
 const FALKORDB_CONTAINER_NAME = 'auto-codex-falkordb';
-const FALKORDB_IMAGE_TAG = process.env.FALKORDB_IMAGE_TAG;
-const FALKORDB_IMAGE = process.env.FALKORDB_IMAGE || (FALKORDB_IMAGE_TAG ? `falkordb/falkordb:${FALKORDB_IMAGE_TAG}` : '');
-const FALKORDB_VOLUME_NAME = process.env.FALKORDB_VOLUME || 'auto-codex_falkordb_data';
 const FALKORDB_DEFAULT_PORT = 6380;
 const FALKORDB_BIND_ADDRESS = '127.0.0.1';
+
+type EnvOverrides = Record<string, string>;
+
+function parseEnvContent(content: string): EnvOverrides {
+  const result: EnvOverrides = {};
+  for (const line of content.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const eqIndex = trimmed.indexOf('=');
+    if (eqIndex > 0) {
+      const key = trimmed.substring(0, eqIndex).trim();
+      let value = trimmed.substring(eqIndex + 1).trim();
+      if (
+        (value.startsWith('"') && value.endsWith('"')) ||
+        (value.startsWith("'") && value.endsWith("'"))
+      ) {
+        value = value.slice(1, -1);
+      }
+      result[key] = value;
+    }
+  }
+  return result;
+}
+
+function readEnvFile(filePath: string): EnvOverrides {
+  if (!existsSync(filePath)) return {};
+  try {
+    return parseEnvContent(readFileSync(filePath, 'utf-8'));
+  } catch {
+    return {};
+  }
+}
+
+function getEnvFileCandidates(): string[] {
+  const candidates: string[] = [];
+  try {
+    const sourcePath = getEffectiveSourcePath();
+    candidates.push(path.join(sourcePath, '.env'));
+    candidates.push(path.join(path.dirname(sourcePath), '.env'));
+  } catch {
+    // Ignore resolution failures
+  }
+  try {
+    const appPath = app.getAppPath();
+    candidates.push(path.join(appPath, '.env'));
+    candidates.push(path.join(appPath, '..', '.env'));
+  } catch {
+    // Ignore resolution failures
+  }
+  candidates.push(path.join(process.cwd(), '.env'));
+  return Array.from(new Set(candidates));
+}
+
+function loadEnvOverrides(): EnvOverrides {
+  const overrides: EnvOverrides = {};
+  for (const candidate of getEnvFileCandidates()) {
+    const vars = readEnvFile(candidate);
+    for (const [key, value] of Object.entries(vars)) {
+      if (overrides[key] === undefined) {
+        overrides[key] = value;
+      }
+    }
+  }
+  return overrides;
+}
+
+function resolveEnvValue(key: string, overrides: EnvOverrides): string | undefined {
+  return process.env[key] ?? overrides[key];
+}
+
+function escapeCommandArg(value: string): string {
+  if (process.platform === 'win32') {
+    return `"${escapeShellArgWindows(value)}"`;
+  }
+  return escapeShellArg(value);
+}
+
+function getFalkorDbPassword(overrides: EnvOverrides): string | undefined {
+  return (
+    resolveEnvValue('GRAPHITI_FALKORDB_PASSWORD', overrides) ||
+    resolveEnvValue('FALKORDB_PASSWORD', overrides)
+  );
+}
+
+function getFalkorDbConfig(): {
+  image: string;
+  volumeName: string;
+  args: string;
+  password?: string;
+} {
+  const overrides = loadEnvOverrides();
+  const imageTag = resolveEnvValue('FALKORDB_IMAGE_TAG', overrides);
+  const imageOverride = resolveEnvValue('FALKORDB_IMAGE', overrides);
+  const password = getFalkorDbPassword(overrides);
+  const defaultArgs = password ? `--appendonly yes --requirepass ${password}` : '--appendonly yes';
+  const rawArgs = resolveEnvValue('FALKORDB_ARGS', overrides);
+  const args = password && rawArgs && !rawArgs.includes('--requirepass')
+    ? `${rawArgs} --requirepass ${password}`
+    : (rawArgs || defaultArgs);
+  const image = imageOverride || (imageTag ? `falkordb/falkordb:${imageTag}` : '');
+  const volumeName = resolveEnvValue('FALKORDB_VOLUME', overrides) || 'auto-codex_falkordb_data';
+
+  return { image, volumeName, args, password };
+}
+
+async function runRedisPing(password?: string, timeoutMs: number = 5000): Promise<{ ok: boolean; authError: boolean }> {
+  const authArg = password ? `-a ${escapeCommandArg(password)}` : '';
+  try {
+    const { stdout } = await execAsync(
+      `docker exec ${FALKORDB_CONTAINER_NAME} redis-cli ${authArg} PING`,
+      { timeout: timeoutMs }
+    );
+    return { ok: stdout.trim().toUpperCase() === 'PONG', authError: false };
+  } catch (error) {
+    const stdout = (error as { stdout?: string }).stdout || '';
+    const stderr = (error as { stderr?: string }).stderr || '';
+    const combined = `${stdout}\n${stderr}`.toLowerCase();
+    const authError = combined.includes('noauth') || combined.includes('wrongpass') || combined.includes('invalid password');
+    return { ok: false, authError };
+  }
+}
 
 export interface DockerStatus {
   installed: boolean;
@@ -162,17 +285,9 @@ export async function checkFalkorDBStatus(port: number = FALKORDB_DEFAULT_PORT):
  * Check if FalkorDB is responding to connections
  */
 async function checkFalkorDBHealth(_port: number): Promise<boolean> {
-  try {
-    // Try to ping FalkorDB using redis-cli (FalkorDB uses Redis protocol)
-    // Since we may not have redis-cli, we'll check if the port is listening
-    await execAsync(`docker exec ${FALKORDB_CONTAINER_NAME} redis-cli PING`, {
-      timeout: 5000,
-    });
-    return true;
-  } catch {
-    // Fallback: just check if container is running (less accurate)
-    return false;
-  }
+  const overrides = loadEnvOverrides();
+  const { ok } = await runRedisPing(getFalkorDbPassword(overrides));
+  return ok;
 }
 
 /**
@@ -201,7 +316,8 @@ export async function startFalkorDB(
   port: number = FALKORDB_DEFAULT_PORT
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    if (!FALKORDB_IMAGE) {
+    const { image, volumeName, args } = getFalkorDbConfig();
+    if (!image) {
       return {
         success: false,
         error: 'FALKORDB_IMAGE_TAG is required. Set FALKORDB_IMAGE_TAG or FALKORDB_IMAGE.'
@@ -229,10 +345,18 @@ export async function startFalkorDB(
       await execAsync(`docker start ${FALKORDB_CONTAINER_NAME}`, { timeout: 30000 });
     } else {
       // Create and start new container
-      await execAsync(
-        `docker run -d --name ${FALKORDB_CONTAINER_NAME} --restart unless-stopped -p ${FALKORDB_BIND_ADDRESS}:${port}:6379 -v ${FALKORDB_VOLUME_NAME}:/data -e FALKORDB_ARGS=--appendonly yes ${FALKORDB_IMAGE}`,
-        { timeout: 60000 }
-      );
+      const envArgs = `-e ${escapeCommandArg(`FALKORDB_ARGS=${args}`)}`;
+      const command = [
+        'docker run -d',
+        `--name ${FALKORDB_CONTAINER_NAME}`,
+        '--restart unless-stopped',
+        `-p ${escapeCommandArg(`${FALKORDB_BIND_ADDRESS}:${port}:6379`)}`,
+        `-v ${escapeCommandArg(`${volumeName}:/data`)}`,
+        envArgs,
+        escapeCommandArg(image)
+      ].filter(Boolean).join(' ');
+
+      await execAsync(command, { timeout: 60000 });
     }
 
     // Wait for FalkorDB to be ready (up to 30 seconds)
@@ -398,23 +522,21 @@ export async function validateFalkorDBConnection(
       };
     }
 
-    // Try to ping FalkorDB using redis-cli in Docker container
-    try {
-      const { stdout } = await execAsync(
-        `docker exec ${FALKORDB_CONTAINER_NAME} redis-cli PING`,
-        { timeout: 10000 }
-      );
-
-      if (stdout.trim().toUpperCase() === 'PONG') {
-        const latencyMs = Date.now() - startTime;
-        return {
-          success: true,
-          message: `Connected to FalkorDB at ${host}:${port}`,
-          details: { latencyMs },
-        };
-      }
-    } catch {
-      // redis-cli failed, try port check as fallback
+    const overrides = loadEnvOverrides();
+    const pingResult = await runRedisPing(getFalkorDbPassword(overrides), 10000);
+    if (pingResult.ok) {
+      const latencyMs = Date.now() - startTime;
+      return {
+        success: true,
+        message: `Connected to FalkorDB at ${host}:${port}`,
+        details: { latencyMs },
+      };
+    }
+    if (pingResult.authError) {
+      return {
+        success: false,
+        message: 'FalkorDB requires authentication. Set GRAPHITI_FALKORDB_PASSWORD or FALKORDB_PASSWORD to match the server password.',
+      };
     }
 
     // Fallback: check if the port is open using nc or direct connection

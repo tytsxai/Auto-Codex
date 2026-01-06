@@ -32,8 +32,10 @@ services:
       - falkordb_data:/data
     environment:
       - FALKORDB_ARGS=${FALKORDB_ARGS:---appendonly yes}
+      - FALKORDB_PASSWORD=${FALKORDB_PASSWORD:-}
+      - GRAPHITI_FALKORDB_PASSWORD=${GRAPHITI_FALKORDB_PASSWORD:-}
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "if [ -n \"$FALKORDB_PASSWORD\" ]; then redis-cli -a \"$FALKORDB_PASSWORD\" ping | grep -q PONG; elif [ -n \"$GRAPHITI_FALKORDB_PASSWORD\" ]; then redis-cli -a \"$GRAPHITI_FALKORDB_PASSWORD\" ping | grep -q PONG; else redis-cli ping | grep -q PONG; fi"]
       interval: 10s
       timeout: 5s
       retries: 5
