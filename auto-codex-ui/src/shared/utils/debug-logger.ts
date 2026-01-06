@@ -103,11 +103,23 @@ const redactValue = (value: unknown): unknown => {
     return result;
   }
   if (typeof value === 'string') {
+    // Keep these string patterns in sync with:
+    // - auto-codex-ui/src/main/log-service.ts
+    // - auto-codex-ui/src/main/task-log-service.ts
+    // - auto-codex/task_logger/redaction.py
     return value
       .replace(/(sk-[A-Za-z0-9_-]{10,})/g, '[REDACTED]')
+      .replace(/(sess-[A-Za-z0-9_-]{10,})/g, '[REDACTED]')
+      .replace(/(sk-ant-[A-Za-z0-9_-]{10,})/g, '[REDACTED]')
       .replace(/(codex_oauth_[A-Za-z0-9._-]{10,})/g, '[REDACTED]')
       .replace(/(ghp_[A-Za-z0-9]{10,})/g, '[REDACTED]')
       .replace(/(gho_[A-Za-z0-9]{10,})/g, '[REDACTED]')
+      .replace(/(ghs_[A-Za-z0-9]{10,})/g, '[REDACTED]')
+      .replace(/(ghr_[A-Za-z0-9]{10,})/g, '[REDACTED]')
+      .replace(/(ghu_[A-Za-z0-9]{10,})/g, '[REDACTED]')
+      .replace(/(github_pat_[A-Za-z0-9_]{10,})/g, '[REDACTED]')
+      .replace(/(lin_api_[A-Za-z0-9]{10,})/g, '[REDACTED]')
+      .replace(/(AIza[0-9A-Za-z_-]{35})/g, '[REDACTED]')
       .replace(/(ya29\.[A-Za-z0-9._-]{10,})/g, '[REDACTED]');
   }
   return value;

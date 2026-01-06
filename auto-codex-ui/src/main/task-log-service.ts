@@ -3,11 +3,23 @@ import { existsSync, readFileSync, watchFile } from 'fs';
 import { EventEmitter } from 'events';
 import type { TaskLogs, TaskLogPhase, TaskLogStreamChunk, TaskPhaseLog, TaskLogEntry } from '../shared/types';
 
+// Keep this list in sync with:
+// - auto-codex-ui/src/main/log-service.ts (session logs)
+// - auto-codex-ui/src/shared/utils/debug-logger.ts (main process logs)
+// - auto-codex/task_logger/redaction.py (Python task_logs.json writer)
 const LOG_REDACTION_RULES: Array<{ pattern: RegExp; replacement: string }> = [
   { pattern: /(sk-[A-Za-z0-9_-]{10,})/g, replacement: '[REDACTED]' },
+  { pattern: /(sess-[A-Za-z0-9_-]{10,})/g, replacement: '[REDACTED]' },
+  { pattern: /(sk-ant-[A-Za-z0-9_-]{10,})/g, replacement: '[REDACTED]' },
   { pattern: /(codex_oauth_[A-Za-z0-9._-]{10,})/g, replacement: '[REDACTED]' },
   { pattern: /(ghp_[A-Za-z0-9]{10,})/g, replacement: '[REDACTED]' },
   { pattern: /(gho_[A-Za-z0-9]{10,})/g, replacement: '[REDACTED]' },
+  { pattern: /(ghs_[A-Za-z0-9]{10,})/g, replacement: '[REDACTED]' },
+  { pattern: /(ghr_[A-Za-z0-9]{10,})/g, replacement: '[REDACTED]' },
+  { pattern: /(ghu_[A-Za-z0-9]{10,})/g, replacement: '[REDACTED]' },
+  { pattern: /(github_pat_[A-Za-z0-9_]{10,})/g, replacement: '[REDACTED]' },
+  { pattern: /(lin_api_[A-Za-z0-9]{10,})/g, replacement: '[REDACTED]' },
+  { pattern: /(AIza[0-9A-Za-z_-]{35})/g, replacement: '[REDACTED]' },
   { pattern: /(ya29\.[A-Za-z0-9._-]{10,})/g, replacement: '[REDACTED]' },
   { pattern: /(Bearer\s+)(\S+)/gi, replacement: '$1[REDACTED]' },
   { pattern: /((?:api[_-]?key|token|secret|password)\s*[:=]\s*)([^\s]+)/gi, replacement: '$1[REDACTED]' }

@@ -40,6 +40,7 @@ Persistent storage functionality:
 ### redaction.py
 Redaction helpers:
 - `redact_text()`: Masks common secret patterns in log text
+  - Keep patterns in sync with the UI redaction lists (session logs, task log reader, and debug logger).
 
 ### streaming.py
 Real-time UI updates:
