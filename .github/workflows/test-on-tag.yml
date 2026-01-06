@@ -57,11 +57,11 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 9
+          version: 10.26.1
 
       - name: Install dependencies
         working-directory: auto-codex-ui
-        run: pnpm install --frozen-lockfile --ignore-scripts
+        run: pnpm install --frozen-lockfile
 
       - name: Run tests
         working-directory: auto-codex-ui

@@ -19,6 +19,8 @@ env:
 jobs:
   build-windows:
     runs-on: windows-latest
+    permissions:
+      contents: write
     strategy:
       matrix:
         arch: [x64]
@@ -37,7 +39,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 9
+          version: 10.26.1
 
       - name: Install Visual Studio Build Tools
         uses: microsoft/setup-msbuild@v2
@@ -47,14 +49,17 @@ jobs:
         shell: pwsh
         run: |
           # Install only node-pty
-          pnpm add node-pty@1.1.0-beta42
+          $nodePtyVersion = (node -p "require('./package.json').dependencies['@lydell/node-pty']")
+          pnpm add --no-save --ignore-scripts "@lydell/node-pty@$nodePtyVersion"
 
           # Get Electron ABI version
           $electronAbi = (npx electron-abi $env:ELECTRON_VERSION)
           Write-Host "Building for Electron $env:ELECTRON_VERSION (ABI: $electronAbi)"
 
           # Rebuild node-pty for Electron
-          npx @electron/rebuild --version $env:ELECTRON_VERSION --module-dir node_modules/node-pty --arch ${{ matrix.arch }}
+          $nodePtyDir = "node_modules/@lydell/node-pty"
+          if (-not (Test-Path $nodePtyDir)) { $nodePtyDir = "node_modules/node-pty" }
+          npx @electron/rebuild --version $env:ELECTRON_VERSION --module-dir $nodePtyDir --arch ${{ matrix.arch }}
 
       - name: Package prebuilt binaries
         working-directory: auto-codex-ui
@@ -66,7 +71,9 @@ jobs:
           New-Item -ItemType Directory -Force -Path $prebuildDir
 
           # Copy all built native files
-          $buildDir = "node_modules/node-pty/build/Release"
+          $nodePtyDir = "node_modules/@lydell/node-pty"
+          if (-not (Test-Path $nodePtyDir)) { $nodePtyDir = "node_modules/node-pty" }
+          $buildDir = Join-Path $nodePtyDir "build/Release"
           if (Test-Path $buildDir) {
             Copy-Item "$buildDir/*.node" $prebuildDir/ -Force
             Copy-Item "$buildDir/*.dll" $prebuildDir/ -Force -ErrorAction SilentlyContinue
