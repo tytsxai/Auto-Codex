@@ -18,6 +18,18 @@ const fs = require('fs');
 
 const isWindows = os.platform() === 'win32';
 
+function resolveNodePtyRoot() {
+  try {
+    return path.dirname(require.resolve('@lydell/node-pty/package.json'));
+  } catch {
+    try {
+      return path.dirname(require.resolve('node-pty/package.json'));
+    } catch {
+      return null;
+    }
+  }
+}
+
 const WINDOWS_BUILD_TOOLS_HELP = `
 ================================================================================
   VISUAL STUDIO BUILD TOOLS REQUIRED
@@ -70,7 +82,10 @@ function runElectronRebuild() {
  * Check if node-pty is already built
  */
 function isNodePtyBuilt() {
-  const buildDir = path.join(__dirname, '..', 'node_modules', 'node-pty', 'build', 'Release');
+  const nodePtyRoot = resolveNodePtyRoot();
+  if (!nodePtyRoot) return false;
+
+  const buildDir = path.join(nodePtyRoot, 'build', 'Release');
   if (!fs.existsSync(buildDir)) return false;
 
   // Check for the main .node file

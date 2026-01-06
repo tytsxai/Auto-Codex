@@ -13,6 +13,18 @@ const { execSync } = require('child_process');
 
 const GITHUB_REPO = 'tytsxai/Auto-Codex';
 
+function resolveNodePtyRoot() {
+  try {
+    return path.dirname(require.resolve('@lydell/node-pty/package.json'));
+  } catch {
+    try {
+      return path.dirname(require.resolve('node-pty/package.json'));
+    } catch {
+      return null;
+    }
+  }
+}
+
 /**
  * Get the Electron ABI version for the installed Electron
  */
@@ -182,7 +194,11 @@ async function downloadPrebuilds() {
   // Download the prebuild
   const tempDir = path.join(__dirname, '..', '.prebuild-temp');
   const zipPath = path.join(tempDir, asset.name);
-  const nodePtyDir = path.join(__dirname, '..', 'node_modules', 'node-pty');
+  const nodePtyDir = resolveNodePtyRoot();
+  if (!nodePtyDir) {
+    console.log('[prebuilds] node-pty package not installed');
+    return { success: false, reason: 'node-pty-missing' };
+  }
   const buildDir = path.join(nodePtyDir, 'build', 'Release');
 
   try {
@@ -205,7 +221,7 @@ async function downloadPrebuilds() {
     // Ensure build/Release directory exists
     fs.mkdirSync(buildDir, { recursive: true });
 
-    // Copy files to node_modules/node-pty/build/Release
+    // Copy files to the installed node-pty package build/Release
     const files = fs.readdirSync(extractedDir);
     for (const file of files) {
       const src = path.join(extractedDir, file);
