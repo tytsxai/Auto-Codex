@@ -145,6 +145,31 @@ def test_apply_single_task_replaces_once():
     assert merged.count("return \"hi\"") == 1
 
 
+def test_apply_single_task_preserves_crlf_line_endings():
+    baseline = "import os\r\nimport sys\r\n\r\nVALUE = 1\r\n"
+    snapshot = TaskSnapshot(
+        task_id="task-006",
+        task_intent="Remove sys import",
+        started_at=datetime.now(),
+        semantic_changes=[
+            SemanticChange(
+                change_type=ChangeType.REMOVE_IMPORT,
+                target="sys",
+                location="file_top",
+                line_start=1,
+                line_end=1,
+                content_before="import sys",
+            )
+        ],
+    )
+
+    merged = apply_single_task_changes(baseline, snapshot, "app.py")
+
+    assert "import sys" not in merged
+    assert "\r\n" in merged
+    assert "\n" not in merged.replace("\r\n", "")
+
+
 def test_apply_ai_merge_allows_empty_region():
     content = (
         "function greet() {\n"

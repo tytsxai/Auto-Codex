@@ -25,6 +25,14 @@ def _replace_once(content: str, old: str, new: str) -> str:
     return content.replace(old, new, 1)
 
 
+def _detect_line_ending(content: str) -> str:
+    if "\r\n" in content:
+        return "\r\n"
+    if "\r" in content:
+        return "\r"
+    return "\n"
+
+
 def _remove_once(content: str, block: str) -> str:
     if not block:
         return content
@@ -41,7 +49,9 @@ def _remove_matching_lines(content: str, block: str) -> str:
     targets = [line.strip() for line in block.splitlines() if line.strip()]
     if not targets:
         return content
-    lines = content.split("\n")
+    # Use splitlines() to handle all line ending styles (LF, CRLF, CR)
+    lines = content.splitlines()
+    newline = _detect_line_ending(content)
     remaining_targets = set(targets)
     new_lines = []
     for line in lines:
@@ -50,7 +60,7 @@ def _remove_matching_lines(content: str, block: str) -> str:
             remaining_targets.discard(stripped)
             continue
         new_lines.append(line)
-    return "\n".join(new_lines)
+    return newline.join(new_lines)
 
 
 def _maybe_replace_in_location(
@@ -99,7 +109,9 @@ def _maybe_remove_in_location(
 def _insert_imports(content: str, imports: list[str], file_path: str) -> str:
     if not imports:
         return content
-    lines = content.split("\n")
+    # Use splitlines() to handle all line ending styles (LF, CRLF, CR)
+    lines = content.splitlines()
+    newline = _detect_line_ending(content)
     import_end = find_import_end(lines, file_path)
     existing = {line.strip() for line in lines[:import_end] if line.strip()}
     new_imports: list[str] = []
@@ -110,7 +122,7 @@ def _insert_imports(content: str, imports: list[str], file_path: str) -> str:
         new_imports.append(imp.rstrip("\n"))
     for imp in reversed(new_imports):
         lines.insert(import_end, imp)
-    return "\n".join(lines)
+    return newline.join(lines)
 
 
 def _block_is_indented(block_lines: list[str], base_indent: int) -> bool:
@@ -127,7 +139,9 @@ def _indent_block(block_lines: list[str], indent: int) -> list[str]:
 
 def _insert_into_python_class(content: str, class_name: str, block: str) -> str | None:
     class_pattern = re.compile(rf"^(\s*)class\s+{re.escape(class_name)}\b")
-    lines = content.split("\n")
+    # Use splitlines() to handle all line ending styles (LF, CRLF, CR)
+    lines = content.splitlines()
+    newline = _detect_line_ending(content)
     for idx, line in enumerate(lines):
         match = class_pattern.match(line)
         if not match:
@@ -143,7 +157,7 @@ def _insert_into_python_class(content: str, class_name: str, block: str) -> str 
             if indent <= class_indent:
                 break
             insert_at += 1
-        block_lines = block.rstrip("\n").split("\n")
+        block_lines = block.rstrip("\n").splitlines()
         if not block_lines:
             return content
         if not _block_is_indented(block_lines, class_indent):
@@ -151,7 +165,7 @@ def _insert_into_python_class(content: str, class_name: str, block: str) -> str 
         if insert_at > 0 and lines[insert_at - 1].strip() and block_lines[0].strip():
             block_lines = [""] + block_lines
         lines[insert_at:insert_at] = block_lines
-        return "\n".join(lines)
+        return newline.join(lines)
     return None
 
 
