@@ -2,8 +2,6 @@
 
 This guide walks you through migrating Auto-Codex from the Claude SDK to the OpenAI Codex CLI.
 
-This project is a Codex-based fork derived from https://github.com/AndyMik90/Auto-Claude.
-
 ## 1) Install Codex CLI
 
 ```bash

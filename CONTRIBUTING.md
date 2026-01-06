@@ -2,8 +2,6 @@
 
 Thank you for your interest in contributing to Auto-Codex! This document provides guidelines and instructions for contributing to the project.
 
-This project is a Codex-based fork derived from https://github.com/AndyMik90/Auto-Claude.
-
 ## Table of Contents
 
 - [Prerequisites](#prerequisites)

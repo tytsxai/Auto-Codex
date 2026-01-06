@@ -2,8 +2,6 @@
 
 This file provides guidance to Codex CLI (OpenAI Codex) when working with code in this repository.
 
-This project is a Codex-based fork derived from https://github.com/AndyMik90/Auto-Claude.
-
 ## Project Overview
 
 Auto-Codex is a multi-agent autonomous coding framework that builds software through coordinated AI agent sessions. It uses the OpenAI Codex CLI to run agents in isolated workspaces with security controls.

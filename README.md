@@ -2,13 +2,9 @@
 
 Your AI coding companion. Build features, fix bugs, and ship faster — with autonomous agents that plan, code, and validate for you.
 
-This project is a Codex-based fork derived from https://github.com/AndyMik90/Auto-Claude.
-
 ![Auto-Codex Kanban Board](.github/assets/Auto-Codex-Kanban.png)
 
-[![Discord](https://img.shields.io/badge/Discord-Join%20Community-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/KCXaPBr4Dj)
-
-## What It Does ✨
+## What It Does
 
 **Auto-Codex is a desktop app that supercharges your AI coding workflow.** Whether you're a vibe coder just getting started or an experienced developer, Auto-Codex meets you where you are.
 
@@ -395,12 +391,6 @@ Existing users migrating from Claude SDK should read `MIGRATION.md`.
 
 See `auto-codex/.env.example` for complete configuration options.
 
-## 💬 Community
-
-Join our Discord to get help, share what you're building, and connect with other Auto-Codex users:
-
-[![Discord](https://img.shields.io/badge/Discord-Join%20Community-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/KCXaPBr4Dj)
-
 ## 🤝 Contributing
 
 We welcome contributions! Whether it's bug fixes, new features, or documentation improvements.
@@ -409,7 +399,7 @@ See **[CONTRIBUTING.md](CONTRIBUTING.md)** for guidelines on how to get started.
 
 ## Acknowledgments
 
-This framework was inspired by Anthropic's [Autonomous Coding Agent](https://github.com/anthropics/claude-quickstarts/tree/main/autonomous-coding). Thank you to the Anthropic team for their innovative work on autonomous coding systems.
+This project is a fork of [Auto-Claude](https://github.com/AndyMik90/Auto-Claude), adapted to use OpenAI Codex CLI. The original framework was inspired by Anthropic's [Autonomous Coding Agent](https://github.com/anthropics/claude-quickstarts/tree/main/autonomous-coding).
 
 ## License
 
