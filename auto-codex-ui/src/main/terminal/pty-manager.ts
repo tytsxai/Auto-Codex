@@ -5,9 +5,32 @@
 
 import * as pty from '@lydell/node-pty';
 import * as os from 'os';
+import { existsSync } from 'fs';
 import type { TerminalProcess, WindowGetter } from './types';
 import { IPC_CHANNELS } from '../../shared/constants';
 import { getCodexProfileManager } from '../codex-profile-manager';
+
+/**
+ * Windows shell paths for common terminals
+ */
+const WINDOWS_SHELL_PATHS: string[] = [
+  'C:\\Program Files\\PowerShell\\7\\pwsh.exe',
+  'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe',
+  'C:\\Program Files\\Git\\bin\\bash.exe',
+];
+
+/**
+ * Get the best available Windows shell
+ */
+function getWindowsShell(): string {
+  // Try to find a better shell than cmd.exe
+  for (const shellPath of WINDOWS_SHELL_PATHS) {
+    if (existsSync(shellPath)) {
+      return shellPath;
+    }
+  }
+  return process.env.COMSPEC || 'cmd.exe';
+}
 
 /**
  * Spawn a new PTY process with appropriate shell and environment
@@ -19,7 +42,7 @@ export function spawnPtyProcess(
   profileEnv?: Record<string, string>
 ): pty.IPty {
   const shell = process.platform === 'win32'
-    ? process.env.COMSPEC || 'cmd.exe'
+    ? getWindowsShell()
     : process.env.SHELL || '/bin/zsh';
 
   const shellArgs = process.platform === 'win32' ? [] : ['-l'];

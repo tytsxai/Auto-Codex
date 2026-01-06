@@ -65,6 +65,7 @@ export function App() {
   const [settingsInitialProjectSection, setSettingsInitialProjectSection] = useState<ProjectSettingsSection | undefined>(undefined);
   const [activeView, setActiveView] = useState<SidebarView>('kanban');
   const [isOnboardingWizardOpen, setIsOnboardingWizardOpen] = useState(false);
+  const [isRefreshingTasks, setIsRefreshingTasks] = useState(false);
 
   // 初始化对话框状态
   const [showInitDialog, setShowInitDialog] = useState(false);
@@ -259,6 +260,16 @@ export function App() {
     setSelectedTask(task);
   };
 
+  const handleRefreshTasks = async () => {
+    if (!selectedProjectId) return;
+    setIsRefreshingTasks(true);
+    try {
+      await loadTasks(selectedProjectId);
+    } finally {
+      setIsRefreshingTasks(false);
+    }
+  };
+
   const handleCloseTaskDetail = () => {
     setSelectedTask(null);
   };
@@ -443,6 +454,8 @@ export function App() {
                     tasks={tasks}
                     onTaskClick={handleTaskClick}
                     onNewTaskClick={() => setIsNewTaskDialogOpen(true)}
+                    onRefresh={handleRefreshTasks}
+                    isRefreshing={isRefreshingTasks}
                   />
                 )}
                 {/* TerminalGrid 始终挂载，非激活时隐藏以保留终端状态 */}

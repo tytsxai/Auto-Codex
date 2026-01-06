@@ -1,4 +1,8 @@
-import { app, BrowserWindow, nativeImage } from 'electron';
+/**
+ * Auto-Codex main process entrypoint.
+ */
+
+import { app, BrowserWindow, nativeImage, session } from 'electron';
 import { join } from 'path';
 import { electronApp, optimizer, is } from '@electron-toolkit/utils';
 import { setupIpcHandlers } from './ipc-setup';
@@ -98,10 +102,24 @@ if (process.platform === 'darwin') {
   app.name = 'Auto Codex';
 }
 
+// Windows GPU cache fix: Disable shader/program disk cache to prevent permission errors
+if (process.platform === 'win32') {
+  app.commandLine.appendSwitch('disable-gpu-shader-disk-cache');
+  app.commandLine.appendSwitch('disable-gpu-program-cache');
+  console.log('[main] Applied Windows GPU cache fixes');
+}
+
 // Initialize the application
 app.whenReady().then(() => {
   // Set app user model id for Windows
   electronApp.setAppUserModelId('com.autocodex.ui');
+
+  // Clear cache on Windows to prevent permission errors from stale cache
+  if (process.platform === 'win32') {
+    session.defaultSession.clearCache()
+      .then(() => console.log('[main] Cleared cache on startup'))
+      .catch((err) => console.warn('[main] Failed to clear cache:', err));
+  }
 
   // Set dock icon on macOS
   if (process.platform === 'darwin') {
