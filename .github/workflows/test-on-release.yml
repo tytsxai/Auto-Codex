@@ -1,9 +1,16 @@
-name: Test on Tag
+name: Test on Release
 
 on:
-  push:
-    tags:
-      - 'v*'
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to test (vX.Y.Z)'
+        required: false
+
+env:
+  RELEASE_REF: ${{ inputs.tag || github.event.release.tag_name || github.ref }}
 
 jobs:
   # Python tests
@@ -16,6 +23,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_REF }}
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
@@ -48,6 +57,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_REF }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4

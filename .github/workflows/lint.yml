@@ -3,8 +3,36 @@ name: Lint
 on:
   push:
     branches: [main]
+    paths:
+      - "auto-codex/**"
+      - "auto-codex-ui/**"
+      - "tests/**"
+      - "scripts/**"
+      - ".github/workflows/**"
+      - "pyproject.toml"
+      - "ruff.toml"
+      - "auto-codex/requirements*.lock"
+      - "tests/requirements-test*.lock"
+      - "auto-codex-ui/pnpm-lock.yaml"
+      - "auto-codex-ui/package.json"
   pull_request:
     branches: [main]
+    paths:
+      - "auto-codex/**"
+      - "auto-codex-ui/**"
+      - "tests/**"
+      - "scripts/**"
+      - ".github/workflows/**"
+      - "pyproject.toml"
+      - "ruff.toml"
+      - "auto-codex/requirements*.lock"
+      - "tests/requirements-test*.lock"
+      - "auto-codex-ui/pnpm-lock.yaml"
+      - "auto-codex-ui/package.json"
+
+concurrency:
+  group: "${{ github.workflow }}-${{ github.ref }}"
+  cancel-in-progress: true
 
 jobs:
   # Python linting

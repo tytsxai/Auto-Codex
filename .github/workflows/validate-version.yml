@@ -1,9 +1,16 @@
-name: Validate Version
+name: Validate Version (Release)
 
 on:
-  push:
-    tags:
-      - 'v*'
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to validate (vX.Y.Z)'
+        required: false
+
+env:
+  TAG_NAME: ${{ inputs.tag || github.event.release.tag_name || github.ref_name }}
 
 jobs:
   validate-version:
@@ -13,12 +20,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG_NAME }}
 
       - name: Extract version from tag
         id: tag_version
         run: |
           # Extract version from tag (e.g., v2.5.5 -> 2.5.5)
-          TAG_VERSION=${GITHUB_REF#refs/tags/v}
+          TAG_VERSION="${TAG_NAME#v}"
           echo "version=$TAG_VERSION" >> $GITHUB_OUTPUT
           echo "Tag version: $TAG_VERSION"
 
