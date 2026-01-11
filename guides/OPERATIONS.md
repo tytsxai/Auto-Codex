@@ -50,6 +50,21 @@ Note: Graphiti config validation reads from environment and `.env` files. If you
 
 For internal "production-lite" gating, set `AUTO_CODEX_PRODUCTION=true` to require healthchecks in release scripts and enforce critical safety checks (sandbox + FalkorDB auth + backup freshness when Graphiti is enabled). If you want stricter gating, set `AUTO_CODEX_ENFORCE_CLEAN_GIT=true` and/or strict security enforcement via `AUTO_CODEX_ENFORCE_SANDBOX=true` and `AUTO_CODEX_ENFORCE_FALKORDB_AUTH=true` to turn warnings into failures. Backup checks can be tuned via `AUTO_CODEX_BACKUP_MAX_AGE_DAYS` (default: 7) or disabled with `AUTO_CODEX_BACKUP_MAX_AGE_DAYS=0`.
 
+## Production Readiness Minimums (Checklist)
+
+Use this as a **go/no-go** checklist before shipping:
+
+- `AUTO_CODEX_PRODUCTION=true` set in your release environment.
+- `AUTO_CODEX_ALLOW_UNSIGNED_UPDATES` **not** enabled.
+- `AUTO_CODEX_ALLOW_INSECURE_TOKEN_STORAGE` **not** enabled.
+- `FALKORDB_ARGS` includes `--requirepass` and `--appendonly yes`.
+- `GRAPHITI_FALKORDB_PASSWORD` set (and matches `--requirepass`).
+- `FALKORDB_IMAGE_TAG` and `GRAPHITI_MCP_IMAGE_TAG` pinned (no `latest`).
+- Scheduled backups enabled (`./scripts/backup-falkordb.sh` and/or `./scripts/backup-userdata.sh`).
+- Latest backup age is within `AUTO_CODEX_BACKUP_MAX_AGE_DAYS` (default 7).
+- Restore drill completed at least once per quarter (see below).
+- `./scripts/healthcheck.sh` passes in the release environment.
+
 ## Dependency Locking (Production)
 
 Use the Python-versioned lock files for deterministic installs:

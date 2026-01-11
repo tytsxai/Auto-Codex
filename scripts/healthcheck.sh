@@ -415,6 +415,9 @@ PY
   if [[ -z "$falkor_args" ]]; then
     falkor_args="$(get_env_value "FALKORDB_ARGS" "$ROOT_DIR/.env" || true)"
   fi
+  if [[ -z "$falkor_args" ]]; then
+    falkor_args="$(get_env_value "FALKORDB_ARGS" "$ROOT_DIR/auto-codex/.env" || true)"
+  fi
 
   local enforce_auth="${AUTO_CODEX_ENFORCE_FALKORDB_AUTH:-}"
   local production="${AUTO_CODEX_PRODUCTION:-}"
@@ -529,6 +532,9 @@ check_falkordb_backups() {
   local backup_dir="${BACKUP_DIR:-}"
   if [[ -z "$backup_dir" ]]; then
     backup_dir="$(get_env_value "BACKUP_DIR" "$ROOT_DIR/.env" || true)"
+  fi
+  if [[ -z "$backup_dir" ]]; then
+    backup_dir="$(get_env_value "BACKUP_DIR" "$ROOT_DIR/auto-codex/.env" || true)"
   fi
   if [[ -z "$backup_dir" ]]; then
     backup_dir="$ROOT_DIR/backups"
