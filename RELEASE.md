@@ -41,7 +41,7 @@ We provide an automated script that handles version bumping, git commits, and ta
 
    ```bash
    git log -1              # View the commit
-   git show v2.5.6         # View the tag
+   git show HEAD           # Review the version bump commit
    ```
 
 3. **Push to GitHub:**
@@ -49,23 +49,20 @@ We provide an automated script that handles version bumping, git commits, and ta
    ```bash
    # Push the commit
    git push origin main
-
-   # Push the tag
-   git push origin v2.5.6
    ```
 
-4. **Create GitHub Release:**
+4. **Create GitHub Release (recommended tag source):**
 
    - Go to [GitHub Releases](https://github.com/tytsxai/Auto-Codex/releases)
    - Click "Draft a new release"
-   - Select the tag you just pushed (e.g., `v2.5.6`)
+   - Create/select the tag (e.g., `v2.5.6`) from the target commit
    - Add release notes (describe what changed)
    - Click "Publish release"
 
-5. **Automated builds will trigger:**
+5. **Automated builds will trigger on release publish:**
 
    - ✅ Version validation workflow will verify version consistency
-   - ✅ Tests will run (`test-on-tag.yml`)
+   - ✅ Tests will run (`test-on-release.yml`)
    - ✅ Native module prebuilds will be created (`build-prebuilds.yml`)
    - ✅ Discord notification will be sent (`discord-release.yml`)
 
@@ -88,19 +85,16 @@ If you need to create a release manually, follow these steps **carefully** to av
    git commit -m "chore: bump version to 2.5.6"
    ```
 
-3. **Create and push tag:**
+3. **Create GitHub Release** (creates tag)
 
-   ```bash
-   git tag -a v2.5.6 -m "Release v2.5.6"
-   git push origin main
-   git push origin v2.5.6
-   ```
-
-4. **Create GitHub Release** (same as step 4 above)
+   - Go to [GitHub Releases](https://github.com/tytsxai/Auto-Codex/releases)
+   - Click "Draft a new release"
+   - Create/select the tag (e.g., `v2.5.6`) from the target commit
+   - Publish the release (this triggers validation/tests/builds)
 
 ## Version Validation
 
-A GitHub Action automatically validates that the version in `package.json` matches the git tag.
+A GitHub Action automatically validates that the version in `package.json` matches the git tag on release publish.
 
 If there's a mismatch, the workflow will **fail** with a clear error message:
 
@@ -114,7 +108,7 @@ To fix this:
   1. Delete this tag: git tag -d v2.5.5
   2. Update package.json version to 2.5.5
   3. Commit the change
-  4. Recreate the tag: git tag -a v2.5.5 -m 'Release v2.5.5'
+  4. Recreate the tag (via GitHub Release or locally) and republish
 ```
 
 This validation ensures we never ship a release where the updater shows the wrong version.
@@ -135,7 +129,6 @@ If you see a version mismatch error in GitHub Actions:
    ```bash
    node scripts/bump-version.js 2.5.6
    git push origin main
-   git push origin v2.5.6
    ```
 
 ### Git Working Directory Not Clean
@@ -161,9 +154,9 @@ Use this checklist when creating a new release:
 - [ ] Lock files updated (run `./scripts/lock-deps.sh` if deps changed)
 - [ ] CHANGELOG updated (if applicable)
 - [ ] Run `node scripts/bump-version.js <type>`
-- [ ] Review commit and tag
-- [ ] Push commit and tag to GitHub
-- [ ] Create GitHub Release with release notes
+- [ ] Review commit
+- [ ] Push commit to GitHub
+- [ ] Create GitHub Release with release notes (creates tag)
 - [ ] Upload `SHA256SUMS` asset for source updates (required by updater)
 - [ ] Verify version validation passed
 - [ ] Verify builds completed successfully

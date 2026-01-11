@@ -193,11 +193,11 @@ function main() {
   log('\n📋 Next steps:', colors.yellow);
   log(`   1. Review the changes: git log -1`, colors.yellow);
   log(`   2. Push the commit: git push origin <branch-name>`, colors.yellow);
-  log(`   3. Push the tag: git push origin v${newVersion}`, colors.yellow);
-  log(`   4. Create a GitHub release from the tag\n`, colors.yellow);
+  log('   3. Publish a GitHub Release (creates/uses the tag and triggers CI)', colors.yellow);
+  log(`   4. Optional: push the tag if you created it locally (git push origin v${newVersion})\n`, colors.yellow);
 
   warning('Note: The commit and tag have been created locally but NOT pushed.');
-  warning('Please review and push manually when ready.');
+  warning('Publishing a GitHub Release is the preferred trigger for release CI.');
 
   log('\n✨ Version bump complete!\n', colors.green);
 }
