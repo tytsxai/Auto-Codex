@@ -23,6 +23,20 @@ This project is a desktop app + local services. Only the latest released version
   - Linear/GitHub: minimize scopes; rotate keys on staff changes.
 - Keep dependencies up to date (see `.github/dependabot.yml`).
 - Prefer pinned Docker image tags for production deployments; avoid `:latest`.
+- Do not disable update verification (`AUTO_CODEX_ALLOW_UNSIGNED_UPDATES`) in production.
+- Do not allow plaintext token storage (`AUTO_CODEX_ALLOW_INSECURE_TOKEN_STORAGE`) in production.
+
+## Security Enforcement (Optional)
+
+For stricter production environments, enable these enforcement flags:
+
+| Variable | Description |
+|----------|-------------|
+| `AUTO_CODEX_ENFORCE_SANDBOX` | Require Codex CLI sandbox to be enabled |
+| `AUTO_CODEX_ENFORCE_FALKORDB_AUTH` | Require FalkorDB authentication |
+| `AUTO_CODEX_ENFORCE_BACKUPS` | Require recent backups when Graphiti is enabled |
+
+Set `AUTO_CODEX_PRODUCTION=true` to enable healthcheck requirements in release scripts.
 
 ## Operational Guidance
 

@@ -19,6 +19,9 @@ Auto-Codex is primarily a **desktop app**. Production readiness focuses on:
 - Never commit `.env` files (they are gitignored).
 - Prefer exporting secrets via your shell/CI secret store instead of writing them to disk.
 - For production, keep the Codex CLI sandbox enabled: set `AUTO_CODEX_BYPASS_CODEX_SANDBOX=0`.
+- For production, do **not** enable:
+  - `AUTO_CODEX_ALLOW_UNSIGNED_UPDATES`
+  - `AUTO_CODEX_ALLOW_INSECURE_TOKEN_STORAGE`
 
 ### Risk Policy (UI Settings)
 
@@ -45,7 +48,7 @@ This validates Python/Node/Git/Codex auth, ensures the git working tree is clean
 
 Note: Graphiti config validation reads from environment and `.env` files. If your API keys live in the UI's secure storage, export them (or temporarily disable `GRAPHITI_ENABLED`) before running the healthcheck.
 
-For internal "production-lite" gating, set `AUTO_CODEX_PRODUCTION=true` to require healthchecks in release scripts. If you want stricter gating, set `AUTO_CODEX_ENFORCE_CLEAN_GIT=true` and/or strict security enforcement via `AUTO_CODEX_ENFORCE_SANDBOX=true` and `AUTO_CODEX_ENFORCE_FALKORDB_AUTH=true` to turn warnings into failures.
+For internal "production-lite" gating, set `AUTO_CODEX_PRODUCTION=true` to require healthchecks in release scripts and enforce critical safety checks (sandbox + FalkorDB auth + backup freshness when Graphiti is enabled). If you want stricter gating, set `AUTO_CODEX_ENFORCE_CLEAN_GIT=true` and/or strict security enforcement via `AUTO_CODEX_ENFORCE_SANDBOX=true` and `AUTO_CODEX_ENFORCE_FALKORDB_AUTH=true` to turn warnings into failures. Backup checks can be tuned via `AUTO_CODEX_BACKUP_MAX_AGE_DAYS` (default: 7) or disabled with `AUTO_CODEX_BACKUP_MAX_AGE_DAYS=0`.
 
 ## Dependency Locking (Production)
 
@@ -144,6 +147,9 @@ Create a timestamped tarball of the Docker volume:
 
 `./scripts/backup-falkordb.sh`
 
+Notes:
+- If `AUTO_CODEX_PRODUCTION=true` and `FALKORDB_BACKUP_MODE` is not set, the script defaults to `save` mode for consistency.
+
 Optional retention:
 
 `BACKUP_RETENTION_DAYS=14 ./scripts/backup-falkordb.sh`
@@ -167,6 +173,11 @@ Validation:
 
 - `docker-compose ps` shows both services healthy
 - Graphiti can connect to FalkorDB (healthcheck passes)
+
+**Healthcheck enforcement (optional):**
+- `AUTO_CODEX_PRODUCTION=true` enforces backup presence/age checks when Graphiti is enabled.
+- Or set `AUTO_CODEX_ENFORCE_BACKUPS=true` explicitly.
+- Configure max age (days) via `AUTO_CODEX_BACKUP_MAX_AGE_DAYS` (default 7, set `0` to disable).
 
 ### FalkorDB Hardening (Production)
 
@@ -269,7 +280,9 @@ Perform a restore drill quarterly on a non-production machine:
 - Check container health: `docker-compose ps` (or `docker compose ps`) should show `healthy` for Graphiti/FalkorDB.
 - Track disk usage for Docker volume `auto-codex_falkordb_data` and the `backups/` directory.
 - Review logs for repeated failures: `<userData>/logs/` and `.auto-codex/specs/**/logs`.
-- Optional: enable command audit logging with `AUTO_CODEX_AUDIT_LOG=/path/to/audit.log` and rotate it periodically.
+- Optional: enable command audit logging with `AUTO_CODEX_AUDIT_LOG=/path/to/audit.log`.
+  - Built-in rotation: `AUTO_CODEX_AUDIT_LOG_MAX_BYTES` + `AUTO_CODEX_AUDIT_LOG_BACKUPS`
+  - Or manage rotation via your OS log rotation tooling.
 
 ## Release & Rollback
 

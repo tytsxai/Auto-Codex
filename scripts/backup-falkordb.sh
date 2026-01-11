@@ -6,10 +6,17 @@ BACKUP_DIR="${BACKUP_DIR:-$ROOT_DIR/backups}"
 VOLUME_NAME="${FALKORDB_VOLUME:-auto-codex_falkordb_data}"
 RETENTION_DAYS="${BACKUP_RETENTION_DAYS:-}"
 BACKUP_IMAGE="${BACKUP_IMAGE:-alpine:3.20}"
-BACKUP_MODE="${FALKORDB_BACKUP_MODE:-live}"
+BACKUP_MODE="${FALKORDB_BACKUP_MODE:-}"
 CONTAINER_NAME="${FALKORDB_CONTAINER_NAME:-auto-codex-falkordb}"
 FALKORDB_PASSWORD="${GRAPHITI_FALKORDB_PASSWORD:-${FALKORDB_PASSWORD:-}}"
 COMPOSE_FILE="$ROOT_DIR/docker-compose.yml"
+
+is_true() {
+  case "${1:-}" in
+    [Tt][Rr][Uu][Ee]|1|[Yy][Ee][Ss]|[Oo][Nn]) return 0 ;;
+    *) return 1 ;;
+  esac
+}
 
 require_docker() {
   if ! command -v docker >/dev/null 2>&1; then
@@ -69,6 +76,14 @@ run_consistent_save() {
   echo "[backup] Triggering FalkorDB SAVE for consistent snapshot"
   docker exec "$CONTAINER_NAME" "${args[@]}"
 }
+
+if [[ -z "$BACKUP_MODE" ]]; then
+  if is_true "${AUTO_CODEX_PRODUCTION:-}"; then
+    BACKUP_MODE="save"
+  else
+    BACKUP_MODE="live"
+  fi
+fi
 
 require_docker
 compose_cmd="$(detect_compose_cmd || true)"

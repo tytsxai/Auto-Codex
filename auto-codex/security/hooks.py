@@ -20,6 +20,57 @@ from .validator import VALIDATORS
 
 # Audit log file path (optional, set via environment)
 AUDIT_LOG_FILE = os.environ.get("AUTO_CODEX_AUDIT_LOG")
+AUDIT_LOG_MAX_BYTES_DEFAULT = 5 * 1024 * 1024
+AUDIT_LOG_BACKUPS_DEFAULT = 5
+
+
+def _parse_int_env(name: str, default: int) -> int:
+    try:
+        value = int(os.environ.get(name, str(default)))
+        if value < 0:
+            return default
+        return value
+    except (TypeError, ValueError):
+        return default
+
+
+def _rotate_audit_log(log_path: str) -> None:
+    """Rotate audit log when it exceeds size thresholds."""
+    if not log_path:
+        return
+    max_bytes = _parse_int_env("AUTO_CODEX_AUDIT_LOG_MAX_BYTES", AUDIT_LOG_MAX_BYTES_DEFAULT)
+    backups = _parse_int_env("AUTO_CODEX_AUDIT_LOG_BACKUPS", AUDIT_LOG_BACKUPS_DEFAULT)
+    if max_bytes <= 0:
+        return
+    try:
+        if not os.path.exists(log_path):
+            return
+        if os.path.getsize(log_path) < max_bytes:
+            return
+        timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+        rotated_path = f"{log_path}.{timestamp}"
+        os.replace(log_path, rotated_path)
+
+        if backups <= 0:
+            return
+        log_dir = os.path.dirname(log_path) or "."
+        base_name = os.path.basename(log_path)
+        rotated_files = [
+            name
+            for name in os.listdir(log_dir)
+            if name.startswith(base_name + ".")
+        ]
+        rotated_files.sort(
+            key=lambda name: os.path.getmtime(os.path.join(log_dir, name)),
+            reverse=True,
+        )
+        for name in rotated_files[backups:]:
+            try:
+                os.remove(os.path.join(log_dir, name))
+            except OSError:
+                pass
+    except OSError:
+        pass
 
 
 def _audit_log(event_type: str, command: str, reason: str, allowed: bool) -> None:
@@ -40,6 +91,10 @@ def _audit_log(event_type: str, command: str, reason: str, allowed: bool) -> Non
     # Write to audit log file if configured
     if AUDIT_LOG_FILE:
         try:
+            _rotate_audit_log(AUDIT_LOG_FILE)
+            log_path = Path(AUDIT_LOG_FILE)
+            if log_path.parent and not log_path.parent.exists():
+                log_path.parent.mkdir(parents=True, exist_ok=True)
             log_entry = f"{timestamp}|{status}|{event_type}|{reason}|{command}\n"
             with open(AUDIT_LOG_FILE, "a") as f:
                 f.write(log_entry)

@@ -126,7 +126,12 @@ check_file() {
     log_ok "$label present"
     return 0
   fi
-  log_warn "$label missing"
+  local production="${AUTO_CODEX_PRODUCTION:-}"
+  if is_true "$production"; then
+    log_fail "$label missing (required in production)"
+  else
+    log_warn "$label missing"
+  fi
   return 1
 }
 
@@ -231,6 +236,10 @@ check_sandbox() {
   fi
 
   local enforce="${AUTO_CODEX_ENFORCE_SANDBOX:-}"
+  local production="${AUTO_CODEX_PRODUCTION:-}"
+  if is_true "$production"; then
+    enforce="true"
+  fi
   if is_true "$enforce"; then
     if [[ "$bypass" == "0" || -z "$bypass" ]]; then
       log_ok "Codex CLI sandbox enforced"
@@ -408,16 +417,20 @@ PY
   fi
 
   local enforce_auth="${AUTO_CODEX_ENFORCE_FALKORDB_AUTH:-}"
+  local production="${AUTO_CODEX_PRODUCTION:-}"
+  if is_true "$production"; then
+    enforce_auth="true"
+  fi
   if is_true "$enforce_auth"; then
     if [[ -n "$falkor_password" ]]; then
       log_ok "GRAPHITI_FALKORDB_PASSWORD set"
     else
-      log_fail "GRAPHITI_FALKORDB_PASSWORD not set (required when AUTO_CODEX_ENFORCE_FALKORDB_AUTH=true)"
+      log_fail "GRAPHITI_FALKORDB_PASSWORD not set (required for production or when AUTO_CODEX_ENFORCE_FALKORDB_AUTH=true)"
     fi
     if [[ "$falkor_args" == *"--requirepass"* ]]; then
       log_ok "FALKORDB_ARGS includes --requirepass"
     else
-      log_fail "FALKORDB_ARGS missing --requirepass (required when AUTO_CODEX_ENFORCE_FALKORDB_AUTH=true)"
+      log_fail "FALKORDB_ARGS missing --requirepass (required for production or when AUTO_CODEX_ENFORCE_FALKORDB_AUTH=true)"
     fi
   else
     if [[ -n "$falkor_password" ]]; then
@@ -430,6 +443,194 @@ PY
     else
       log_warn "FALKORDB_ARGS missing --requirepass (recommended for production)"
     fi
+  fi
+
+  # Appendonly durability (default is appendonly yes from docker-compose)
+  if [[ -n "$falkor_args" ]]; then
+    local appendonly_ok=false
+    if [[ "$falkor_args" == *"--appendonly yes"* || "$falkor_args" == *"--appendonly=yes"* ]]; then
+      appendonly_ok=true
+    fi
+    if is_true "$production"; then
+      if [[ "$appendonly_ok" == true ]]; then
+        log_ok "FALKORDB_ARGS includes --appendonly yes"
+      else
+        log_fail "FALKORDB_ARGS missing --appendonly yes (required for production durability)"
+      fi
+    else
+      if [[ "$appendonly_ok" == true ]]; then
+        log_ok "FALKORDB_ARGS includes --appendonly yes"
+      else
+        log_warn "FALKORDB_ARGS missing --appendonly yes (recommended for durability)"
+      fi
+    fi
+  else
+    # Using docker-compose default
+    log_ok "FALKORDB_ARGS not set (docker-compose defaults to --appendonly yes)"
+  fi
+}
+
+check_ui_security_flags() {
+  local production="${AUTO_CODEX_PRODUCTION:-}"
+  local allow_unsigned="${AUTO_CODEX_ALLOW_UNSIGNED_UPDATES:-}"
+  local allow_insecure="${AUTO_CODEX_ALLOW_INSECURE_TOKEN_STORAGE:-}"
+
+  if [[ -z "$allow_unsigned" ]]; then
+    allow_unsigned="$(get_env_value "AUTO_CODEX_ALLOW_UNSIGNED_UPDATES" "$ROOT_DIR/auto-codex-ui/.env" || true)"
+  fi
+  if [[ -z "$allow_unsigned" ]]; then
+    allow_unsigned="$(get_env_value "AUTO_CODEX_ALLOW_UNSIGNED_UPDATES" "$ROOT_DIR/.env" || true)"
+  fi
+
+  if [[ -z "$allow_insecure" ]]; then
+    allow_insecure="$(get_env_value "AUTO_CODEX_ALLOW_INSECURE_TOKEN_STORAGE" "$ROOT_DIR/auto-codex-ui/.env" || true)"
+  fi
+  if [[ -z "$allow_insecure" ]]; then
+    allow_insecure="$(get_env_value "AUTO_CODEX_ALLOW_INSECURE_TOKEN_STORAGE" "$ROOT_DIR/.env" || true)"
+  fi
+
+  if is_true "$allow_unsigned"; then
+    if is_true "$production"; then
+      log_fail "AUTO_CODEX_ALLOW_UNSIGNED_UPDATES=true (disallowed in production)"
+    else
+      log_warn "AUTO_CODEX_ALLOW_UNSIGNED_UPDATES=true (disables checksum verification)"
+    fi
+  else
+    log_ok "AUTO_CODEX_ALLOW_UNSIGNED_UPDATES not enabled"
+  fi
+
+  if is_true "$allow_insecure"; then
+    if is_true "$production"; then
+      log_fail "AUTO_CODEX_ALLOW_INSECURE_TOKEN_STORAGE=true (disallowed in production)"
+    else
+      log_warn "AUTO_CODEX_ALLOW_INSECURE_TOKEN_STORAGE=true (stores tokens in plaintext)"
+    fi
+  else
+    log_ok "AUTO_CODEX_ALLOW_INSECURE_TOKEN_STORAGE not enabled"
+  fi
+}
+
+check_falkordb_backups() {
+  local production="${AUTO_CODEX_PRODUCTION:-}"
+  local enforce_backups="${AUTO_CODEX_ENFORCE_BACKUPS:-}"
+  if is_true "$production"; then
+    enforce_backups="true"
+  fi
+
+  local graphiti_enabled="${GRAPHITI_ENABLED:-}"
+  if [[ -z "$graphiti_enabled" ]]; then
+    graphiti_enabled="$(get_env_value "GRAPHITI_ENABLED" "$ROOT_DIR/auto-codex/.env" || true)"
+  fi
+
+  if ! is_true "$graphiti_enabled"; then
+    return
+  fi
+
+  local backup_dir="${BACKUP_DIR:-}"
+  if [[ -z "$backup_dir" ]]; then
+    backup_dir="$(get_env_value "BACKUP_DIR" "$ROOT_DIR/.env" || true)"
+  fi
+  if [[ -z "$backup_dir" ]]; then
+    backup_dir="$ROOT_DIR/backups"
+  fi
+
+  local max_age="${AUTO_CODEX_BACKUP_MAX_AGE_DAYS:-}"
+  if [[ -z "$max_age" ]]; then
+    max_age="7"
+  fi
+
+  if [[ "$max_age" != "0" && ! "$max_age" =~ ^[0-9]+$ ]]; then
+    log_warn "AUTO_CODEX_BACKUP_MAX_AGE_DAYS is not a valid integer; defaulting to 7"
+    max_age="7"
+  fi
+
+  if [[ "$max_age" == "0" ]]; then
+    log_ok "Backup age check disabled (AUTO_CODEX_BACKUP_MAX_AGE_DAYS=0)"
+    return
+  fi
+
+  if ! command -v python3 >/dev/null 2>&1; then
+    log_warn "python3 not found; skipping backup age check"
+    return
+  fi
+
+  local python_output python_exit_code
+  set +e
+  python_output=$(python3 - <<PY
+import os
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+
+backup_dir = Path(r"$backup_dir")
+pattern = "falkordb_data_*.tar.gz"
+
+if not backup_dir.exists():
+    print("STATUS=MISSING_DIR")
+    raise SystemExit(0)
+
+files = sorted(backup_dir.glob(pattern), key=lambda p: p.stat().st_mtime, reverse=True)
+if not files:
+    print("STATUS=NO_BACKUPS")
+    raise SystemExit(0)
+
+latest = files[0]
+mtime = datetime.fromtimestamp(latest.stat().st_mtime, tz=timezone.utc)
+age_days = (datetime.now(timezone.utc) - mtime).days
+
+print(f"STATUS=OK")
+print(f"PATH={latest}")
+print(f"AGE_DAYS={age_days}")
+PY
+  )
+  python_exit_code=$?
+  set -e
+
+  if [[ "$python_exit_code" -ne 0 ]]; then
+    if is_true "$enforce_backups"; then
+      log_fail "Backup age check failed (python error)"
+    else
+      log_warn "Backup age check failed (python error)"
+    fi
+    return
+  fi
+
+  local status path age_days
+  status="$(echo "$python_output" | grep '^STATUS=' | cut -d= -f2- || true)"
+  path="$(echo "$python_output" | grep '^PATH=' | cut -d= -f2- || true)"
+  age_days="$(echo "$python_output" | grep '^AGE_DAYS=' | cut -d= -f2- || true)"
+
+  if [[ "$status" == "MISSING_DIR" ]]; then
+    if is_true "$enforce_backups"; then
+      log_fail "Backup directory not found: $backup_dir"
+    else
+      log_warn "Backup directory not found: $backup_dir"
+    fi
+    return
+  fi
+
+  if [[ "$status" == "NO_BACKUPS" ]]; then
+    if is_true "$enforce_backups"; then
+      log_fail "No FalkorDB backups found in $backup_dir"
+    else
+      log_warn "No FalkorDB backups found in $backup_dir"
+    fi
+    return
+  fi
+
+  if [[ -z "$age_days" ]]; then
+    log_warn "Could not determine FalkorDB backup age"
+    return
+  fi
+
+  if [[ "$age_days" -gt "$max_age" ]]; then
+    if is_true "$enforce_backups"; then
+      log_fail "Latest FalkorDB backup is $age_days days old (max allowed: $max_age days)"
+    else
+      log_warn "Latest FalkorDB backup is $age_days days old (max allowed: $max_age days)"
+    fi
+  else
+    log_ok "Latest FalkorDB backup age: ${age_days} days (${path})"
   fi
 }
 
@@ -444,7 +645,9 @@ check_git_repo
 check_git_clean
 check_auth
 check_sandbox
+check_ui_security_flags
 check_graphiti
+check_falkordb_backups
 
 # Lockfiles (recommended for deterministic installs)
 check_file "$ROOT_DIR/auto-codex/requirements-py312.lock" "requirements-py312.lock"
