@@ -15,6 +15,12 @@ Note on naming:
 
 ## Commands
 
+### Prerequisites
+
+- Python 3.12+
+- Node.js 18+
+- Codex CLI (`npm install -g @openai/codex`)
+
 ### Setup
 ```bash
 # Install dependencies (from auto-codex/)
