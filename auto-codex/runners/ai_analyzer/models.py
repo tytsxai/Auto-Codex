@@ -3,11 +3,11 @@ Data models and type definitions for AI analyzer.
 """
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 
-class AnalyzerType(str, Enum):
+class AnalyzerType(StrEnum):
     """Available analyzer types."""
 
     CODE_RELATIONSHIPS = "code_relationships"

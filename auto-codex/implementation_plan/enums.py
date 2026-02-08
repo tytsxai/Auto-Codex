@@ -7,10 +7,10 @@ Defines all enum types used in implementation plans: workflow types,
 phase types, subtask statuses, and verification types.
 """
 
-from enum import Enum
+from enum import StrEnum
 
 
-class WorkflowType(str, Enum):
+class WorkflowType(StrEnum):
     """Types of workflows with different phase structures."""
 
     FEATURE = "feature"  # Multi-service feature (phases = services)
@@ -22,7 +22,7 @@ class WorkflowType(str, Enum):
     ENHANCEMENT = "enhancement"  # Improving existing features
 
 
-class PhaseType(str, Enum):
+class PhaseType(StrEnum):
     """Types of phases within a workflow."""
 
     SETUP = "setup"  # Project scaffolding, environment setup
@@ -32,7 +32,7 @@ class PhaseType(str, Enum):
     CLEANUP = "cleanup"  # Removing old code, polish
 
 
-class SubtaskStatus(str, Enum):
+class SubtaskStatus(StrEnum):
     """Status of a subtask."""
 
     PENDING = "pending"  # Not started
@@ -42,7 +42,7 @@ class SubtaskStatus(str, Enum):
     FAILED = "failed"  # Attempted but failed
 
 
-class VerificationType(str, Enum):
+class VerificationType(StrEnum):
     """How to verify a subtask is complete."""
 
     COMMAND = "command"  # Run a shell command
