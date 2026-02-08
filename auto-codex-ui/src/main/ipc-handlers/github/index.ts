@@ -31,7 +31,7 @@ export function registerGithubHandlers(
   registerIssueHandlers();
   registerInvestigationHandlers(agentManager, getMainWindow);
   registerImportHandlers(agentManager);
-  registerReleaseHandlers();
+  registerReleaseHandlers(getMainWindow);
   registerGithubOAuthHandlers();
 }
 

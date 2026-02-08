@@ -287,6 +287,36 @@ describe('IPC Bridge Integration', () => {
         // getAppVersion now uses the app-update channel (from AppUpdateAPI which is spread last)
         expect(mockIpcRenderer.invoke).toHaveBeenCalledWith('app-update:get-version');
       });
+
+      it('should expose release workflow APIs', async () => {
+        const getReleaseableVersions = electronAPI['getReleaseableVersions'] as (projectId: string) => Promise<unknown>;
+        const runReleasePreflightCheck = electronAPI['runReleasePreflightCheck'] as (
+          projectId: string,
+          version: string
+        ) => Promise<unknown>;
+        const createRelease = electronAPI['createRelease'] as (request: object) => void;
+        const onReleaseProgress = electronAPI['onReleaseProgress'] as (cb: Function) => Function;
+        const onReleaseComplete = electronAPI['onReleaseComplete'] as (cb: Function) => Function;
+        const onReleaseError = electronAPI['onReleaseError'] as (cb: Function) => Function;
+
+        await getReleaseableVersions('project-id');
+        await runReleasePreflightCheck('project-id', '1.2.3');
+        createRelease({ projectId: 'project-id', version: '1.2.3', body: 'notes' });
+        onReleaseProgress(vi.fn());
+        onReleaseComplete(vi.fn());
+        onReleaseError(vi.fn());
+
+        expect(mockIpcRenderer.invoke).toHaveBeenCalledWith('release:getVersions', 'project-id');
+        expect(mockIpcRenderer.invoke).toHaveBeenCalledWith('release:preflight', 'project-id', '1.2.3');
+        expect(mockIpcRenderer.send).toHaveBeenCalledWith('release:create', {
+          projectId: 'project-id',
+          version: '1.2.3',
+          body: 'notes'
+        });
+        expect(mockIpcRenderer.on).toHaveBeenCalledWith('release:progress', expect.any(Function));
+        expect(mockIpcRenderer.on).toHaveBeenCalledWith('release:complete', expect.any(Function));
+        expect(mockIpcRenderer.on).toHaveBeenCalledWith('release:error', expect.any(Function));
+      });
     });
   });
 
@@ -316,6 +346,12 @@ describe('IPC Bridge Integration', () => {
 
       expect(IPC_CHANNELS.DIALOG_SELECT_DIRECTORY).toBe('dialog:selectDirectory');
       expect(IPC_CHANNELS.APP_VERSION).toBe('app:version');
+      expect(IPC_CHANNELS.RELEASE_GET_VERSIONS).toBe('release:getVersions');
+      expect(IPC_CHANNELS.RELEASE_PREFLIGHT).toBe('release:preflight');
+      expect(IPC_CHANNELS.RELEASE_CREATE).toBe('release:create');
+      expect(IPC_CHANNELS.RELEASE_PROGRESS).toBe('release:progress');
+      expect(IPC_CHANNELS.RELEASE_COMPLETE).toBe('release:complete');
+      expect(IPC_CHANNELS.RELEASE_ERROR).toBe('release:error');
     });
   });
 });

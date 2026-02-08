@@ -59,6 +59,57 @@ const initialState = {
   error: null
 };
 
+let releaseListenersInitialized = false;
+
+export function __resetReleaseListenerStateForTests(): void {
+  releaseListenersInitialized = false;
+}
+
+function ensureReleaseListeners(): void {
+  if (releaseListenersInitialized) {
+    return;
+  }
+
+  if (typeof window === 'undefined' || !window.electronAPI) {
+    return;
+  }
+
+  window.electronAPI.onReleaseProgress((projectId, progress) => {
+    const store = useReleaseStore.getState();
+    store.setIsCreatingRelease(progress.stage !== 'complete' && progress.stage !== 'error');
+    store.setReleaseProgress(progress);
+    if (progress.stage === 'error') {
+      store.setError(progress.error || progress.message);
+    }
+  });
+
+  window.electronAPI.onReleaseComplete((_projectId, result) => {
+    const store = useReleaseStore.getState();
+    store.setIsCreatingRelease(false);
+    store.setLastReleaseResult(result);
+    store.setReleaseProgress({
+      stage: 'complete',
+      progress: 100,
+      message: 'Release completed successfully'
+    });
+    store.setError(null);
+  });
+
+  window.electronAPI.onReleaseError((_projectId, error) => {
+    const store = useReleaseStore.getState();
+    store.setIsCreatingRelease(false);
+    store.setError(error);
+    store.setReleaseProgress({
+      stage: 'error',
+      progress: 0,
+      message: error,
+      error
+    });
+  });
+
+  releaseListenersInitialized = true;
+}
+
 export const useReleaseStore = create<ReleaseState>((set) => ({
   ...initialState,
 
@@ -89,6 +140,7 @@ export const useReleaseStore = create<ReleaseState>((set) => ({
  * Load releaseable versions from CHANGELOG.md
  */
 export async function loadReleaseableVersions(projectId: string): Promise<void> {
+  ensureReleaseListeners();
   const store = useReleaseStore.getState();
   store.setIsLoadingVersions(true);
   store.setError(null);
@@ -119,6 +171,7 @@ export async function loadReleaseableVersions(projectId: string): Promise<void> 
  * Run pre-flight checks for the selected version
  */
 export async function runPreflightCheck(projectId: string): Promise<void> {
+  ensureReleaseListeners();
   const store = useReleaseStore.getState();
   const version = store.selectedVersion;
   
@@ -148,6 +201,7 @@ export async function runPreflightCheck(projectId: string): Promise<void> {
  * Create a GitHub release
  */
 export function createRelease(projectId: string): void {
+  ensureReleaseListeners();
   const store = useReleaseStore.getState();
   const version = store.selectedVersion;
   
@@ -211,5 +265,3 @@ export function canCreateRelease(): boolean {
     !store.isCreatingRelease
   );
 }
-
-

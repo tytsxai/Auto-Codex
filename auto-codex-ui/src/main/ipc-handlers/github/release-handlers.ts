@@ -3,14 +3,91 @@
  */
 
 import { ipcMain } from 'electron';
+import type { BrowserWindow } from 'electron';
 import { execFileSync, execSync } from 'child_process';
 import { existsSync, readFileSync } from 'fs';
 import path from 'path';
 import { IPC_CHANNELS } from '../../../shared/constants';
-import type { IPCResult, GitCommit, VersionSuggestion } from '../../../shared/types';
+import type {
+  IPCResult,
+  GitCommit,
+  VersionSuggestion,
+  ReleasePreflightStatus
+} from '../../../shared/types';
 import { projectStore } from '../../project-store';
 import { changelogService } from '../../changelog-service';
+import { releaseService } from '../../release-service';
 import type { ReleaseOptions } from './types';
+
+function isTrue(value: string | undefined): boolean {
+  if (!value) {
+    return false;
+  }
+  return /^(true|1|yes|on)$/i.test(value.trim());
+}
+
+function normalizeVersion(version: string): string {
+  return version.replace(/^v/i, '');
+}
+
+function shouldSkipReleasePreflight(): boolean {
+  return isTrue(process.env.AUTO_CODEX_SKIP_RELEASE_PREFLIGHT);
+}
+
+function formatPreflightError(status: ReleasePreflightStatus): string {
+  if (status.blockers.length === 0) {
+    return 'Release blocked by preflight checks.';
+  }
+
+  const maxItems = 3;
+  const preview = status.blockers.slice(0, maxItems).join('; ');
+  const remaining = status.blockers.length - maxItems;
+
+  if (remaining > 0) {
+    return `Release blocked by preflight checks: ${preview} (and ${remaining} more)`;
+  }
+
+  return `Release blocked by preflight checks: ${preview}`;
+}
+
+function resolveMainBranch(project: { settings?: { mainBranch?: string } }): string {
+  const configured = project.settings?.mainBranch;
+  if (configured && configured.trim()) {
+    return configured.trim();
+  }
+  return 'main';
+}
+
+let releaseEventBridgeInitialized = false;
+
+function setupReleaseEventBridge(getMainWindow: () => BrowserWindow | null): void {
+  if (releaseEventBridgeInitialized) {
+    return;
+  }
+
+  releaseService.on('release-progress', (projectId: string, progress: import('../../../shared/types').ReleaseProgress) => {
+    const mainWindow = getMainWindow();
+    if (mainWindow) {
+      mainWindow.webContents.send(IPC_CHANNELS.RELEASE_PROGRESS, projectId, progress);
+    }
+  });
+
+  releaseService.on('release-complete', (projectId: string, result: import('../../../shared/types').CreateReleaseResult) => {
+    const mainWindow = getMainWindow();
+    if (mainWindow) {
+      mainWindow.webContents.send(IPC_CHANNELS.RELEASE_COMPLETE, projectId, result);
+    }
+  });
+
+  releaseService.on('release-error', (projectId: string, error: string) => {
+    const mainWindow = getMainWindow();
+    if (mainWindow) {
+      mainWindow.webContents.send(IPC_CHANNELS.RELEASE_ERROR, projectId, error);
+    }
+  });
+
+  releaseEventBridgeInitialized = true;
+}
 
 /**
  * Check if gh CLI is installed
@@ -78,6 +155,31 @@ export function registerCreateRelease(): void {
         return { success: false, error: 'Project not found' };
       }
 
+      const normalizedVersion = normalizeVersion(version);
+
+      if (!shouldSkipReleasePreflight()) {
+        try {
+          const tasks = projectStore.getTasks(projectId);
+          const preflight = await releaseService.runPreflightChecks(
+            project.path,
+            normalizedVersion,
+            tasks
+          );
+          if (!preflight.canRelease) {
+            return {
+              success: false,
+              error: formatPreflightError(preflight)
+            };
+          }
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          return {
+            success: false,
+            error: `Release preflight failed: ${message}`
+          };
+        }
+      }
+
       // Check if gh CLI is available
       const cliCheck = checkGhCli();
       if (!cliCheck.installed) {
@@ -92,7 +194,7 @@ export function registerCreateRelease(): void {
 
       try {
         // Build and execute release command
-        const args = buildReleaseArgs(version, releaseNotes, options);
+        const args = buildReleaseArgs(normalizedVersion, releaseNotes, options);
         const output = execFileSync('gh', args, {
           cwd: project.path,
           encoding: 'utf-8',
@@ -100,7 +202,7 @@ export function registerCreateRelease(): void {
         }).trim();
 
         // Output is typically the release URL
-        const tag = version.startsWith('v') ? version : `v${version}`;
+        const tag = `v${normalizedVersion}`;
         const releaseUrl = output || `https://github.com/releases/tag/${tag}`;
 
         return {
@@ -114,6 +216,104 @@ export function registerCreateRelease(): void {
           return { success: false, error: String(error.stderr) || errorMsg };
         }
         return { success: false, error: errorMsg };
+      }
+    }
+  );
+}
+
+/**
+ * Release workflow handlers that use releaseService preflight + progress events.
+ */
+export function registerReleaseWorkflowHandlers(): void {
+  ipcMain.handle(
+    IPC_CHANNELS.RELEASE_GET_VERSIONS,
+    async (_, projectId: string): Promise<IPCResult<import('../../../shared/types').ReleaseableVersion[]>> => {
+      const project = projectStore.getProject(projectId);
+      if (!project) {
+        return { success: false, error: 'Project not found' };
+      }
+
+      try {
+        const tasks = projectStore.getTasks(projectId);
+        const versions = await releaseService.getReleaseableVersions(project.path, tasks);
+        return { success: true, data: versions };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to get release versions'
+        };
+      }
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.RELEASE_PREFLIGHT,
+    async (_, projectId: string, version: string): Promise<IPCResult<ReleasePreflightStatus>> => {
+      const project = projectStore.getProject(projectId);
+      if (!project) {
+        return { success: false, error: 'Project not found' };
+      }
+
+      try {
+        const tasks = projectStore.getTasks(projectId);
+        const status = await releaseService.runPreflightChecks(
+          project.path,
+          normalizeVersion(version),
+          tasks
+        );
+        return { success: true, data: status };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to run release preflight'
+        };
+      }
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.RELEASE_CREATE,
+    async (_, request: import('../../../shared/types').CreateReleaseRequest): Promise<IPCResult> => {
+      const project = projectStore.getProject(request.projectId);
+      if (!project) {
+        return { success: false, error: 'Project not found' };
+      }
+
+      try {
+        const normalizedVersion = normalizeVersion(request.version);
+        const tasks = projectStore.getTasks(request.projectId);
+
+        if (!shouldSkipReleasePreflight()) {
+          const preflight = await releaseService.runPreflightChecks(
+            project.path,
+            normalizedVersion,
+            tasks
+          );
+          if (!preflight.canRelease) {
+            const error = formatPreflightError(preflight);
+            releaseService.emitReleaseError(request.projectId, error);
+            return { success: false, error };
+          }
+        }
+
+        const result = await releaseService.createRelease(project.path, {
+          ...request,
+          version: normalizedVersion,
+          mainBranch: request.mainBranch || resolveMainBranch(project)
+        });
+
+        if (result.success) {
+          releaseService.emitReleaseComplete(request.projectId, result);
+          return { success: true, data: result };
+        }
+
+        const error = result.error || 'Release failed';
+        releaseService.emitReleaseError(request.projectId, error);
+        return { success: false, error };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Release failed';
+        releaseService.emitReleaseError(request.projectId, message);
+        return { success: false, error: message };
       }
     }
   );
@@ -260,7 +460,9 @@ export function registerSuggestVersion(): void {
 /**
  * Register all release-related handlers
  */
-export function registerReleaseHandlers(): void {
+export function registerReleaseHandlers(getMainWindow: () => BrowserWindow | null): void {
+  setupReleaseEventBridge(getMainWindow);
+  registerReleaseWorkflowHandlers();
   registerCreateRelease();
   registerSuggestVersion();
 }

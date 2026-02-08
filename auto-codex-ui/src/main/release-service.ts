@@ -806,6 +806,20 @@ export class ReleaseService extends EventEmitter {
   }
 
   /**
+   * Emit release completion update.
+   */
+  emitReleaseComplete(projectId: string, result: CreateReleaseResult): void {
+    this.emit('release-complete', projectId, result);
+  }
+
+  /**
+   * Emit release error update.
+   */
+  emitReleaseError(projectId: string, error: string): void {
+    this.emit('release-error', projectId, error);
+  }
+
+  /**
    * Emit progress update.
    */
   private emitProgress(projectId: string, progress: ReleaseProgress): void {

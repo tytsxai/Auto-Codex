@@ -9,7 +9,8 @@ import {
   runPreflightCheck,
   createRelease,
   getUnreleasedVersions,
-  getSelectedVersionInfo
+  getSelectedVersionInfo,
+  __resetReleaseListenerStateForTests
 } from '../stores/release-store';
 import type {
   ReleaseableVersion,
@@ -64,13 +65,20 @@ describe('Release Store', () => {
     getReleaseableVersions: ReturnType<typeof vi.fn>;
     runReleasePreflightCheck: ReturnType<typeof vi.fn>;
     createRelease: ReturnType<typeof vi.fn>;
+    onReleaseProgress: ReturnType<typeof vi.fn>;
+    onReleaseComplete: ReturnType<typeof vi.fn>;
+    onReleaseError: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(() => {
+    __resetReleaseListenerStateForTests();
     electronAPI = {
       getReleaseableVersions: vi.fn(),
       runReleasePreflightCheck: vi.fn(),
-      createRelease: vi.fn()
+      createRelease: vi.fn(),
+      onReleaseProgress: vi.fn(() => () => {}),
+      onReleaseComplete: vi.fn(() => () => {}),
+      onReleaseError: vi.fn(() => () => {})
     };
 
     const globalWithWindow = globalThis as unknown as { window?: Window & typeof globalThis };
@@ -144,6 +152,9 @@ describe('Release Store', () => {
       await loadReleaseableVersions('project-1');
 
       const state = useReleaseStore.getState();
+      expect(electronAPI.onReleaseProgress).toHaveBeenCalledTimes(1);
+      expect(electronAPI.onReleaseComplete).toHaveBeenCalledTimes(1);
+      expect(electronAPI.onReleaseError).toHaveBeenCalledTimes(1);
       expect(electronAPI.getReleaseableVersions).toHaveBeenCalledWith('project-1');
       expect(state.releaseableVersions).toHaveLength(2);
       expect(state.selectedVersion).toBe('1.1.0');
@@ -264,6 +275,57 @@ describe('Release Store', () => {
         draft: true,
         prerelease: true
       });
+    });
+
+    it('updates state on release progress/complete/error events', async () => {
+      const progressListeners: Array<(projectId: string, progress: ReleaseProgress) => void> = [];
+      const completeListeners: Array<(projectId: string, result: CreateReleaseResult) => void> = [];
+      const errorListeners: Array<(projectId: string, error: string) => void> = [];
+
+      electronAPI.onReleaseProgress.mockImplementation((callback: (projectId: string, progress: ReleaseProgress) => void) => {
+        progressListeners.push(callback);
+        return () => {};
+      });
+      electronAPI.onReleaseComplete.mockImplementation((callback: (projectId: string, result: CreateReleaseResult) => void) => {
+        completeListeners.push(callback);
+        return () => {};
+      });
+      electronAPI.onReleaseError.mockImplementation((callback: (projectId: string, error: string) => void) => {
+        errorListeners.push(callback);
+        return () => {};
+      });
+
+      electronAPI.getReleaseableVersions.mockResolvedValue({ success: true, data: [] });
+      await loadReleaseableVersions('project-1');
+
+      expect(progressListeners).toHaveLength(1);
+      expect(completeListeners).toHaveLength(1);
+      expect(errorListeners).toHaveLength(1);
+
+      progressListeners[0]('project-1', {
+        stage: 'creating_release',
+        progress: 80,
+        message: 'Creating release'
+      });
+
+      let state = useReleaseStore.getState();
+      expect(state.isCreatingRelease).toBe(true);
+      expect(state.releaseProgress?.stage).toBe('creating_release');
+
+      completeListeners[0]('project-1', { success: true, releaseUrl: 'https://example.com/release' });
+
+      state = useReleaseStore.getState();
+      expect(state.isCreatingRelease).toBe(false);
+      expect(state.lastReleaseResult).toEqual({ success: true, releaseUrl: 'https://example.com/release' });
+      expect(state.releaseProgress?.stage).toBe('complete');
+      expect(state.error).toBeNull();
+
+      errorListeners[0]('project-1', 'Release failed');
+
+      state = useReleaseStore.getState();
+      expect(state.isCreatingRelease).toBe(false);
+      expect(state.error).toBe('Release failed');
+      expect(state.releaseProgress?.stage).toBe('error');
     });
   });
 });

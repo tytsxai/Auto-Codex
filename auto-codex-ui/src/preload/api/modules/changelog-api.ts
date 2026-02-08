@@ -15,6 +15,11 @@ import type {
   BranchDiffOptions,
   Task,
   IPCResult,
+  ReleaseableVersion,
+  ReleasePreflightStatus,
+  CreateReleaseRequest,
+  CreateReleaseResult,
+  ReleaseProgress,
 } from "../../../shared/types";
 import {
   createIpcListener,
@@ -66,6 +71,16 @@ export interface ChangelogAPI {
     filename: string,
   ) => Promise<IPCResult<{ relativePath: string; url: string }>>;
 
+  // Release workflow operations
+  getReleaseableVersions: (
+    projectId: string,
+  ) => Promise<IPCResult<ReleaseableVersion[]>>;
+  runReleasePreflightCheck: (
+    projectId: string,
+    version: string,
+  ) => Promise<IPCResult<ReleasePreflightStatus>>;
+  createRelease: (request: CreateReleaseRequest) => void;
+
   // Event Listeners
   onChangelogGenerationProgress: (
     callback: (
@@ -77,6 +92,17 @@ export interface ChangelogAPI {
     callback: (projectId: string, result: ChangelogGenerationResult) => void,
   ) => IpcListenerCleanup;
   onChangelogGenerationError: (
+    callback: (projectId: string, error: string) => void,
+  ) => IpcListenerCleanup;
+
+  // Release workflow event listeners
+  onReleaseProgress: (
+    callback: (projectId: string, progress: ReleaseProgress) => void,
+  ) => IpcListenerCleanup;
+  onReleaseComplete: (
+    callback: (projectId: string, result: CreateReleaseResult) => void,
+  ) => IpcListenerCleanup;
+  onReleaseError: (
     callback: (projectId: string, error: string) => void,
   ) => IpcListenerCleanup;
 }
@@ -159,6 +185,21 @@ export const createChangelogAPI = (): ChangelogAPI => ({
       filename,
     ),
 
+  // Release workflow operations
+  getReleaseableVersions: (
+    projectId: string,
+  ): Promise<IPCResult<ReleaseableVersion[]>> =>
+    invokeIpcResult(IPC_CHANNELS.RELEASE_GET_VERSIONS, projectId),
+
+  runReleasePreflightCheck: (
+    projectId: string,
+    version: string,
+  ): Promise<IPCResult<ReleasePreflightStatus>> =>
+    invokeIpcResult(IPC_CHANNELS.RELEASE_PREFLIGHT, projectId, version),
+
+  createRelease: (request: CreateReleaseRequest): void =>
+    sendIpc(IPC_CHANNELS.RELEASE_CREATE, request),
+
   // Event Listeners
   onChangelogGenerationProgress: (
     callback: (
@@ -177,4 +218,19 @@ export const createChangelogAPI = (): ChangelogAPI => ({
     callback: (projectId: string, error: string) => void,
   ): IpcListenerCleanup =>
     createIpcListener(IPC_CHANNELS.CHANGELOG_GENERATION_ERROR, callback),
+
+  // Release workflow event listeners
+  onReleaseProgress: (
+    callback: (projectId: string, progress: ReleaseProgress) => void,
+  ): IpcListenerCleanup =>
+    createIpcListener(IPC_CHANNELS.RELEASE_PROGRESS, callback),
+
+  onReleaseComplete: (
+    callback: (projectId: string, result: CreateReleaseResult) => void,
+  ): IpcListenerCleanup =>
+    createIpcListener(IPC_CHANNELS.RELEASE_COMPLETE, callback),
+
+  onReleaseError: (
+    callback: (projectId: string, error: string) => void,
+  ): IpcListenerCleanup => createIpcListener(IPC_CHANNELS.RELEASE_ERROR, callback),
 });

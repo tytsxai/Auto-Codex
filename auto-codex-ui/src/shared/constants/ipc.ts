@@ -291,6 +291,8 @@ export const IPC_CHANNELS = {
 
   // 发布事件（主进程 -> 渲染进程）
   RELEASE_PROGRESS: "release:progress",
+  RELEASE_COMPLETE: "release:complete",
+  RELEASE_ERROR: "release:error",
 
   // 工作流操作（智能工作树管理）
   WORKFLOW_STAGE_WORKTREE: "workflow:stageWorktree",

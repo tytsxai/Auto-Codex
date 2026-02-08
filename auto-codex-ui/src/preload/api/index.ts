@@ -6,6 +6,12 @@ import { FileAPI, createFileAPI } from './file-api';
 import { AgentAPI, createAgentAPI } from './agent-api';
 import { IdeationAPI, createIdeationAPI } from './modules/ideation-api';
 import { InsightsAPI, createInsightsAPI } from './modules/insights-api';
+import { RoadmapAPI, createRoadmapAPI } from './modules/roadmap-api';
+import { LinearAPI, createLinearAPI } from './modules/linear-api';
+import { GitHubAPI, createGitHubAPI } from './modules/github-api';
+import { ChangelogAPI, createChangelogAPI } from './modules/changelog-api';
+import { AutoBuildAPI, createAutoBuildAPI } from './modules/autobuild-api';
+import { ShellAPI, createShellAPI } from './modules/shell-api';
 import { AppUpdateAPI, createAppUpdateAPI } from './app-update-api';
 import { WorkflowAPI, createWorkflowAPI } from './workflow-api';
 
@@ -18,6 +24,12 @@ export interface ElectronAPI extends
   AgentAPI,
   IdeationAPI,
   InsightsAPI,
+  RoadmapAPI,
+  LinearAPI,
+  GitHubAPI,
+  ChangelogAPI,
+  AutoBuildAPI,
+  ShellAPI,
   AppUpdateAPI,
   WorkflowAPI {}
 
@@ -30,6 +42,12 @@ export const createElectronAPI = (): ElectronAPI => ({
   ...createAgentAPI(),
   ...createIdeationAPI(),
   ...createInsightsAPI(),
+  ...createRoadmapAPI(),
+  ...createLinearAPI(),
+  ...createGitHubAPI(),
+  ...createChangelogAPI(),
+  ...createAutoBuildAPI(),
+  ...createShellAPI(),
   ...createAppUpdateAPI(),
   ...createWorkflowAPI()
 });
@@ -44,6 +62,12 @@ export {
   createAgentAPI,
   createIdeationAPI,
   createInsightsAPI,
+  createRoadmapAPI,
+  createLinearAPI,
+  createGitHubAPI,
+  createChangelogAPI,
+  createAutoBuildAPI,
+  createShellAPI,
   createAppUpdateAPI,
   createWorkflowAPI
 };
@@ -57,6 +81,12 @@ export type {
   AgentAPI,
   IdeationAPI,
   InsightsAPI,
+  RoadmapAPI,
+  LinearAPI,
+  GitHubAPI,
+  ChangelogAPI,
+  AutoBuildAPI,
+  ShellAPI,
   AppUpdateAPI,
   WorkflowAPI
 };
