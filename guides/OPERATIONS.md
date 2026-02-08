@@ -46,9 +46,16 @@ Run before a release or after changing dependencies/env:
 
 This validates Python/Node/Git/Codex auth, ensures the git working tree is clean, and if Graphiti is enabled it validates the Graphiti config (provider credentials + FalkorDB settings) and checks Docker/Compose + pinned image tags. A non-zero exit indicates a blocking issue.
 
+When Graphiti backup enforcement is enabled (`AUTO_CODEX_PRODUCTION=true` or `AUTO_CODEX_ENFORCE_BACKUPS=true`), healthcheck also verifies:
+
+- latest FalkorDB backup archive is readable
+- latest backup checksum sidecar exists and matches (`.sha256`)
+
 Note: Graphiti config validation reads from environment and `.env` files. If your API keys live in the UI's secure storage, export them (or temporarily disable `GRAPHITI_ENABLED`) before running the healthcheck.
 
 For internal "production-lite" gating, set `AUTO_CODEX_PRODUCTION=true` to require healthchecks in release scripts and enforce critical safety checks (sandbox + FalkorDB auth + backup freshness when Graphiti is enabled). If you want stricter gating, set `AUTO_CODEX_ENFORCE_CLEAN_GIT=true` and/or strict security enforcement via `AUTO_CODEX_ENFORCE_SANDBOX=true` and `AUTO_CODEX_ENFORCE_FALKORDB_AUTH=true` to turn warnings into failures. Backup checks can be tuned via `AUTO_CODEX_BACKUP_MAX_AGE_DAYS` (default: 7) or disabled with `AUTO_CODEX_BACKUP_MAX_AGE_DAYS=0`.
+
+Release UI hardening: `github:createRelease` now runs release preflight checks server-side before creating a GitHub release. If preflight fails, release creation is blocked. Emergency bypass is available via `AUTO_CODEX_SKIP_RELEASE_PREFLIGHT=true` (not recommended for production).
 
 ## Production Readiness Minimums (Checklist)
 
@@ -164,10 +171,16 @@ Create a timestamped tarball of the Docker volume:
 
 Notes:
 - If `AUTO_CODEX_PRODUCTION=true` and `FALKORDB_BACKUP_MODE` is not set, the script defaults to `save` mode for consistency.
+- Backups are validated immediately after creation (`tar -tzf`).
+- A SHA-256 sidecar file is generated next to each backup (`falkordb_data_*.tar.gz.sha256`).
 
 Optional retention:
 
 `BACKUP_RETENTION_DAYS=14 ./scripts/backup-falkordb.sh`
+
+Integrity verification (manual spot-check):
+
+`shasum -a 256 -c backups/falkordb_data_<timestamp>.tar.gz.sha256`
 
 Example cron (daily at 2am, keep 14 days):
 
@@ -183,6 +196,14 @@ If auth is enabled, set `GRAPHITI_FALKORDB_PASSWORD` so the `SAVE` command can a
 Restore (destructive; stops services first):
 
 `./scripts/restore-falkordb.sh backups/<your_backup>.tar.gz`
+
+Restore safety behavior:
+
+- Validates backup archive readability before applying.
+- Verifies checksum when `<backup>.sha256` exists.
+- Creates a pre-restore safety snapshot at `backups/falkordb_pre_restore_<timestamp>.tar.gz` (with checksum sidecar when available).
+- Waits for post-restore container readiness/health by default (`RESTORE_HEALTH_TIMEOUT_SECS`, default 120).
+- Set `SKIP_RESTORE_HEALTH_WAIT=true` only for exceptional troubleshooting.
 
 Validation:
 
@@ -227,6 +248,11 @@ Back up the Electron userData directory noted above if you need to preserve UI s
 macOS/Linux helper:
 
 `./scripts/backup-userdata.sh`
+
+Notes:
+
+- Backups are validated immediately after creation (`tar -tzf`).
+- A SHA-256 sidecar file is generated next to each backup (`userdata_*.tar.gz.sha256`).
 
 Optional retention:
 

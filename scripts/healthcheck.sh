@@ -565,6 +565,8 @@ check_falkordb_backups() {
   python_output=$(python3 - <<PY
 import os
 import sys
+import tarfile
+import hashlib
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -584,9 +586,36 @@ latest = files[0]
 mtime = datetime.fromtimestamp(latest.stat().st_mtime, tz=timezone.utc)
 age_days = (datetime.now(timezone.utc) - mtime).days
 
+archive_status = "ok"
+try:
+    with tarfile.open(latest, "r:gz") as tf:
+        next(iter(tf), None)
+except Exception:
+    archive_status = "invalid"
+
+checksum_status = "missing"
+checksum_file = Path(str(latest) + ".sha256")
+if checksum_file.exists():
+    try:
+        raw = checksum_file.read_text(encoding="utf-8").strip()
+        expected = raw.split()[0] if raw else ""
+        if not expected:
+            checksum_status = "invalid"
+        else:
+            digest = hashlib.sha256()
+            with latest.open("rb") as fh:
+                for chunk in iter(lambda: fh.read(1024 * 1024), b""):
+                    digest.update(chunk)
+            actual = digest.hexdigest()
+            checksum_status = "ok" if actual == expected else "mismatch"
+    except Exception:
+        checksum_status = "invalid"
+
 print(f"STATUS=OK")
 print(f"PATH={latest}")
 print(f"AGE_DAYS={age_days}")
+print(f"ARCHIVE_STATUS={archive_status}")
+print(f"CHECKSUM_STATUS={checksum_status}")
 PY
   )
   python_exit_code=$?
@@ -601,10 +630,12 @@ PY
     return
   fi
 
-  local status path age_days
+  local status path age_days archive_status checksum_status
   status="$(echo "$python_output" | grep '^STATUS=' | cut -d= -f2- || true)"
   path="$(echo "$python_output" | grep '^PATH=' | cut -d= -f2- || true)"
   age_days="$(echo "$python_output" | grep '^AGE_DAYS=' | cut -d= -f2- || true)"
+  archive_status="$(echo "$python_output" | grep '^ARCHIVE_STATUS=' | cut -d= -f2- || true)"
+  checksum_status="$(echo "$python_output" | grep '^CHECKSUM_STATUS=' | cut -d= -f2- || true)"
 
   if [[ "$status" == "MISSING_DIR" ]]; then
     if is_true "$enforce_backups"; then
@@ -638,6 +669,43 @@ PY
   else
     log_ok "Latest FalkorDB backup age: ${age_days} days (${path})"
   fi
+
+  if [[ "$archive_status" != "ok" ]]; then
+    if is_true "$enforce_backups"; then
+      log_fail "Latest FalkorDB backup archive is invalid: $path"
+    else
+      log_warn "Latest FalkorDB backup archive is invalid: $path"
+    fi
+  else
+    log_ok "Latest FalkorDB backup archive integrity verified"
+  fi
+
+  case "$checksum_status" in
+    ok)
+      log_ok "Latest FalkorDB backup checksum verified"
+      ;;
+    missing)
+      if is_true "$enforce_backups"; then
+        log_fail "Latest FalkorDB backup checksum missing: ${path}.sha256"
+      else
+        log_warn "Latest FalkorDB backup checksum missing: ${path}.sha256"
+      fi
+      ;;
+    mismatch)
+      if is_true "$enforce_backups"; then
+        log_fail "Latest FalkorDB backup checksum mismatch: ${path}.sha256"
+      else
+        log_warn "Latest FalkorDB backup checksum mismatch: ${path}.sha256"
+      fi
+      ;;
+    *)
+      if is_true "$enforce_backups"; then
+        log_fail "Latest FalkorDB backup checksum file invalid: ${path}.sha256"
+      else
+        log_warn "Latest FalkorDB backup checksum file invalid: ${path}.sha256"
+      fi
+      ;;
+  esac
 }
 
 echo "Auto-Codex health check"
