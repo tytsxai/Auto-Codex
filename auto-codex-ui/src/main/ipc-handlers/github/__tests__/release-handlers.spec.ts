@@ -5,7 +5,8 @@ const handlers = new Map<string, Function>();
 const mockIpcMain = {
   handle: vi.fn((channel: string, handler: Function) => {
     handlers.set(channel, handler);
-  })
+  }),
+  on: vi.fn()
 };
 
 const releaseListeners = new Map<string, Function[]>();

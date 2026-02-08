@@ -271,9 +271,9 @@ export function registerReleaseWorkflowHandlers(): void {
     }
   );
 
-  ipcMain.handle(
-    IPC_CHANNELS.RELEASE_CREATE,
-    async (_, request: import('../../../shared/types').CreateReleaseRequest): Promise<IPCResult> => {
+  const runReleaseCreate = async (
+    request: import('../../../shared/types').CreateReleaseRequest
+  ): Promise<IPCResult> => {
       const project = projectStore.getProject(request.projectId);
       if (!project) {
         return { success: false, error: 'Project not found' };
@@ -315,6 +315,19 @@ export function registerReleaseWorkflowHandlers(): void {
         releaseService.emitReleaseError(request.projectId, message);
         return { success: false, error: message };
       }
+  };
+
+  ipcMain.on(
+    IPC_CHANNELS.RELEASE_CREATE,
+    (_, request: import('../../../shared/types').CreateReleaseRequest) => {
+      void runReleaseCreate(request);
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.RELEASE_CREATE,
+    async (_, request: import('../../../shared/types').CreateReleaseRequest): Promise<IPCResult> => {
+      return runReleaseCreate(request);
     }
   );
 }
