@@ -128,7 +128,7 @@ export function registerSettingsHandlers(
     IPC_CHANNELS.SETTINGS_GET,
     async (): Promise<IPCResult<AppSettings>> => {
       const loadResult = loadSettingsWithDecryptedSecrets(settingsPath);
-      let settings = loadResult.settings;
+      const settings = loadResult.settings;
       let needsSave = false;
       const encryptionAvailable = safeStorage.isEncryptionAvailable();
 

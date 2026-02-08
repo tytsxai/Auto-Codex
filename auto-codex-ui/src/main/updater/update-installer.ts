@@ -5,7 +5,6 @@
 import { createReadStream, existsSync, mkdirSync, rmSync, readdirSync } from 'fs';
 import { createHash } from 'crypto';
 import path from 'path';
-import { app } from 'electron';
 import { GITHUB_CONFIG, PRESERVE_FILES, CHECKSUM_ASSET_NAMES } from './config';
 import { downloadFile, fetchJson, fetchText } from './http-client';
 import { compareVersions, getBundledVersion, parseVersionFromTag } from './version-manager';

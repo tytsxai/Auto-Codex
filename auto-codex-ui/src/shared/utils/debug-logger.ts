@@ -71,11 +71,8 @@ const getLogPath = (): string | null => {
   if (overridePath) return overridePath;
   try {
     // Lazy require to avoid bundling fs/electron into the renderer.
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { app } = getRequire()('electron') as typeof import('electron');
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const fs = getRequire()('fs') as typeof import('fs');
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const path = getRequire()('path') as typeof import('path');
     const logDir = path.join(app.getPath('userData'), 'logs');
     if (!fs.existsSync(logDir)) {
@@ -141,9 +138,7 @@ const formatArgs = (args: unknown[]): string => {
 
 const rotateLogsIfNeeded = (logPath: string): void => {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const fs = getRequire()('fs') as typeof import('fs');
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const path = getRequire()('path') as typeof import('path');
     if (!fs.existsSync(logPath)) return;
     const size = fs.statSync(logPath).size;
@@ -176,7 +171,6 @@ const appendToLog = (level: 'log' | 'warn' | 'error', args: unknown[]): void => 
   if (!logPath) return;
 
   try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const fs = getRequire()('fs') as typeof import('fs');
     rotateLogsIfNeeded(logPath);
     const line = `[${new Date().toISOString()}] [${level}] ${formatArgs(args)}\n`;

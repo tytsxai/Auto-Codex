@@ -106,7 +106,7 @@ if (process.platform === 'darwin') {
 if (process.platform === 'win32') {
   app.commandLine.appendSwitch('disable-gpu-shader-disk-cache');
   app.commandLine.appendSwitch('disable-gpu-program-cache');
-  console.log('[main] Applied Windows GPU cache fixes');
+  console.warn('[main] Applied Windows GPU cache fixes');
 }
 
 // Initialize the application
@@ -117,7 +117,7 @@ app.whenReady().then(() => {
   // Clear cache on Windows to prevent permission errors from stale cache
   if (process.platform === 'win32') {
     session.defaultSession.clearCache()
-      .then(() => console.log('[main] Cleared cache on startup'))
+      .then(() => console.warn('[main] Cleared cache on startup'))
       .catch((err) => console.warn('[main] Failed to clear cache:', err));
   }
 
