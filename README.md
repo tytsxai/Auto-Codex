@@ -1,5 +1,15 @@
 # Auto-Codex
 
+English | [简体中文](README.zh-CN.md)
+
+[![Stars](https://img.shields.io/github/stars/tytsxai/Auto-Codex?style=flat-square)](https://github.com/tytsxai/Auto-Codex/stargazers)
+[![License](https://img.shields.io/github/license/tytsxai/Auto-Codex?style=flat-square)](LICENSE)
+[![CI](https://img.shields.io/github/actions/workflow/status/tytsxai/Auto-Codex/ci.yml?branch=main&style=flat-square&label=CI)](https://github.com/tytsxai/Auto-Codex/actions/workflows/ci.yml)
+[![Last Commit](https://img.shields.io/github/last-commit/tytsxai/Auto-Codex?style=flat-square)](https://github.com/tytsxai/Auto-Codex/commits/main)
+[![Issues](https://img.shields.io/github/issues/tytsxai/Auto-Codex?style=flat-square)](https://github.com/tytsxai/Auto-Codex/issues)
+
+**Quick Navigation**: [What It Does](#what-it-does) · [Key Features](#key-features) · [Quick Start](#quick-start-desktop-ui) · [CLI Usage](#cli-usage-terminal-only) · [How It Works](#how-it-works) · [Project Structure](#project-structure) · [Contributing](#contributing) · [License](#license)
+
 Your AI coding companion. Build features, fix bugs, and ship faster — with autonomous agents that plan, code, and validate for you.
 
 ![Auto-Codex Kanban Board](.github/assets/Auto-Codex-Kanban.png)
@@ -28,7 +38,7 @@ Powered by the OpenAI Codex CLI for reliable, sandboxed agent execution.
 - **Cross-Platform**: Desktop app runs on Mac, Windows, and Linux
 - **Any Project Type**: Build web apps, APIs, CLIs — works with any software project
 
-## 🚀 Quick Start (Desktop UI)
+## Quick Start (Desktop UI)
 
 The Desktop UI is the recommended way to use Auto-Codex. It provides visual task management, real-time progress tracking, and a Kanban board interface.
 
@@ -260,7 +270,7 @@ Run a quick Python import validation across the repo:
 ./scripts/validate-imports.sh
 ```
 
-## ⚙️ How It Works
+## How It Works
 
 Auto-Codex focuses on three core principles: **context engineering** (understanding your codebase before writing code), **good coding standards** (following best practices and patterns), and **validation logic** (ensuring code works before you see it).
 
@@ -391,11 +401,17 @@ Existing users migrating from Claude SDK should read `MIGRATION.md`.
 
 See `auto-codex/.env.example` for complete configuration options.
 
-## 🤝 Contributing
+## Contributing
 
 We welcome contributions! Whether it's bug fixes, new features, or documentation improvements.
 
 See **[CONTRIBUTING.md](CONTRIBUTING.md)** for guidelines on how to get started.
+
+## SEO Keywords
+
+Auto-Codex, Codex CLI, AI coding agent, autonomous coding, multi-agent coding,
+git worktree development, Electron developer tools, Python coding framework,
+AI software engineering assistant, parallel coding agents
 
 ## Acknowledgments
 
@@ -404,6 +420,8 @@ This project is a fork of [Auto-Claude](https://github.com/AndyMik90/Auto-Claude
 ## License
 
 **AGPL-3.0** - GNU Affero General Public License v3.0
+
+Official license text: [LICENSE](LICENSE) (mirror copy: `agpl-3.0.txt`).
 
 This software is licensed under AGPL-3.0, which means:
 
