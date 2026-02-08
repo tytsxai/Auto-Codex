@@ -5,7 +5,6 @@ import { PythonEnvManager } from '../python-env-manager';
 
 // Test directory with spaces to catch shell quoting issues
 const TEST_DIR = '/tmp/python-env-test with spaces';
-const VENV_DIR = path.join(TEST_DIR, 'python-venv');
 const AUTO_CODEX_DIR = path.join(TEST_DIR, 'auto-codex');
 
 // Mock electron app
@@ -40,21 +39,9 @@ describe('PythonEnvManager', () => {
       // The original bug was: execSync(`"${path}" -c "import sys; ..."`) 
       // which failed when path contained spaces due to nested quotes
       
-      const pathWithSpaces = '/path/with spaces/to/python';
-      
       // The fix uses spawn() instead of execSync() which passes arguments
       // as an array, avoiding shell interpretation entirely
       const { spawn } = await import('child_process');
-      
-      // Verify spawn is called with array arguments (not shell string)
-      // This is the pattern we use in the fixed code
-      const mockSpawn = vi.fn(() => ({
-        stdout: { on: vi.fn() },
-        stderr: { on: vi.fn() },
-        on: vi.fn((event, cb) => {
-          if (event === 'close') cb(0);
-        }),
-      }));
       
       // The key insight: spawn(cmd, [args]) doesn't have shell quoting issues
       // because arguments are passed directly to the process, not through a shell
