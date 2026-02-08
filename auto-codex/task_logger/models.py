@@ -3,10 +3,10 @@ Data models for task logging.
 """
 
 from dataclasses import asdict, dataclass
-from enum import Enum
+from enum import StrEnum
 
 
-class LogPhase(str, Enum):
+class LogPhase(StrEnum):
     """Log phases matching the execution flow."""
 
     PLANNING = "planning"
@@ -14,7 +14,7 @@ class LogPhase(str, Enum):
     VALIDATION = "validation"
 
 
-class LogEntryType(str, Enum):
+class LogEntryType(StrEnum):
     """Types of log entries."""
 
     TEXT = "text"

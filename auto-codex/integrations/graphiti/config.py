@@ -52,7 +52,7 @@ import json
 import os
 from dataclasses import dataclass, field
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 from typing import Optional
 
@@ -75,7 +75,7 @@ EPISODE_TYPE_QA_RESULT = "qa_result"
 EPISODE_TYPE_HISTORICAL_CONTEXT = "historical_context"
 
 
-class LLMProvider(str, Enum):
+class LLMProvider(StrEnum):
     """Supported LLM providers for Graphiti."""
 
     OPENAI = "openai"
@@ -85,7 +85,7 @@ class LLMProvider(str, Enum):
     GOOGLE = "google"
 
 
-class EmbedderProvider(str, Enum):
+class EmbedderProvider(StrEnum):
     """Supported embedder providers for Graphiti."""
 
     OPENAI = "openai"
