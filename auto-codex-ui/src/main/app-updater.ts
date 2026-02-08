@@ -18,6 +18,7 @@
  */
 
 import { autoUpdater } from 'electron-updater';
+import type { UpdateInfo } from 'electron-updater';
 import { app } from 'electron';
 import type { BrowserWindow } from 'electron';
 import { IPC_CHANNELS } from '../shared/constants';
@@ -41,6 +42,38 @@ if (DEBUG_UPDATER) {
 }
 
 let mainWindow: BrowserWindow | null = null;
+
+/**
+ * Convert releaseNotes from electron-updater to markdown text.
+ *
+ * electron-updater may return:
+ * - string
+ * - ReleaseNoteInfo[]
+ * - null/undefined
+ */
+function formatReleaseNotes(releaseNotes: UpdateInfo['releaseNotes']): string | undefined {
+  if (!releaseNotes) {
+    return undefined;
+  }
+
+  if (typeof releaseNotes === 'string') {
+    return releaseNotes;
+  }
+
+  if (Array.isArray(releaseNotes)) {
+    const formattedNotes = releaseNotes
+      .filter(item => item.note)
+      .map(item => {
+        const versionHeader = item.version ? `## ${item.version}\n` : '';
+        return `${versionHeader}${item.note}`;
+      })
+      .join('\n\n');
+
+    return formattedNotes || undefined;
+  }
+
+  return undefined;
+}
 
 /**
  * Initialize the app updater system
@@ -72,7 +105,7 @@ export function initializeAppUpdater(window: BrowserWindow): void {
     if (mainWindow) {
       mainWindow.webContents.send(IPC_CHANNELS.APP_UPDATE_AVAILABLE, {
         version: info.version,
-        releaseNotes: info.releaseNotes,
+        releaseNotes: formatReleaseNotes(info.releaseNotes),
         releaseDate: info.releaseDate
       });
     }
@@ -84,7 +117,7 @@ export function initializeAppUpdater(window: BrowserWindow): void {
     if (mainWindow) {
       mainWindow.webContents.send(IPC_CHANNELS.APP_UPDATE_DOWNLOADED, {
         version: info.version,
-        releaseNotes: info.releaseNotes,
+        releaseNotes: formatReleaseNotes(info.releaseNotes),
         releaseDate: info.releaseDate
       });
     }
@@ -184,7 +217,7 @@ export async function checkForUpdates(): Promise<AppUpdateInfo | null> {
 
     return {
       version: result.updateInfo.version,
-      releaseNotes: result.updateInfo.releaseNotes as string | undefined,
+      releaseNotes: formatReleaseNotes(result.updateInfo.releaseNotes),
       releaseDate: result.updateInfo.releaseDate
     };
   } catch (error) {
