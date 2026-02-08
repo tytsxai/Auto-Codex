@@ -17,8 +17,7 @@ const mockProjectStore = {
 };
 
 const mockReleaseService = {
-  runPreflightChecks: vi.fn()
-  ,
+  runPreflightChecks: vi.fn(),
   on: vi.fn((eventName: string, callback: Function) => {
     const existing = releaseListeners.get(eventName) || [];
     existing.push(callback);

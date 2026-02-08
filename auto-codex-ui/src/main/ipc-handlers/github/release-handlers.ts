@@ -274,47 +274,47 @@ export function registerReleaseWorkflowHandlers(): void {
   const runReleaseCreate = async (
     request: import('../../../shared/types').CreateReleaseRequest
   ): Promise<IPCResult> => {
-      const project = projectStore.getProject(request.projectId);
-      if (!project) {
-        return { success: false, error: 'Project not found' };
+    const project = projectStore.getProject(request.projectId);
+    if (!project) {
+      return { success: false, error: 'Project not found' };
+    }
+
+    try {
+      const normalizedVersion = normalizeVersion(request.version);
+      const tasks = projectStore.getTasks(request.projectId);
+
+      if (!shouldSkipReleasePreflight()) {
+        const preflight = await releaseService.runPreflightChecks(
+          project.path,
+          normalizedVersion,
+          tasks
+        );
+        if (!preflight.canRelease) {
+          const error = formatPreflightError(preflight);
+          releaseService.emitReleaseError(request.projectId, error);
+          return { success: false, error };
+        }
       }
 
-      try {
-        const normalizedVersion = normalizeVersion(request.version);
-        const tasks = projectStore.getTasks(request.projectId);
+      const result = await releaseService.createRelease(project.path, {
+        ...request,
+        version: normalizedVersion,
+        mainBranch: request.mainBranch || resolveMainBranch(project)
+      });
 
-        if (!shouldSkipReleasePreflight()) {
-          const preflight = await releaseService.runPreflightChecks(
-            project.path,
-            normalizedVersion,
-            tasks
-          );
-          if (!preflight.canRelease) {
-            const error = formatPreflightError(preflight);
-            releaseService.emitReleaseError(request.projectId, error);
-            return { success: false, error };
-          }
-        }
-
-        const result = await releaseService.createRelease(project.path, {
-          ...request,
-          version: normalizedVersion,
-          mainBranch: request.mainBranch || resolveMainBranch(project)
-        });
-
-        if (result.success) {
-          releaseService.emitReleaseComplete(request.projectId, result);
-          return { success: true, data: result };
-        }
-
-        const error = result.error || 'Release failed';
-        releaseService.emitReleaseError(request.projectId, error);
-        return { success: false, error };
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Release failed';
-        releaseService.emitReleaseError(request.projectId, message);
-        return { success: false, error: message };
+      if (result.success) {
+        releaseService.emitReleaseComplete(request.projectId, result);
+        return { success: true, data: result };
       }
+
+      const error = result.error || 'Release failed';
+      releaseService.emitReleaseError(request.projectId, error);
+      return { success: false, error };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Release failed';
+      releaseService.emitReleaseError(request.projectId, message);
+      return { success: false, error: message };
+    }
   };
 
   ipcMain.on(
