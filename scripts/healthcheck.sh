@@ -141,6 +141,7 @@ check_auth() {
   # Ensure provider credentials (OPENAI_API_KEY/ANTHROPIC_API_KEY/AZURE_OPENAI_*/VOYAGE_API_KEY/GOOGLE_API_KEY/OLLAMA_*)
   # and FalkorDB settings are available when GRAPHITI_ENABLED=true.
   local python_output python_exit_code
+  set +e
   python_output=$(python3 -c "
 import sys
 sys.path.insert(0, '$ROOT_DIR/auto-codex')
@@ -167,10 +168,11 @@ if status.errors:
     print(f'ERRORS={\"|\".join(status.errors)}')
 else:
     print('ERRORS=')
-" 2>&1) || true
+" 2>&1)
   python_exit_code=$?
+  set -e
 
-  if [[ -n "$python_output" ]] && echo "$python_output" | grep -q '^AUTH_SOURCE='; then
+  if [[ "$python_exit_code" -eq 0 ]] && [[ -n "$python_output" ]] && echo "$python_output" | grep -q '^AUTH_SOURCE='; then
     local auth_source cli_path errors config_dir
     auth_source=$(echo "$python_output" | grep '^AUTH_SOURCE=' | cut -d= -f2- || true)
     config_dir=$(echo "$python_output" | grep '^CONFIG_DIR=' | cut -d= -f2- || true)
