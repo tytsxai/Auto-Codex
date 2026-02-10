@@ -44,6 +44,10 @@ Run before a release or after changing dependencies/env:
 
 `./scripts/healthcheck.sh`
 
+For a stricter one-command release gate (healthcheck + targeted lint/typecheck/tests), run:
+
+`./scripts/release-gate.sh`
+
 This validates Python/Node/Git/Codex auth, ensures the git working tree is clean, and if Graphiti is enabled it validates the Graphiti config (provider credentials + FalkorDB settings) and checks Docker/Compose + pinned image tags. A non-zero exit indicates a blocking issue.
 
 When Graphiti backup enforcement is enabled (`AUTO_CODEX_PRODUCTION=true` or `AUTO_CODEX_ENFORCE_BACKUPS=true`), healthcheck also verifies:
