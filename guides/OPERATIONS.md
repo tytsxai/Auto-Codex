@@ -48,6 +48,8 @@ For a stricter one-command release gate (healthcheck + targeted lint/typecheck/t
 
 `./scripts/release-gate.sh`
 
+Release gate now also performs a full backend collection check (`pytest --collect-only`) to catch missing test dependencies or import-time failures before release.
+
 This validates Python/Node/Git/Codex auth, ensures the git working tree is clean, and if Graphiti is enabled it validates the Graphiti config (provider credentials + FalkorDB settings) and checks Docker/Compose + pinned image tags. A non-zero exit indicates a blocking issue.
 
 When Graphiti backup enforcement is enabled (`AUTO_CODEX_PRODUCTION=true` or `AUTO_CODEX_ENFORCE_BACKUPS=true`), healthcheck also verifies:
@@ -84,6 +86,8 @@ Use the Python-versioned lock files for deterministic installs:
 - `auto-codex/requirements-py313.lock`
 - `tests/requirements-test-py312.lock`
 - `tests/requirements-test-py313.lock`
+
+Note: property-based auth tests depend on `hypothesis` and it is pinned in the test lockfiles. Keep `tests/requirements-test*.lock` in sync with `tests/requirements-test.txt` via `./scripts/lock-deps.sh`.
 
 Update them with:
 

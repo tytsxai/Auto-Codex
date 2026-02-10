@@ -39,4 +39,10 @@ echo "[gate] Running backend critical tests"
   "$ROOT_DIR/tests/test_workspace.py" \
   -q
 
+echo "[gate] Running backend collection check"
+"$PYTHON_BIN" -m pytest \
+  "$ROOT_DIR/tests" \
+  --collect-only \
+  -q
+
 echo "[gate] PASS"

@@ -17,6 +17,8 @@ This checklist is a practical **release gate** for Auto-Codex. Use it before eac
   - `pnpm --dir auto-codex-ui test`
 - Backend tests pass (at minimum):
   - `auto-codex/.venv/bin/python -m pytest tests/ -v`
+- Full backend test collection succeeds (no collection/import errors):
+  - `auto-codex/.venv/bin/python -m pytest tests/ --collect-only -q`
 
 ## 2) Security baseline
 
