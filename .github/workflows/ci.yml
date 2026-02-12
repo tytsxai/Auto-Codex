@@ -45,8 +45,8 @@ jobs:
 
       - name: Run gitleaks scan
         uses: gitleaks/gitleaks-action@v2
-        with:
-          args: --redact --verbose --no-banner
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # Python tests
   test-python:

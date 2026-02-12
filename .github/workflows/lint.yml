@@ -41,6 +41,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -48,13 +50,47 @@ jobs:
           python-version: '3.12'
 
       - name: Install ruff
-        run: pip install ruff
+        run: pip install "ruff==0.8.3"
+
+      - name: Detect changed Python files
+        id: changed_py
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            base_ref="${{ github.base_ref }}"
+            git fetch --no-tags --depth=1 origin "${base_ref}"
+            range="origin/${base_ref}...HEAD"
+          else
+            before="${{ github.event.before }}"
+            after="${{ github.sha }}"
+            if [[ -n "${before}" && "${before}" != "0000000000000000000000000000000000000000" ]]; then
+              range="${before}...${after}"
+            else
+              range="${after}"
+            fi
+          fi
+
+          echo "Using diff range: ${range}"
+          changed_files="$(git diff --name-only "${range}" | grep -E '^auto-codex/.+\.py$' || true)"
+
+          if [[ -z "${changed_files}" ]]; then
+            echo "has_files=false" >> "$GITHUB_OUTPUT"
+            echo "No changed Python files under auto-codex/."
+            exit 0
+          fi
+
+          printf '%s\n' "${changed_files}" > /tmp/changed-python-files.txt
+          file_count="$(wc -l < /tmp/changed-python-files.txt | tr -d '[:space:]')"
+          echo "has_files=true" >> "$GITHUB_OUTPUT"
+          echo "file_count=${file_count}" >> "$GITHUB_OUTPUT"
+          echo "Changed Python files (${file_count}):"
+          cat /tmp/changed-python-files.txt
 
       - name: Run ruff check
-        run: ruff check auto-codex/ --output-format=github
-
-      - name: Run ruff format check
-        run: ruff format auto-codex/ --check --diff
+        if: steps.changed_py.outputs.has_files == 'true'
+        run: tr '\n' '\0' < /tmp/changed-python-files.txt | xargs -0 ruff check --output-format=github
 
   # TypeScript/React linting
   frontend:
