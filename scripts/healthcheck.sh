@@ -141,6 +141,7 @@ check_auth() {
   # Ensure provider credentials (OPENAI_API_KEY/ANTHROPIC_API_KEY/AZURE_OPENAI_*/VOYAGE_API_KEY/GOOGLE_API_KEY/OLLAMA_*)
   # and FalkorDB settings are available when GRAPHITI_ENABLED=true.
   local python_output python_exit_code
+  set +e
   python_output=$(python3 -c "
 import sys
 sys.path.insert(0, '$ROOT_DIR/auto-codex')
@@ -167,10 +168,11 @@ if status.errors:
     print(f'ERRORS={\"|\".join(status.errors)}')
 else:
     print('ERRORS=')
-" 2>&1) || true
+" 2>&1)
   python_exit_code=$?
+  set -e
 
-  if [[ -n "$python_output" ]] && echo "$python_output" | grep -q '^AUTH_SOURCE='; then
+  if [[ "$python_exit_code" -eq 0 ]] && [[ -n "$python_output" ]] && echo "$python_output" | grep -q '^AUTH_SOURCE='; then
     local auth_source cli_path errors config_dir
     auth_source=$(echo "$python_output" | grep '^AUTH_SOURCE=' | cut -d= -f2- || true)
     config_dir=$(echo "$python_output" | grep '^CONFIG_DIR=' | cut -d= -f2- || true)
@@ -477,6 +479,7 @@ check_ui_security_flags() {
   local production="${AUTO_CODEX_PRODUCTION:-}"
   local allow_unsigned="${AUTO_CODEX_ALLOW_UNSIGNED_UPDATES:-}"
   local allow_insecure="${AUTO_CODEX_ALLOW_INSECURE_TOKEN_STORAGE:-}"
+  local skip_release_preflight="${AUTO_CODEX_SKIP_RELEASE_PREFLIGHT:-}"
 
   if [[ -z "$allow_unsigned" ]]; then
     allow_unsigned="$(get_env_value "AUTO_CODEX_ALLOW_UNSIGNED_UPDATES" "$ROOT_DIR/auto-codex-ui/.env" || true)"
@@ -490,6 +493,16 @@ check_ui_security_flags() {
   fi
   if [[ -z "$allow_insecure" ]]; then
     allow_insecure="$(get_env_value "AUTO_CODEX_ALLOW_INSECURE_TOKEN_STORAGE" "$ROOT_DIR/.env" || true)"
+  fi
+
+  if [[ -z "$skip_release_preflight" ]]; then
+    skip_release_preflight="$(get_env_value "AUTO_CODEX_SKIP_RELEASE_PREFLIGHT" "$ROOT_DIR/auto-codex-ui/.env" || true)"
+  fi
+  if [[ -z "$skip_release_preflight" ]]; then
+    skip_release_preflight="$(get_env_value "AUTO_CODEX_SKIP_RELEASE_PREFLIGHT" "$ROOT_DIR/auto-codex/.env" || true)"
+  fi
+  if [[ -z "$skip_release_preflight" ]]; then
+    skip_release_preflight="$(get_env_value "AUTO_CODEX_SKIP_RELEASE_PREFLIGHT" "$ROOT_DIR/.env" || true)"
   fi
 
   if is_true "$allow_unsigned"; then
@@ -510,6 +523,16 @@ check_ui_security_flags() {
     fi
   else
     log_ok "AUTO_CODEX_ALLOW_INSECURE_TOKEN_STORAGE not enabled"
+  fi
+
+  if is_true "$skip_release_preflight"; then
+    if is_true "$production"; then
+      log_fail "AUTO_CODEX_SKIP_RELEASE_PREFLIGHT=true (disallowed in production)"
+    else
+      log_warn "AUTO_CODEX_SKIP_RELEASE_PREFLIGHT=true (release safety gate bypassed)"
+    fi
+  else
+    log_ok "AUTO_CODEX_SKIP_RELEASE_PREFLIGHT not enabled"
   fi
 }
 
