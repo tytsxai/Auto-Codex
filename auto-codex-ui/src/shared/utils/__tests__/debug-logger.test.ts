@@ -69,6 +69,25 @@ describe('debug logger', () => {
     expect(arg3).toEqual(['[REDACTED]', 'safe']);
   });
 
+  it('redacts bearer and key-value style secrets in main logs', async () => {
+    process.env.DEBUG = 'true';
+    setProcessType(undefined);
+
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const { debugLog } = await loadLogger();
+
+    debugLog('Bearer test-bearer-value', 'api_key=test_key_value', 'password: test_password_value', 'safe');
+
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+    const args = warnSpy.mock.calls[0].map((value) => String(value));
+    expect(args.join(' ')).toContain('Bearer [REDACTED]');
+    expect(args.join(' ')).toContain('api_key=[REDACTED]');
+    expect(args.join(' ')).toContain('password: [REDACTED]');
+    expect(args.join(' ')).not.toContain('test-bearer-value');
+    expect(args.join(' ')).not.toContain('test_key_value');
+    expect(args.join(' ')).not.toContain('test_password_value');
+  });
+
   it('skips console logging when DEBUG is not true', async () => {
     process.env.DEBUG = 'false';
     setProcessType(undefined);
