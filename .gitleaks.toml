@@ -1,15 +1,8 @@
 [extend]
 useDefault = true
 
-[[allowlists]]
-description = "Allow known fake secrets in debug logger unit tests"
-condition = "AND"
-regexTarget = "line"
-paths = [
-  '''auto-codex-ui/src/shared/utils/__tests__/debug-logger\.test\.ts''',
-]
-regexes = [
-  '''Bearer top-secret-token''',
-  '''api_key=abc123''',
-  '''password:\s+letmein''',
+[allowlist]
+description = "Ignore known historical false-positive in debug logger test fixture"
+commits = [
+  "34b30a32e2b217693faa52ad1e528c25fc1dd02c",
 ]
