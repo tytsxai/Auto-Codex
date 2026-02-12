@@ -60,7 +60,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "electron-updater": "^6.7.3",
-    "ioredis": "^5.8.2",
+    "ioredis": "^5.9.2",
     "lucide-react": "^0.562.0",
     "motion": "^12.33.0",
     "react": "^19.2.3",
