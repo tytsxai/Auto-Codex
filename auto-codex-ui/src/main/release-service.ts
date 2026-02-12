@@ -449,16 +449,21 @@ export class ReleaseService extends EventEmitter {
         unmergedCommits = 'error';
       }
 
-      // If empty or error checking, assume merged for safety
+      // If direct log comparison fails, fall back to ancestry check.
+      // Release preflight must be conservative: if we cannot prove merged,
+      // we should treat it as unmerged.
       if (unmergedCommits === 'error') {
-        // Try alternative: check if worktree has any uncommitted changes
-        const hasChanges = execFileSync('git', ['status', '--porcelain'], {
-          cwd: worktreePath,
-          encoding: 'utf-8',
-          stdio: ['ignore', 'pipe', 'pipe']
-        }).trim();
-
-        return !hasChanges;
+        try {
+          // Exit code 0 when worktreeBranch is an ancestor of mainBranch.
+          execFileSync('git', ['merge-base', '--is-ancestor', worktreeBranch, mainBranch], {
+            cwd: projectPath,
+            encoding: 'utf-8',
+            stdio: ['ignore', 'pipe', 'ignore']
+          });
+          return true;
+        } catch {
+          return false;
+        }
       }
 
       return !unmergedCommits;

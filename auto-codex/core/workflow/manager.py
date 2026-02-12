@@ -161,12 +161,17 @@ class WorkflowManager:
             raise RuntimeError(f"Failed to remove worktree: {result.stderr}")
         
         # Delete branch
-        subprocess.run(
+        delete_branch_result = subprocess.run(
             ["git", "branch", "-D", branch],
             cwd=self.project_dir,
             capture_output=True,
             text=True,
         )
+
+        if delete_branch_result.returncode != 0:
+            raise RuntimeError(
+                f"Failed to delete worktree branch '{branch}': {delete_branch_result.stderr.strip()}"
+            )
         
         # Remove from change tracker
         self.change_tracker.remove_changes_by_spec(spec_name)
@@ -519,11 +524,16 @@ class WorkflowManager:
                     shutil.rmtree(target)
                 target.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(source, target, follow_symlinks=False)
-                subprocess.run(
-                    ["git", "add", file_path],
+                add_result = subprocess.run(
+                    ["git", "add", "--", file_path],
                     cwd=self.project_dir,
                     capture_output=True,
+                    text=True,
                 )
+                if add_result.returncode != 0:
+                    raise RuntimeError(
+                        f"Failed to stage file '{file_path}': {add_result.stderr.strip()}"
+                    )
                 staged.append(file_path)
             else:
                 # File was deleted in worktree
@@ -532,11 +542,16 @@ class WorkflowManager:
                         shutil.rmtree(target)
                     else:
                         target.unlink()
-                subprocess.run(
-                    ["git", "add", file_path],
+                add_result = subprocess.run(
+                    ["git", "add", "--", file_path],
                     cwd=self.project_dir,
                     capture_output=True,
+                    text=True,
                 )
+                if add_result.returncode != 0:
+                    raise RuntimeError(
+                        f"Failed to stage file '{file_path}': {add_result.stderr.strip()}"
+                    )
                 staged.append(file_path)
         
         return staged

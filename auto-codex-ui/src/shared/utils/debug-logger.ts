@@ -117,7 +117,9 @@ const redactValue = (value: unknown): unknown => {
       .replace(/(github_pat_[A-Za-z0-9_]{10,})/g, '[REDACTED]')
       .replace(/(lin_api_[A-Za-z0-9]{10,})/g, '[REDACTED]')
       .replace(/(AIza[0-9A-Za-z_-]{35})/g, '[REDACTED]')
-      .replace(/(ya29\.[A-Za-z0-9._-]{10,})/g, '[REDACTED]');
+      .replace(/(ya29\.[A-Za-z0-9._-]{10,})/g, '[REDACTED]')
+      .replace(/(Bearer\s+)(\S+)/gi, '$1[REDACTED]')
+      .replace(/((?:api[_-]?key|token|secret|password)\s*[:=]\s*)([^\s]+)/gi, '$1[REDACTED]');
   }
   return value;
 };
