@@ -11,6 +11,7 @@ This project is a Codex-based fork derived from https://github.com/AndyMik90/Aut
 | **[CLI-USAGE.md](CLI-USAGE.md)** | Terminal-only usage for power users, headless servers, and CI/CD |
 | **[DOCKER-SETUP.md](DOCKER-SETUP.md)** | Docker Desktop installation, FalkorDB setup, and troubleshooting |
 | **[OPERATIONS.md](OPERATIONS.md)** | Backup/restore, rollback, and operational procedures |
+| **[PRODUCTION-READY-CHECKLIST.md](PRODUCTION-READY-CHECKLIST.md)** | Go/No-Go checklist for production release readiness |
 
 ## Quick Links
 
