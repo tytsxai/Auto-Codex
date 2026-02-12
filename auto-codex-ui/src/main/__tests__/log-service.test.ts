@@ -23,6 +23,7 @@ describe('LogService', () => {
   afterEach(() => {
     service.shutdown();
     rmSync(tempDir, { recursive: true, force: true });
+    vi.useRealTimers();
     vi.clearAllMocks();
   });
 
@@ -104,5 +105,39 @@ describe('LogService', () => {
 
     const recent = service.loadRecentLogs(tempDir, 2);
     expect(recent.join('\n')).toContain('line 2');
+  });
+
+  it('ends previous active session before restarting the same task', () => {
+    const firstSession = service.startSession('task-restart', tempDir);
+    service.appendLog('task-restart', 'first run');
+    service.flushAll();
+
+    const secondSession = service.startSession('task-restart', tempDir);
+    service.appendLog('task-restart', 'second run');
+    service.flushAll();
+    service.endSession('task-restart', 0);
+
+    const firstLogPath = path.join(tempDir, 'logs', `session-${firstSession}.log`);
+    const secondLogPath = path.join(tempDir, 'logs', `session-${secondSession}.log`);
+
+    expect(firstSession).not.toBe(secondSession);
+    expect(readFileSafe(firstLogPath)).toContain('SESSION ENDED');
+    expect(readFileSafe(secondLogPath)).toContain('second run');
+    expect(service.hasActiveSession('task-restart')).toBe(false);
+  });
+
+  it('creates unique session files when system time does not advance', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2025-01-01T00:00:00.000Z'));
+
+    const sessionA = service.startSession('task-time-a', tempDir);
+    service.endSession('task-time-a', 0);
+
+    const sessionB = service.startSession('task-time-b', tempDir);
+    service.endSession('task-time-b', 0);
+
+    expect(sessionA).not.toBe(sessionB);
+    expect(existsSync(path.join(tempDir, 'logs', `session-${sessionA}.log`))).toBe(true);
+    expect(existsSync(path.join(tempDir, 'logs', `session-${sessionB}.log`))).toBe(true);
   });
 });
