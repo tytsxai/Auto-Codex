@@ -1,0 +1,8 @@
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Ignore known historical false-positive in debug logger test fixture"
+commits = [
+  "34b30a32e2b217693faa52ad1e528c25fc1dd02c",
+]

@@ -14,6 +14,7 @@ import sys
 import tempfile
 from collections.abc import Generator
 from pathlib import Path
+from types import ModuleType
 from unittest.mock import MagicMock
 
 import pytest
@@ -54,8 +55,9 @@ def _cleanup_mocked_modules():
     for name in _POTENTIALLY_MOCKED_MODULES:
         if name in sys.modules:
             module = sys.modules[name]
-            # Check if it's a MagicMock (indicating it was mocked)
-            if isinstance(module, MagicMock):
+            # Restore entries that were replaced with non-module mocks
+            # (e.g. MagicMock or types.SimpleNamespace)
+            if isinstance(module, MagicMock) or not isinstance(module, ModuleType):
                 if name in _original_module_state:
                     sys.modules[name] = _original_module_state[name]
                 else:
@@ -101,7 +103,7 @@ def pytest_runtest_setup(item):
             continue  # Don't clean up mocks this module needs
         if name in sys.modules:
             module = sys.modules[name]
-            if isinstance(module, MagicMock):
+            if isinstance(module, MagicMock) or not isinstance(module, ModuleType):
                 if name in _original_module_state:
                     sys.modules[name] = _original_module_state[name]
                 else:
