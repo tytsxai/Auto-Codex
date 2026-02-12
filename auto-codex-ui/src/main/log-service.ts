@@ -66,6 +66,10 @@ export class LogService {
   // Keep last N sessions
   private readonly MAX_SESSIONS_TO_KEEP = 10;
 
+  private formatSessionId(date: Date): string {
+    return date.toISOString().replace(/[:.]/g, '-');
+  }
+
   /**
    * Start a new log session for a task
    */
@@ -77,10 +81,28 @@ export class LogService {
       mkdirSync(logsDir, { recursive: true });
     }
 
+    if (this.activeSessions.has(taskId)) {
+      console.warn(
+        `[LogService] Active session already exists for task ${taskId}, ending previous session before restarting`
+      );
+      this.endSession(taskId, null);
+    }
+
+    const existingInterval = this.flushIntervals.get(taskId);
+    if (existingInterval) {
+      clearInterval(existingInterval);
+      this.flushIntervals.delete(taskId);
+    }
+
     // Create session ID from timestamp
-    const now = new Date();
-    const sessionId = now.toISOString().replace(/[:.]/g, '-');
-    const logFile = path.join(logsDir, `session-${sessionId}.log`);
+    let now = new Date();
+    let sessionId = this.formatSessionId(now);
+    let logFile = path.join(logsDir, `session-${sessionId}.log`);
+    while (existsSync(logFile)) {
+      now = new Date(now.getTime() + 1);
+      sessionId = this.formatSessionId(now);
+      logFile = path.join(logsDir, `session-${sessionId}.log`);
+    }
 
     // Write session header
     const header = [
