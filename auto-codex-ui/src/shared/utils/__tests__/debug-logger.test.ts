@@ -76,16 +76,16 @@ describe('debug logger', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     const { debugLog } = await loadLogger();
 
-    debugLog('Bearer top-secret-token', 'api_key=abc123', 'password: letmein', 'safe');
+    debugLog('Bearer test-bearer-value', 'api_key=test_key_value', 'password: test_password_value', 'safe');
 
     expect(warnSpy).toHaveBeenCalledTimes(1);
     const args = warnSpy.mock.calls[0].map((value) => String(value));
     expect(args.join(' ')).toContain('Bearer [REDACTED]');
     expect(args.join(' ')).toContain('api_key=[REDACTED]');
     expect(args.join(' ')).toContain('password: [REDACTED]');
-    expect(args.join(' ')).not.toContain('top-secret-token');
-    expect(args.join(' ')).not.toContain('abc123');
-    expect(args.join(' ')).not.toContain('letmein');
+    expect(args.join(' ')).not.toContain('test-bearer-value');
+    expect(args.join(' ')).not.toContain('test_key_value');
+    expect(args.join(' ')).not.toContain('test_password_value');
   });
 
   it('skips console logging when DEBUG is not true', async () => {

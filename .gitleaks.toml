@@ -1,0 +1,15 @@
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Allow known fake secrets in debug logger unit tests"
+condition = "AND"
+regexTarget = "line"
+paths = [
+  '''auto-codex-ui/src/shared/utils/__tests__/debug-logger\.test\.ts''',
+]
+regexes = [
+  '''Bearer top-secret-token''',
+  '''api_key=abc123''',
+  '''password:\s+letmein''',
+]
