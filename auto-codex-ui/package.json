@@ -70,7 +70,7 @@
     "remark-gfm": "^4.0.1",
     "tailwind-merge": "^3.4.0",
     "uuid": "^13.0.0",
-    "zustand": "^5.0.9"
+    "zustand": "^5.0.12"
   },
   "devDependencies": {
     "@electron-toolkit/preload": "^3.0.2",
