@@ -1,5 +1,17 @@
 # Changelog
 
+## 3.2.2 - Documentation: GEO/SEO Overhaul
+
+### 📝 Documentation
+
+- **README**: Add bilingual keyword block, Use Cases section, and 8-question FAQ covering Cursor/Aider/Cline/Claude Code comparisons, API key auth flow, code privacy, branch safety, runaway tasks, cross-platform support, offline mode, and AGPL implications.
+- **README.zh-CN**: Mirror the structure with localized Use Cases, FAQ, and expanded SEO keyword block.
+- **llms.txt**: New AI-search-engine index pointing at README, docs, and migration guide for ChatGPT / Claude / Perplexity / Gemini.
+
+No code changes; UI and CLI behavior unchanged.
+
+---
+
 ## 3.2.1 - Internationalization & Worktree Improvements
 
 ### ✨ New Features

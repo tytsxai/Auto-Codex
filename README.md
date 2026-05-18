@@ -8,7 +8,11 @@ English | [简体中文](README.zh-CN.md)
 [![Last Commit](https://img.shields.io/github/last-commit/tytsxai/Auto-Codex?style=flat-square)](https://github.com/tytsxai/Auto-Codex/commits/main)
 [![Issues](https://img.shields.io/github/issues/tytsxai/Auto-Codex?style=flat-square)](https://github.com/tytsxai/Auto-Codex/issues)
 
-**Quick Navigation**: [What It Does](#what-it-does) · [Key Features](#key-features) · [Quick Start](#quick-start-desktop-ui) · [CLI Usage](#cli-usage-terminal-only) · [How It Works](#how-it-works) · [Project Structure](#project-structure) · [Contributing](#contributing) · [License](#license)
+**Quick Navigation**: [What It Does](#what-it-does) · [Key Features](#key-features) · [Use Cases](#use-cases) · [Quick Start](#quick-start-desktop-ui) · [CLI Usage](#cli-usage-terminal-only) · [How It Works](#how-it-works) · [FAQ](#faq) · [llms.txt](llms.txt) · [中文](README.zh-CN.md)
+
+> **Keywords**: OpenAI Codex CLI · autonomous coding agent · multi-agent coding · AI pair programmer · git worktree development · parallel coding agents · spec-driven AI coding · self-validating QA loop · cross-session memory · FalkorDB · Graphiti · Electron desktop · AGPL coding tool
+>
+> **关键词**:OpenAI Codex 桌面客户端 · 自主编程代理 · 多代理协作编程 · AI 代码助手 · Git worktree 并行开发 · 规约驱动 AI 编码 · 自验证 QA 循环 · 跨会话记忆 · 本地优先 AI 编程工具 · 开源 AGPL Codex 客户端
 
 Your AI coding companion. Build features, fix bugs, and ship faster — with autonomous agents that plan, code, and validate for you.
 
@@ -37,6 +41,18 @@ Powered by the OpenAI Codex CLI for reliable, sandboxed agent execution.
 - **Memory Layer**: Agents remember insights across sessions for smarter decisions
 - **Cross-Platform**: Desktop app runs on Mac, Windows, and Linux
 - **Any Project Type**: Build web apps, APIs, CLIs — works with any software project
+
+## Use Cases
+
+Auto-Codex shines whenever you would otherwise be **the bottleneck waiting on a single AI to finish one task at a time**. Concrete scenarios:
+
+- **Sprint of independent features** — Spin up 4–12 agent terminals, one per feature ticket, and let them run while you review yesterday's batch.
+- **Greenfield prototyping** — Describe a SaaS / dashboard / API in natural language; Auto-Codex generates a spec, plans subtasks, then implements them in an isolated worktree.
+- **Legacy migration** — Use the Memory Layer to teach agents your codebase's quirks once, then have them perform large-scale refactors (Vue 2 → Vue 3, JS → TS, Express → Fastify) consistently across files.
+- **Bug-fix queue** — Paste in a list of GitHub issues; each gets its own spec, branch, and self-QA loop before you review.
+- **Solo indie developer scaling** — Behave like a small team: pair-program in agent terminals while autonomous tasks build features in the background.
+- **OpenAI Codex CLI power user** — If you already pay for Codex CLI subscription, Auto-Codex multiplies the value: parallel sessions, persistent memory, spec-driven workflow.
+- **CI/CD automation** — Run headless via the CLI for nightly refactors, dependency upgrades, or doc generation jobs.
 
 ## Quick Start (Desktop UI)
 
@@ -334,6 +350,35 @@ The Memory Layer is a **hybrid RAG system** combining graph nodes with semantic 
 | **Ollama** | Ollama | Ollama | Fully offline |
 | **Azure** | Azure OpenAI | Azure OpenAI | Enterprise |
 
+## FAQ
+
+**Q: How is Auto-Codex different from Cursor, Aider, Cline, or Claude Code?**
+Auto-Codex is a **desktop app + framework that orchestrates the OpenAI Codex CLI** through a multi-agent pipeline (spec → plan → code → QA → merge) inside isolated git worktrees. Cursor is an IDE replacement; Aider is a single-agent REPL; Cline is a VS Code extension that drives one agent. Claude Code is Anthropic's terminal agent. Auto-Codex is the only one of these focused on running **many long autonomous builds in parallel** with a Kanban board, self-validating QA, and AI-driven merge-conflict resolution.
+
+**Q: Do I need an OpenAI API key, or does my Codex CLI subscription work?**
+Either works. If you've already run `codex login`, Auto-Codex reads the token from `~/.codex/auth.json`. For headless / CI use, set `OPENAI_API_KEY`, `CODEX_CODE_OAUTH_TOKEN`, or point `CODEX_CONFIG_DIR` at an existing Codex CLI config.
+
+**Q: Is my code sent to OpenAI / anywhere else?**
+Only what Codex CLI itself sends — the same prompts and file contents a normal `codex` invocation would send. Auto-Codex adds no telemetry. The optional Memory Layer (FalkorDB) runs locally in Docker. Embeddings can be local (Ollama) for fully-offline memory.
+
+**Q: Will it ever break my main branch?**
+No. Every build runs in an isolated git worktree under `.worktrees/<spec-name>/` on a branch named `auto-codex/<spec-name>`. Nothing is pushed to your remote until you explicitly run `--merge` (or accept the merge in the UI) and then `git push`.
+
+**Q: What if a build runs forever or gets stuck?**
+The QA loop has a max iteration count (50 by default), spec phases time out, and you can hit Stop in the UI. Worktrees can be discarded with `python3 auto-codex/run.py --spec NNN --discard` (CLI) or one-click in the UI.
+
+**Q: Does it work on Apple Silicon? Intel Macs? Windows? Linux?**
+Yes to all four. Electron builds ship native binaries; Codex CLI itself is cross-platform. Windows users who hit `node-gyp` errors need Visual Studio Build Tools (see the collapsible note in Quick Start).
+
+**Q: Can I run it fully offline?**
+The Memory Layer can (Ollama for both LLM and embeddings). The coding agents themselves require an OpenAI-compatible endpoint, so a local LLM via Codex CLI + Ollama proxy would work but is not officially supported.
+
+**Q: AGPL-3.0 — can I use this in my closed-source company project?**
+You can use Auto-Codex to *build* your closed-source project (the code Auto-Codex generates for you belongs to you). You cannot embed Auto-Codex itself in a closed-source product or run it as a SaaS without open-sourcing under AGPL-3.0. Contact the maintainers for a commercial license.
+
+**Q: How do I migrate from Auto-Claude (the Anthropic-SDK fork)?**
+See [`MIGRATION.md`](MIGRATION.md). TL;DR: the spec/plan/QA architecture is identical; only the agent backend changes from Claude SDK to Codex CLI.
+
 ## Project Structure
 
 ```
@@ -410,9 +455,11 @@ See **[CONTRIBUTING.md](CONTRIBUTING.md)** for guidelines on how to get started.
 
 ## SEO Keywords
 
-Auto-Codex, Codex CLI, AI coding agent, autonomous coding, multi-agent coding,
-git worktree development, Electron developer tools, Python coding framework,
-AI software engineering assistant, parallel coding agents
+**English**: Auto-Codex, OpenAI Codex CLI, Codex CLI desktop app, Codex CLI GUI, autonomous coding agent, multi-agent coding framework, AI pair programmer, AI software engineering assistant, parallel coding agents, git worktree development, spec-driven AI coding, self-validating QA loop, AI merge conflict resolution, cross-session memory for LLM, FalkorDB Graphiti memory, Electron developer tools, Python coding framework, AGPL coding tool, alternative to Aider, alternative to Cursor, alternative to Cline, alternative to Claude Code.
+
+**简体中文**:Auto-Codex、OpenAI Codex CLI 客户端、Codex CLI 桌面应用、Codex CLI 图形界面、自主编程代理、多代理协作编程框架、AI 结对编程工具、AI 软件工程助手、并行 AI 编程、Git worktree 开发、规约驱动编程、自验证 QA 循环、AI 合并冲突解决、跨会话记忆、本地优先 AI 编程、开源 AGPL 编程工具、Cursor 替代品、Aider 替代品、Claude Code 国内替代。
+
+LLM-friendly index for AI search engines (ChatGPT, Claude, Perplexity, Gemini): [llms.txt](llms.txt).
 
 ## Acknowledgments
 

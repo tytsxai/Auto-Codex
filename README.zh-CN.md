@@ -8,7 +8,9 @@
 [![最近提交](https://img.shields.io/github/last-commit/tytsxai/Auto-Codex?style=flat-square)](https://github.com/tytsxai/Auto-Codex/commits/main)
 [![Issues](https://img.shields.io/github/issues/tytsxai/Auto-Codex?style=flat-square)](https://github.com/tytsxai/Auto-Codex/issues)
 
-**快速导航**：[项目简介](#项目简介) · [核心特性](#核心特性) · [快速开始](#快速开始推荐桌面-ui) · [CLI 用法](#cli-用法仅终端) · [安全模型](#安全模型) · [项目结构](#项目结构) · [贡献指南](#贡献指南) · [许可证](#许可证)
+**快速导航**：[项目简介](#项目简介) · [核心特性](#核心特性) · [使用场景](#使用场景) · [快速开始](#快速开始推荐桌面-ui) · [CLI 用法](#cli-用法仅终端) · [常见问题](#常见问题-faq) · [llms.txt](llms.txt) · [English](README.md)
+
+> **关键词**：OpenAI Codex 桌面客户端 · 自主编程代理 · 多代理协作编程框架 · AI 结对编程 · Git worktree 并行开发 · 规约驱动 AI 编码 · 自验证 QA 循环 · 跨会话记忆 · 本地优先 AI 编程工具 · 开源 AGPL Codex 客户端 · Cursor 替代品 · Aider 替代品 · Claude Code 国内替代
 
 你的 AI 编程协作伙伴。通过可自治执行的智能体（Agent），自动完成任务规划、编码与验证，让你更快交付高质量功能。
 
@@ -33,6 +35,18 @@
 - 跨会话记忆层（Memory Layer）
 - 跨平台桌面支持（macOS / Windows / Linux）
 - 适用于 Web、API、CLI 等多种项目类型
+
+## 使用场景
+
+Auto-Codex 最适合那些**因为「一次只能让一个 AI 跑一个任务」而被自己卡住**的人。具体场景包括：
+
+- **冲刺周期下的多功能并行开发**：开 4–12 个 Agent 终端，每个负责一张迭代卡,你只负责 review。
+- **从零原型**：用一段需求描述生成规约（spec），自动拆分子任务，在隔离 worktree 中实现。
+- **遗留代码迁移**：先用 Memory Layer 让 Agent 记住代码库特征,再批量执行 Vue 2 → Vue 3 / JS → TS / Express → Fastify 等大型重构。
+- **批量修 Bug**:把一组 GitHub Issues 喂进来,每个独立 spec + 分支 + 自检 QA 循环。
+- **独立开发者放大产能**:像小团队一样工作 —— 一手 Agent 终端结对,一手后台自动任务在跑。
+- **Codex CLI 订阅用户**:已经付费的 Codex CLI 通过 Auto-Codex 获得并行会话 + 持久记忆 + 规约工作流。
+- **CI/CD 自动化**:无头 CLI 模式跑夜间重构、依赖升级、文档生成。
 
 ## 快速开始（推荐桌面 UI）
 
@@ -140,6 +154,32 @@ Auto-Codex/
 - 安全策略：`SECURITY.md`
 - 行为准则：`CODE_OF_CONDUCT.md`
 
+## 常见问题 FAQ
+
+**Q：Auto-Codex 和 Cursor / Aider / Cline / Claude Code 有什么区别？**
+Auto-Codex 是**桌面应用 + 框架**,通过多代理流水线(spec → plan → code → QA → merge)在隔离 Git worktree 中编排 OpenAI Codex CLI。Cursor 是 IDE 替代品,Aider 是单代理 REPL,Cline 是 VS Code 插件,Claude Code 是 Anthropic 终端代理。Auto-Codex 是其中**唯一**专注「并行跑多个长时间自主构建任务」、并带看板 + 自验证 QA + AI 合并冲突解决的工具。
+
+**Q：必须有 OpenAI API key 吗?Codex CLI 订阅能用吗?**
+两者都可以。如果你已经 `codex login` 过,Auto-Codex 自动读取 `~/.codex/auth.json` 里的 token。CI/无头环境可以用 `OPENAI_API_KEY`、`CODEX_CODE_OAUTH_TOKEN` 或 `CODEX_CONFIG_DIR`。
+
+**Q:代码会被传到 OpenAI 吗?**
+只有 Codex CLI 本身会发的内容会发出去 —— 跟你直接跑 `codex` 一样。Auto-Codex 不加任何遥测。可选的 Memory Layer (FalkorDB) 跑在本地 Docker 里;Embedding 也可以用 Ollama 完全离线。
+
+**Q:会不会改坏我的 main 分支?**
+不会。每个任务都在 `.worktrees/<spec-name>/` 下独立 worktree、独立 `auto-codex/<spec-name>` 分支跑。不执行 `--merge` + `git push` 之前,你的远端永远不变。
+
+**Q:任务跑飞了怎么停?**
+QA 循环默认上限 50 次;spec 各阶段都有超时;UI 里随时可以 Stop。废弃的 worktree 用 `--discard` 一键清理。
+
+**Q:支持 Apple Silicon / Intel Mac / Windows / Linux 吗?**
+全部支持。Electron 有原生构建;Codex CLI 本身就是跨平台。Windows 用户如果遇到 `node-gyp` 报错,需要装 Visual Studio Build Tools(见 Quick Start 折叠说明)。
+
+**Q:能完全离线吗?**
+Memory Layer 可以(LLM/Embedder 都用 Ollama)。编码 Agent 本身需要 OpenAI 兼容端点 —— 理论上 Ollama 代理 + Codex CLI 可行,但非官方支持。
+
+**Q:AGPL-3.0 协议,我能用在闭源公司项目里吗?**
+你可以用 Auto-Codex **生成**你的闭源项目代码(生成的代码归你),但不能把 Auto-Codex 嵌入到闭源产品里或做成 SaaS 对外服务(那样需要开源,或者联系作者获取商业授权)。
+
 ## 许可证
 
 本项目采用 **AGPL-3.0**。
@@ -151,6 +191,8 @@ Auto-Codex/
 
 ## SEO 关键词（中英）
 
-Auto-Codex, Codex CLI, AI Coding Agent, Multi-Agent Coding, Autonomous Coding,
-Git Worktree, Electron AI IDE, Python Agent Framework, AI 编程代理, 多智能体编程,
-自动化代码生成, 并行开发, AI 开发助手
+**English**: Auto-Codex, OpenAI Codex CLI, Codex CLI desktop app, Codex CLI GUI, autonomous coding agent, multi-agent coding framework, AI pair programmer, AI software engineering assistant, parallel coding agents, git worktree development, spec-driven AI coding, self-validating QA loop, AI merge conflict resolution, cross-session memory, FalkorDB Graphiti, Electron developer tools, Python coding framework, alternative to Aider, alternative to Cursor, alternative to Cline, alternative to Claude Code.
+
+**简体中文**：Auto-Codex、OpenAI Codex CLI 客户端、Codex CLI 桌面应用、Codex CLI 图形界面、自主编程代理、多代理协作编程框架、AI 结对编程工具、AI 软件工程助手、并行 AI 编程、Git worktree 开发、规约驱动编程、自验证 QA 循环、AI 合并冲突解决、跨会话记忆、本地优先 AI 编程、开源 AGPL 编程工具、Cursor 替代品、Aider 替代品、Claude Code 国内替代。
+
+AI 搜索引擎 (ChatGPT / Claude / Perplexity / Gemini) 友好索引：[llms.txt](llms.txt)。

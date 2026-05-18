@@ -1,0 +1,46 @@
+# Auto-Codex
+
+> A desktop autonomous-coding app powered by the OpenAI Codex CLI. Multi-agent pipeline (planner → coder → QA fixer) builds features inside git worktrees, validates work, and resolves merge conflicts with AI. Cross-platform Electron UI + Python backend.
+
+Auto-Codex helps developers and "vibe coders" build features, fix bugs, and ship faster by running autonomous OpenAI Codex CLI agents in parallel. All work is isolated in git worktrees so the main branch is never touched until you merge. Optional Memory Layer (FalkorDB graph DB) gives cross-session context across builds.
+
+## Key docs
+
+- [README.md](README.md): Full overview, quick start, features, environment variables, license.
+- [README.zh-CN.md](README.zh-CN.md): 简体中文版 README(快速开始、特性、常见问题)。
+- [CHANGELOG.md](CHANGELOG.md): Version history and release notes.
+- [RELEASE.md](RELEASE.md): How to cut a new release (uses `scripts/bump-version.js`).
+- [CONTRIBUTING.md](CONTRIBUTING.md): Contribution guidelines.
+- [guides/CLI-USAGE.md](guides/CLI-USAGE.md): Headless/terminal-only usage for CI/CD.
+- [guides/DOCKER-SETUP.md](guides/DOCKER-SETUP.md): Docker + FalkorDB setup for Memory Layer.
+- [guides/OPERATIONS.md](guides/OPERATIONS.md): Backup, restore, rollback procedures.
+- [guides/PRODUCTION-READY-CHECKLIST.md](guides/PRODUCTION-READY-CHECKLIST.md): Pre-release go/no-go checks.
+- [MIGRATION.md](MIGRATION.md): For users migrating from the Claude-SDK based Auto-Claude fork.
+
+## What Auto-Codex is
+
+- An open-source (AGPL-3.0) desktop app + Python framework
+- Built on the OpenAI Codex CLI (`@openai/codex`) for sandboxed agent execution
+- Multi-agent pipeline: Discovery → Requirements → Research → Context → Spec → Plan → Code → QA → Merge
+- Cross-platform (macOS, Windows, Linux) via Electron
+- Local-first: your code stays on your machine, only LLM calls go out
+
+## What Auto-Codex is NOT
+
+- Not a cloud SaaS. There is no hosted service; you run it locally.
+- Not a Codex CLI replacement. It orchestrates Codex CLI, doesn't replace it.
+- Not a Claude/Anthropic tool. For the Claude variant see [Auto-Claude-Chinese](https://github.com/tytsxai/Auto-Claude-Chinese).
+
+## Common questions
+
+- **How is this different from Aider / Cursor / Cline?** Auto-Codex emphasizes a spec-driven, multi-phase pipeline (plan, code, self-QA, merge) running in isolated git worktrees. Aider is a single-agent REPL; Cursor is an IDE; Cline is a VS Code extension. Auto-Codex is a desktop app + framework for orchestrating long autonomous builds.
+- **Does it work without internet?** No — Codex CLI calls OpenAI. The Memory Layer can run fully offline with Ollama, but the coding agents themselves need an LLM.
+- **What models does it use?** Default is `gpt-5.2-codex`; override via `AUTO_BUILD_MODEL`. Reasoning effort via `AUTO_BUILD_REASONING_EFFORT`.
+- **Can I use my Codex CLI subscription instead of API key?** Yes — `codex login` device-auth flow stores a token in `~/.codex/auth.json` and Auto-Codex picks it up.
+
+## Repository
+
+- GitHub: https://github.com/tytsxai/Auto-Codex
+- License: AGPL-3.0
+- Language stack: Python 3.12+ backend, Electron + TypeScript + React frontend
+- Author: tytsxai
