@@ -1,6 +1,6 @@
 {
   "name": "auto-codex-ui",
-  "version": "3.2.1",
+  "version": "3.2.2",
   "description": "Desktop UI for Auto-Codex autonomous coding framework (Codex-based fork derived from https://github.com/AndyMik90/Auto-Claude)",
   "main": "./out/main/index.js",
   "author": "Auto-Codex Team",
