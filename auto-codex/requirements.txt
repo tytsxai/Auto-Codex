@@ -9,4 +9,4 @@ tomli>=2.0.0; python_version < "3.11"
 graphiti-core[falkordb]>=0.5.0; python_version >= "3.10"
 
 # Google AI (optional - for Gemini LLM and embeddings)
-google-generativeai>=0.8.0
+google-generativeai>=0.8.6
