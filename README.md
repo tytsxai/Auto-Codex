@@ -453,14 +453,6 @@ We welcome contributions! Whether it's bug fixes, new features, or documentation
 
 See **[CONTRIBUTING.md](CONTRIBUTING.md)** for guidelines on how to get started.
 
-## SEO Keywords
-
-**English**: Auto-Codex, OpenAI Codex CLI, Codex CLI desktop app, Codex CLI GUI, autonomous coding agent, multi-agent coding framework, AI pair programmer, AI software engineering assistant, parallel coding agents, git worktree development, spec-driven AI coding, self-validating QA loop, AI merge conflict resolution, cross-session memory for LLM, FalkorDB Graphiti memory, Electron developer tools, Python coding framework, AGPL coding tool, alternative to Aider, alternative to Cursor, alternative to Cline, alternative to Claude Code.
-
-**简体中文**:Auto-Codex、OpenAI Codex CLI 客户端、Codex CLI 桌面应用、Codex CLI 图形界面、自主编程代理、多代理协作编程框架、AI 结对编程工具、AI 软件工程助手、并行 AI 编程、Git worktree 开发、规约驱动编程、自验证 QA 循环、AI 合并冲突解决、跨会话记忆、本地优先 AI 编程、开源 AGPL 编程工具、Cursor 替代品、Aider 替代品、Claude Code 国内替代。
-
-LLM-friendly index for AI search engines (ChatGPT, Claude, Perplexity, Gemini): [llms.txt](llms.txt).
-
 ## Acknowledgments
 
 This project is a fork of [Auto-Claude](https://github.com/AndyMik90/Auto-Claude), adapted to use OpenAI Codex CLI. The original framework was inspired by Anthropic's [Autonomous Coding Agent](https://github.com/anthropics/claude-quickstarts/tree/main/autonomous-coding).
