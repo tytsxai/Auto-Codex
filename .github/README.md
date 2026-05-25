@@ -23,3 +23,7 @@ This file helps GitHub visitors quickly find important project resources.
 ## License
 
 - License: [`LICENSE`](../LICENSE)
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=tytsxai/Auto-Codex&type=Date)](https://www.star-history.com/#tytsxai/Auto-Codex&Date)
