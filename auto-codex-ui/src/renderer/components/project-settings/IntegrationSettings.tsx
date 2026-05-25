@@ -10,7 +10,7 @@ import {
   AlertCircle,
   Import,
   Radio,
-  Github,
+  GitBranch as Github,
   RefreshCw,
   GitBranch
 } from 'lucide-react';

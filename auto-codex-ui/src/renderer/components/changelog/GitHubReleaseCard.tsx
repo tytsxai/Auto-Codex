@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Github, RefreshCw, CheckCircle, AlertCircle, ExternalLink } from 'lucide-react';
+import { GitBranch as Github, RefreshCw, CheckCircle, AlertCircle, ExternalLink } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 

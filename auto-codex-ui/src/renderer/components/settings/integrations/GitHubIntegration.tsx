@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Github, RefreshCw, KeyRound, Loader2, CheckCircle2, AlertCircle, User, Lock, Globe, ChevronDown, GitBranch } from 'lucide-react';
+import { GitBranch as Github, RefreshCw, KeyRound, Loader2, CheckCircle2, AlertCircle, User, Lock, Globe, ChevronDown, GitBranch } from 'lucide-react';
 import { Input } from '../../ui/input';
 import { Label } from '../../ui/label';
 import { Switch } from '../../ui/switch';

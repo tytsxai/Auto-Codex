@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import {
-  Github,
+  GitBranch as Github,
   Loader2,
   CheckCircle2,
   AlertCircle,

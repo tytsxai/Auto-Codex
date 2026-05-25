@@ -1,4 +1,4 @@
-import { Github, RefreshCw, Search, Filter } from 'lucide-react';
+import { GitBranch as Github, RefreshCw, Search, Filter } from 'lucide-react';
 import { Badge } from '../../ui/badge';
 import { Button } from '../../ui/button';
 import { Input } from '../../ui/input';

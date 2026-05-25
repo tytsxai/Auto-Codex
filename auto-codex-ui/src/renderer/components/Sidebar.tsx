@@ -12,7 +12,7 @@ import {
   AlertCircle,
   Download,
   RefreshCw,
-  Github,
+  GitBranch as Github,
   FileText,
   Sparkles,
   GitBranch,

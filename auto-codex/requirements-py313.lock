@@ -17,8 +17,6 @@ certifi==2025.11.12
     #   requests
 charset-normalizer==3.4.4
     # via requests
-diskcache==5.6.3
-    # via graphiti-core
 distro==1.9.0
     # via
     #   openai
@@ -49,7 +47,7 @@ googleapis-common-protos==1.72.0
     # via
     #   google-api-core
     #   grpcio-status
-graphiti-core==0.24.3
+graphiti-core==0.29.1
     # via -r auto-codex/requirements.txt
 grpcio==1.76.0
     # via
@@ -113,7 +111,7 @@ python-dateutil==2.9.0.post0
     # via
     #   falkordb
     #   posthog
-python-dotenv==1.2.1
+python-dotenv==1.2.2
     # via
     #   -r auto-codex/requirements.txt
     #   graphiti-core

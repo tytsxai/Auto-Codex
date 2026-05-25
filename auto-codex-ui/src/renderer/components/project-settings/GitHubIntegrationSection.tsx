@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Github, RefreshCw, KeyRound, Info } from 'lucide-react';
+import { GitBranch as Github, RefreshCw, KeyRound, Info } from 'lucide-react';
 import { CollapsibleSection } from './CollapsibleSection';
 import { StatusBadge } from './StatusBadge';
 import { PasswordInput } from './PasswordInput';

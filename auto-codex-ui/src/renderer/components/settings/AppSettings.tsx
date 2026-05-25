@@ -11,7 +11,7 @@ import {
   Bell,
   Settings2,
   Zap,
-  Github,
+  GitBranch as Github,
   Database,
   Sparkles,
   GitBranch

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
-  Github,
+  GitBranch as Github,
   GitBranch,
   Key,
   Loader2,
