@@ -30,6 +30,14 @@ Auto-Codex helps developers and "vibe coders" build features, fix bugs, and ship
 - Not a cloud SaaS. There is no hosted service; you run it locally.
 - Not a Codex CLI replacement. It orchestrates Codex CLI, doesn't replace it.
 - Not a Claude/Anthropic tool. For the Claude variant see [Auto-Claude-Chinese](https://github.com/tytsxai/Auto-Claude-Chinese).
+- Not fully offline for coding agents (needs OpenAI-compatible endpoint). Memory Layer can be offline with Ollama.
+- Not for non-git projects (worktree isolation requires a git repo).
+- Not a guarantee of correct production code — human review and tests remain required.
+- AGPL-3.0: generated code for your app is yours; redistributing Auto-Codex itself in closed SaaS/products has copyleft implications.
+
+## 中文摘要
+
+Auto-Codex 是基于 OpenAI Codex CLI 的开源（AGPL-3.0）桌面自主编程应用：多代理流水线（规划 → 编码 → 自验证 QA → AI 合并）在 Git worktree 中并行构建功能，主分支在你明确合并前不受影响。适合想并行跑多个长时间任务的开发者与 vibe coder；不适合寻找纯云端 SaaS、完全离线编码、或非 Git 项目的用户。
 
 ## Common questions
 

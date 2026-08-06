@@ -13,7 +13,25 @@ requires-python = ">=3.12"
 authors = [
     {name = "Auto-Codex Team"}
 ]
-keywords = ["ai", "codex", "autonomous", "coding", "agents"]
+keywords = [
+    "ai",
+    "codex",
+    "openai-codex",
+    "codex-cli",
+    "autonomous",
+    "autonomous-coding",
+    "coding-agent",
+    "multi-agent",
+    "agents",
+    "spec-driven",
+    "git-worktree",
+    "electron",
+    "desktop-app",
+    "pair-programming",
+    "ai-software-engineering",
+    "falkordb",
+    "graphiti",
+]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",

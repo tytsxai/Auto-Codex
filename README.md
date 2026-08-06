@@ -8,7 +8,7 @@ English | [简体中文](README.zh-CN.md)
 [![Last Commit](https://img.shields.io/github/last-commit/tytsxai/Auto-Codex?style=flat-square)](https://github.com/tytsxai/Auto-Codex/commits/main)
 [![Issues](https://img.shields.io/github/issues/tytsxai/Auto-Codex?style=flat-square)](https://github.com/tytsxai/Auto-Codex/issues)
 
-**Quick Navigation**: [What It Does](#what-it-does) · [Key Features](#key-features) · [Use Cases](#use-cases) · [Quick Start](#quick-start-desktop-ui) · [CLI Usage](#cli-usage-terminal-only) · [How It Works](#how-it-works) · [FAQ](#faq) · [llms.txt](llms.txt) · [中文](README.zh-CN.md)
+**Quick Navigation**: [What It Does](#what-it-does) · [Key Features](#key-features) · [Use Cases](#use-cases) · [Limitations](#limitations--who-it-is-not-for) · [Quick Start](#quick-start-desktop-ui) · [CLI Usage](#cli-usage-terminal-only) · [How It Works](#how-it-works) · [FAQ](#faq) · [llms.txt](llms.txt) · [中文](README.zh-CN.md)
 
 > **Keywords**: OpenAI Codex CLI · autonomous coding agent · multi-agent coding · AI pair programmer · git worktree development · parallel coding agents · spec-driven AI coding · self-validating QA loop · cross-session memory · FalkorDB · Graphiti · Electron desktop · AGPL coding tool
 >
@@ -53,6 +53,16 @@ Auto-Codex shines whenever you would otherwise be **the bottleneck waiting on a 
 - **Solo indie developer scaling** — Behave like a small team: pair-program in agent terminals while autonomous tasks build features in the background.
 - **OpenAI Codex CLI power user** — If you already pay for Codex CLI subscription, Auto-Codex multiplies the value: parallel sessions, persistent memory, spec-driven workflow.
 - **CI/CD automation** — Run headless via the CLI for nightly refactors, dependency upgrades, or doc generation jobs.
+
+## Limitations / Who It Is Not For
+
+- **Not a hosted SaaS.** You install and run Auto-Codex locally; there is no cloud multi-tenant service.
+- **Not a Codex CLI replacement.** It orchestrates the OpenAI Codex CLI (`@openai/codex`); you still need Codex CLI installed and authenticated.
+- **Not fully offline for coding agents.** Coding steps need an OpenAI-compatible endpoint (API key or Codex subscription). The optional Memory Layer can run offline with Ollama + Docker.
+- **Git is required.** Target projects must be git repositories so worktrees can isolate builds.
+- **Not a Claude / Anthropic stack.** For the Claude-SDK lineage see related forks; this repo is Codex-CLI based.
+- **AGPL-3.0.** You may use Auto-Codex to *build* proprietary products (generated code is yours), but embedding Auto-Codex itself in a closed product or offering it as SaaS requires AGPL compliance or a commercial license.
+- **Not a guarantee of correct or production-ready code.** Agents can still err; review, tests, and your merge gate remain mandatory.
 
 ## Quick Start (Desktop UI)
 
@@ -456,6 +466,14 @@ See **[CONTRIBUTING.md](CONTRIBUTING.md)** for guidelines on how to get started.
 ## Acknowledgments
 
 This project is a fork of [Auto-Claude](https://github.com/AndyMik90/Auto-Claude), adapted to use OpenAI Codex CLI. The original framework was inspired by Anthropic's [Autonomous Coding Agent](https://github.com/anthropics/claude-quickstarts/tree/main/autonomous-coding).
+
+## Search keywords / SEO
+
+**English**: Auto-Codex, OpenAI Codex CLI, Codex CLI desktop app, Codex CLI GUI, autonomous coding agent, multi-agent coding framework, AI pair programmer, AI software engineering assistant, parallel coding agents, git worktree development, spec-driven AI coding, self-validating QA loop, AI merge conflict resolution, cross-session memory, FalkorDB Graphiti, Electron developer tools, alternative to Aider / Cursor / Cline / Claude Code.
+
+**简体中文**：Auto-Codex、OpenAI Codex CLI 客户端、Codex CLI 桌面应用、自主编程代理、多代理协作编程框架、AI 结对编程、Git worktree 并行开发、规约驱动 AI 编码、自验证 QA 循环、跨会话记忆、本地优先 AI 编程工具、开源 AGPL Codex 客户端。
+
+AI-readable index: [llms.txt](llms.txt). Suggested GitHub Topics: `openai-codex`, `codex-cli`, `autonomous-coding`, `multi-agent`, `electron`, `git-worktree`, `spec-driven-development`, `ai-pair-programming`, `agpl`.
 
 ## License
 

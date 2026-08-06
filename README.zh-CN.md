@@ -8,7 +8,7 @@
 [![最近提交](https://img.shields.io/github/last-commit/tytsxai/Auto-Codex?style=flat-square)](https://github.com/tytsxai/Auto-Codex/commits/main)
 [![Issues](https://img.shields.io/github/issues/tytsxai/Auto-Codex?style=flat-square)](https://github.com/tytsxai/Auto-Codex/issues)
 
-**快速导航**：[项目简介](#项目简介) · [核心特性](#核心特性) · [使用场景](#使用场景) · [快速开始](#快速开始推荐桌面-ui) · [CLI 用法](#cli-用法仅终端) · [常见问题](#常见问题-faq) · [llms.txt](llms.txt) · [English](README.md)
+**快速导航**：[项目简介](#项目简介) · [核心特性](#核心特性) · [使用场景](#使用场景) · [限制](#限制--不适合谁) · [快速开始](#快速开始推荐桌面-ui) · [CLI 用法](#cli-用法仅终端) · [常见问题](#常见问题-faq) · [llms.txt](llms.txt) · [English](README.md)
 
 > **关键词**：OpenAI Codex 桌面客户端 · 自主编程代理 · 多代理协作编程框架 · AI 结对编程 · Git worktree 并行开发 · 规约驱动 AI 编码 · 自验证 QA 循环 · 跨会话记忆 · 本地优先 AI 编程工具 · 开源 AGPL Codex 客户端 · Cursor 替代品 · Aider 替代品 · Claude Code 国内替代
 
@@ -47,6 +47,16 @@ Auto-Codex 最适合那些**因为「一次只能让一个 AI 跑一个任务」
 - **独立开发者放大产能**:像小团队一样工作 —— 一手 Agent 终端结对,一手后台自动任务在跑。
 - **Codex CLI 订阅用户**:已经付费的 Codex CLI 通过 Auto-Codex 获得并行会话 + 持久记忆 + 规约工作流。
 - **CI/CD 自动化**:无头 CLI 模式跑夜间重构、依赖升级、文档生成。
+
+## 限制 / 不适合谁
+
+- **不是托管 SaaS**：需本机安装运行，没有多租户云服务。
+- **不是 Codex CLI 替代品**：编排的是 OpenAI Codex CLI（`@openai/codex`），仍需自行安装并完成认证。
+- **编码 Agent 不能完全离线**：需要 OpenAI 兼容端点（API Key 或 Codex 订阅）。可选 Memory Layer 可用 Ollama + Docker 离线跑。
+- **目标项目必须是 Git 仓库**：依赖 worktree 隔离构建。
+- **不是 Claude / Anthropic 技术栈**：本仓库基于 Codex CLI；Claude 线见相关 fork。
+- **AGPL-3.0**：可用 Auto-Codex **生成**你的闭源产品代码，但把本工具本身嵌进闭源产品或做成对外 SaaS 需遵守 AGPL 或取得商业授权。
+- **不保证生成代码正确或可上线**：Agent 仍会出错，审查、测试与合并门禁必须由人负责。
 
 ## 快速开始（推荐桌面 UI）
 
