@@ -1,5 +1,5 @@
 # Auto-Build Framework Dependencies
-python-dotenv>=1.2.2
+python-dotenv>=1.2.3
 
 # TOML parsing fallback for Python < 3.11
 tomli>=2.4.1; python_version < "3.11"
